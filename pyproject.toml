@@ -1,0 +1,26 @@
+[project]
+name = "pygeoapi-starlette"
+version = "0.1.0"
+description = "a starlette application that wraps pygeoapi"
+readme = "README.md"
+authors = [
+    { name = "Ricardo Garcia Silva", email = "ricardo.garcia.silva@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "babel>=2.17.0",
+    "jinja2>=3.1.6",
+    "pydantic>=2.12.4",
+    "pydantic-settings>=2.12.0",
+    "pygeoapi>=0.22.0",
+    "starlette>=0.50.0",
+    "starlette-babel>=1.0.3",
+    "uvicorn>=0.38.0",
+]
+
+[project.scripts]
+pygeoapi-starlette = "pygeoapi_starlette:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
