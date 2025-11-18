@@ -28,9 +28,15 @@ class PygeoapiRequest:
     inheriting from pygeoapi's APIRequest makes us more independent from it.
     """
 
+    _prefer_format: str | None
     _request: Request
 
-    def __init__(self, original_request: Request) -> None:
+    def __init__(
+            self,
+            original_request: Request,
+            output_format: str | None = None,
+    ) -> None:
+        self._prefer_format = output_format
         self._request = original_request
 
     @property
@@ -71,12 +77,21 @@ class PygeoapiRequest:
 
     @property
     def format(self) -> str:
-        # This method behaves quite differently from vanilla pygeoapi:
+        # This property is crucial for determining the output gotten from
+        # pygeoapi.
+
+        # This behaves quite differently from vanilla pygeoapi's `APIRequest.format`:
+        # - It may choose to return a predefined format - this is mainly use to force
+        #   pygeoapi to render a specific response type, e.g. `jsonld`
         # - Always returns a value
         # - never returns `HTML` as a result. The reason being that
         #   core pygeoapi tries to render results to HTML when the request has
         #   this format. We want to offload rendering of HTML from pygeoapi core,
         #   so we never use it here
+
+        if self._prefer_format:
+            return self._prefer_format
+
         default_format = pygeoapi.api.F_JSON
 
         if f_param := self._request.query_params.get("f"):

@@ -34,4 +34,5 @@ It means:
 
 - pygeoapi core does not need to render HTML, it defers this to starlette. Therefore all of its code and configuration
   that deals with rendering HTML is not used by this project;
+- pygeoapi does not need to gzip responses - this is handled by the web application framework
 - pygeoapi core does not need to have configuration for the web application server because it does not need to launch it

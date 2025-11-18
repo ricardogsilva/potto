@@ -6,13 +6,17 @@ from typing import (
 )
 
 import jinja2
+from pygeoapi import __version__ as pygeoapi_version
 from pygeoapi.api import API
 from pygeoapi.openapi import get_oas_30
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.gzip import GZipMiddleware
-from starlette.routing import Mount
+from starlette.routing import (
+    Mount,
+    Route,
+)
 from starlette.staticfiles import StaticFiles
 from starlette_babel.contrib.jinja import configure_jinja_env
 from starlette.templating import Jinja2Templates
@@ -22,14 +26,22 @@ from starlette_babel import (
 )
 
 from .. import config
-from .routes.base import routes as base_routes
+from ..pygeoapi_config import (
+    get_pygeoapi_settings,
+    PygeoapiConfig,
+)
 from . import jinjafilters
+from .routes import (
+    base as base_routes,
+    ogcapi_tiles as ogc_api_tiles_routes,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class AppState(TypedDict):
     settings: config.PygeoapiStarletteSettings
+    pygeoapi_config: PygeoapiConfig
     pygeoapi: API
     templates: Jinja2Templates
 
@@ -37,12 +49,11 @@ class AppState(TypedDict):
 @contextlib.asynccontextmanager
 async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
     settings = config.get_settings()
-    pygeoapi_config = config.get_pygeoapi_settings(settings)
-    openapi_document = get_oas_30(pygeoapi_config, fail_on_invalid_collection=True)
-    pygeoapi_ = API(
-        config=pygeoapi_config,
-        openapi=openapi_document
-    )
+    pygeoapi_config = get_pygeoapi_settings(settings)
+    raw_pygeoapi_config = pygeoapi_config.get_raw_config()
+    openapi_document = get_oas_30(
+        raw_pygeoapi_config, fail_on_invalid_collection=True)
+    pygeoapi_ = API(config=raw_pygeoapi_config, openapi=openapi_document)
     if settings.translations_dir:
         shared_translator = get_translator()
         shared_translator.load_from_directory(settings.translations_dir)
@@ -72,12 +83,14 @@ async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
     })
     jinja_env.globals.update({
         "settings": settings,
+        "pygeoapi_version": pygeoapi_version,
     })
     configure_jinja_env(jinja_env)
     yield AppState(
         settings = settings,
         templates=Jinja2Templates(env=jinja_env),
         pygeoapi=pygeoapi_,
+        pygeoapi_config=pygeoapi_config,
     )
 
 
@@ -89,15 +102,39 @@ def create_app() -> Starlette:
 def create_app_from_settings(settings: config.PygeoapiStarletteSettings) -> Starlette:
     if settings.static_dir is not None:
         settings.static_dir.mkdir(parents=True, exist_ok=True)
+    static_files_app = StaticFiles(
+        directory=settings.static_dir,
+        packages=[
+            ("pygeoapi", "static")
+        ]
+    )
+    logger.debug(f"{static_files_app.lookup_path('css/default.css')=}")
     app = Starlette(
         debug=settings.debug,
         routes=[
-            Mount("/", routes=base_routes),
+            Route("/", base_routes.home),
+            Route(
+                "/conformance",
+                base_routes.get_conformance_details,
+                name="conformance-document"
+            ),
+            Route(
+                "/openapi",
+                base_routes.get_openapi_document,
+                name="openapi-document"
+            ),
+            Route(
+                "/tileMatrixSets",
+                ogc_api_tiles_routes.list_tile_matrix_sets,
+                name="list-tilematrixsets"
+            ),
             Mount(
                 "/static",
                 app=StaticFiles(
                     directory=settings.static_dir,
-                    packages=[("pygeoapi", "static")]
+                    packages=[
+                        ("pygeoapi", "static")
+                    ]
                 ),
                 name="static"
             ),
