@@ -12,6 +12,48 @@ from ..config import PygeoapiStarletteSettings
 logger = logging.getLogger(__name__)
 
 
+class PygeoapiStarletteRequest:
+
+    def __init__(
+            self,
+            locale: babel.Locale = None,
+            output_format: str | None = None,
+    ):
+        self.format = output_format
+        self.locale = locale
+
+    def get_linkrel(self, format_: str) -> str:
+        return "self" if format_.lower() == self.format else "alternate"
+
+    def is_valid(
+            self,
+            additional_formats: list[str] | None = None
+    ) -> bool:
+        if self.format in pygeoapi.api.FORMAT_TYPES.keys():
+            return True
+        if self.format in (f.lower() for f in (additional_formats or ())):
+            return True
+        return False
+
+    def get_response_headers(
+            self,
+            force_lang: babel.Locale | None = None,
+            force_type: str | None = None,
+            force_encoding: str | None = None,
+            **custom_headers: str
+    ) -> dict[str, str]:
+        # note: don't set 'Content-Encoding', GZipMiddleware is already
+        # enabled in the starlette app
+        return {
+            "Content-Type": (
+                    force_type or pygeoapi.api.FORMAT_TYPES[self.format]
+            ),
+            "X-Powered-By": f"pygeoapi {pygeoapi.__version__}",
+            "Content-Language": force_lang.language if force_lang else self.locale.language,
+            **custom_headers,
+        }
+
+
 class PygeoapiRequest:
     """Mimics pygeoapi's APIRequest class
 

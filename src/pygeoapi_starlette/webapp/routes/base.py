@@ -1,6 +1,7 @@
 import json
 import logging
 
+import babel
 import pygeoapi.api
 from starlette.requests import Request
 from starlette.responses import (
@@ -9,69 +10,68 @@ from starlette.responses import (
 )
 from starlette_babel import gettext_lazy as _
 
-from ...pygeoapi_config import PygeoapiConfig
-from ..requests import PygeoapiRequest
+from ...pygeoapi import PygeoapiStarlette
 from .. import util
 
 logger = logging.getLogger(__name__)
 
 
 async def home(request: Request) -> Response:
-    util.check_media_type(
-        requested_media_type:=util.get_requested_media_type(request)
+    api_: PygeoapiStarlette = request.state.pygeoapi
+    requested_format = util.get_accepted_info(request)[1]
+    format_to_process = (
+        requested_format
+        if requested_format != pygeoapi.api.F_HTML
+        else pygeoapi.api.F_JSON
+    ) or pygeoapi.api.F_JSON
+    current_locale = babel.Locale.parse(request.state.language)
+    result = await api_.get_landing_page(
+        locale=current_locale,
+        output_format=format_to_process,
     )
-    papi_headers, papi_status_code, papi_content = pygeoapi.api.landing_page(
-        request.state.pygeoapi,
-        PygeoapiRequest(
-            original_request=request,
-        )
-    )
-    content = json.loads(papi_content)
-
-    if "html" in requested_media_type:
+    if requested_format == pygeoapi.api.F_HTML:
+        content = result.content
         content["links"] = util.set_html_link_self_relation(content["links"])
-        _, _, json_ld_response = pygeoapi.api.landing_page(
-            request.state.pygeoapi,
-            PygeoapiRequest(
-                original_request=request,
-                output_format=pygeoapi.api.F_JSONLD
-            )
+        json_ld_result = await api_.get_landing_page(
+            locale=current_locale,
+            output_format=pygeoapi.api.F_JSONLD
         )
-        pygeoapi_config: PygeoapiConfig = request.state.pygeoapi_config
-
         return request.state.templates.TemplateResponse(
             request,
             "landing_page.html",
             context={
                 "data": content,
-                "has_item_collections": pygeoapi_config.has_item_collection_resources(),
-                "has_stac_collections": pygeoapi_config.has_stac_collection_resources(),
-                "has_processes": pygeoapi_config.has_process_resources(),
-                "has_tiles": pygeoapi_config.has_tiles(),
-                "pygeoapi_config": pygeoapi_config.localize(request.state.language),
-                "jsonld_content": json_ld_response,
+                "has_item_collections": api_.has_item_collection_resources(),
+                "has_stac_collections": api_.has_stac_collection_resources(),
+                "has_processes": api_.has_process_resources(),
+                "has_tiles": api_.has_tiles(),
+                "pygeoapi_config": api_.get_localized_config(current_locale),
+                "jsonld_content": json.dumps(json_ld_result.content),
             }
         )
     else:
         return JSONResponse(
-            content=content,
-            status_code=papi_status_code,
-            headers=papi_headers
+            content=result.content,
+            status_code=200,
+            headers=result.metadata
         )
 
 
 async def get_conformance_details(request: Request) -> Response:
-    util.check_media_type(
-        requested_media_type:=util.get_requested_media_type(request)
+    api_: PygeoapiStarlette = request.state.pygeoapi
+    current_locale = babel.Locale.parse(request.state.language)
+    requested_format = util.get_accepted_info(request)[1]
+    format_to_process = (
+        requested_format
+        if requested_format != pygeoapi.api.F_HTML
+        else pygeoapi.api.F_JSON
+    ) or pygeoapi.api.F_JSON
+    result = await api_.get_conformance_details(
+        locale=current_locale,
+        output_format=format_to_process,
     )
-
-    papi_headers, papi_status_code, papi_content = pygeoapi.api.conformance(
-        request.state.pygeoapi,
-        PygeoapiRequest(original_request=request)
-    )
-    content = json.loads(papi_content)
-
-    if "html" in requested_media_type:
+    if requested_format == pygeoapi.api.F_HTML:
+        content = result.content
         conformance_url = str(request.url_for("conformance-document"))
         content["links"] = [
             {
@@ -81,13 +81,13 @@ async def get_conformance_details(request: Request) -> Response:
                 "type": pygeoapi.api.FORMAT_TYPES[pygeoapi.api.F_HTML]
             },
             {
-                "href": conformance_url,
+                "href": f"{conformance_url}?f={pygeoapi.api.F_JSON}",
                 "rel": "alternate",
                 "title": _("This document as JSON"),
                 "type": pygeoapi.api.FORMAT_TYPES[pygeoapi.api.F_JSON]
             },
             {
-                "href": conformance_url,
+                "href": f"{conformance_url}?f={pygeoapi.api.F_JSONLD}",
                 "rel": "alternate",
                 "title": _("This document as RDF (JSON-LD)"),
                 "type": pygeoapi.api.FORMAT_TYPES[pygeoapi.api.F_JSONLD]
@@ -98,41 +98,33 @@ async def get_conformance_details(request: Request) -> Response:
             "conformance.html",
             context={
                 "data": content,
-                "pygeoapi_config": request.state.pygeoapi_config.localize(
-                    request.state.language),
+                "pygeoapi_config": api_.get_localized_config(current_locale),
             }
         )
     else:
         return JSONResponse(
-            content=content,
-            status_code=papi_status_code,
-            headers=papi_headers
+            content=result.content,
+            headers=result.metadata
         )
 
 
 async def get_openapi_document(request: Request) -> Response:
-    util.check_media_type(
-        requested_media_type:=util.get_requested_media_type(request)
-    )
-    if "html" in requested_media_type:
-        template = (
-            "openapi/redoc.html"
-            if request.query_params.get("ui") == "redoc"
-            else "openapi/swagger.html"
-        )
+    api_: PygeoapiStarlette = request.state.pygeoapi
+    current_locale = babel.Locale.parse(request.state.language)
+    requested_format = util.get_accepted_info(request)[1]
+    result = await api_.get_openapi_document()
+    if requested_format == pygeoapi.api.F_HTML:
         return request.state.templates.TemplateResponse(
             request,
-            template,
+            "openapi/swagger.html",
             context={
                 "data": {
                     "openapi-document-path": request.url_for("openapi-document")
                 },
-                "pygeoapi_config": request.state.pygeoapi_config.localize(
-                    request.state.language),
+                "pygeoapi_config": api_.get_localized_config(current_locale),
             }
         )
     else:
         return JSONResponse(
-            content=request.state.pygeoapi.openapi,
-            status_code=200,
+            content=result.content,
         )

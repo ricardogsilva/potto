@@ -1,8 +1,12 @@
+import logging
+
 import babel
 import pygeoapi.api
 import pygeoapi.l10n
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
+
+logger = logging.getLogger(__name__)
 
 
 def set_html_link_self_relation(original_links: list[dict]) -> list[dict]:
@@ -37,11 +41,38 @@ def get_localized_pygeoapi_config(
     )
 
 
-def get_requested_media_type(request: Request) -> str:
-    return (
-            pygeoapi.api.FORMAT_TYPES.get(request.query_params.get("f"))
-            or request.headers.get("Accept", "application/json")
-    )
+def get_accepted_info(request: Request) -> tuple[str, str | None]:
+    accepted_media_type = _get_requested_media_type(request)
+    return accepted_media_type, _get_requested_format(accepted_media_type)
+
+
+def _get_requested_media_type(request: Request) -> str:
+    if f_param:=request.query_params.get("f"):
+        return pygeoapi.api.FORMAT_TYPES.get(f_param, "*/*")
+    else:
+        if raw_accept_header := request.headers.get("Accept"):
+            items = []
+            for index, i in enumerate(raw_accept_header.split(",")):
+                raw_param, raw_quality = i.partition(";")[::2]
+                try:
+                    quality = float(raw_quality.replace("q=", ""))
+                except ValueError:
+                    quality = 1.0
+                items.append((quality, index, raw_param))
+            return sorted(items, key=lambda x: (x[0], -x[1])).pop()[-1]
+
+        return "*/*"
+
+
+def _get_requested_format(media_type: str) -> str | None:
+    type_, subtype = media_type.partition("/")[::2]
+    for format_, recognized_media_type in pygeoapi.api.FORMAT_TYPES.items():
+        recognized_type, recognized_subtype = recognized_media_type.partition("/")[::2]
+        if type_ == recognized_type:
+            if subtype == recognized_subtype or subtype == "*":
+                return format_
+    else:
+        return None
 
 
 def check_media_type(

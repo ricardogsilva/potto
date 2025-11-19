@@ -26,10 +26,7 @@ from starlette_babel import (
 )
 
 from .. import config
-from ..pygeoapi_config import (
-    get_pygeoapi_settings,
-    PygeoapiConfig,
-)
+from ..pygeoapi import PygeoapiStarlette
 from . import jinjafilters
 from .routes import (
     base as base_routes,
@@ -41,19 +38,14 @@ logger = logging.getLogger(__name__)
 
 class AppState(TypedDict):
     settings: config.PygeoapiStarletteSettings
-    pygeoapi_config: PygeoapiConfig
-    pygeoapi: API
+    pygeoapi: PygeoapiStarlette
     templates: Jinja2Templates
 
 
 @contextlib.asynccontextmanager
 async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
     settings = config.get_settings()
-    pygeoapi_config = get_pygeoapi_settings(settings)
-    raw_pygeoapi_config = pygeoapi_config.get_raw_config()
-    openapi_document = get_oas_30(
-        raw_pygeoapi_config, fail_on_invalid_collection=True)
-    pygeoapi_ = API(config=raw_pygeoapi_config, openapi=openapi_document)
+    pygeoapi_ = PygeoapiStarlette.from_settings(settings)
     if settings.translations_dir:
         shared_translator = get_translator()
         shared_translator.load_from_directory(settings.translations_dir)
@@ -90,7 +82,6 @@ async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
         settings = settings,
         templates=Jinja2Templates(env=jinja_env),
         pygeoapi=pygeoapi_,
-        pygeoapi_config=pygeoapi_config,
     )
 
 
