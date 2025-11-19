@@ -92,32 +92,60 @@ def create_app() -> Starlette:
 def create_app_from_settings(settings: config.PygeoapiStarletteSettings) -> Starlette:
     if settings.static_dir is not None:
         settings.static_dir.mkdir(parents=True, exist_ok=True)
-    static_files_app = StaticFiles(
-        directory=settings.static_dir,
-        packages=[
-            ("pygeoapi", "static")
-        ]
-    )
-    logger.debug(f"{static_files_app.lookup_path('css/default.css')=}")
     app = Starlette(
         debug=settings.debug,
-        routes=[
-            Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
-            Route(
-                "/conformance",
-                ogc_api_common_routes.get_conformance_details,
-                name="conformance-document"
+        routes=get_routes(
+            settings,
+            enable_ogcapi_features=True,
+        ),
+        middleware=[
+            Middleware(
+                LocaleMiddleware,
+                locales=settings.locales,
+                default_locale=settings.locales[0]
             ),
-            Route(
-                "/openapi",
-                ogc_api_common_routes.get_openapi_document,
-                name="openapi-document"
+            Middleware(
+                SessionMiddleware,
+                secret_key=settings.session_secret_key.get_secret_value(),
             ),
+            Middleware(
+                GZipMiddleware,
+                minimum_size=1000, compresslevel=9
+            )
+        ],
+        lifespan=lifespan,
+    )
+    return app
+
+
+def get_routes(
+        settings: config.PygeoapiStarletteSettings,
+        enable_ogcapi_features: bool = False,
+        enable_ogcapi_tiles: bool = False,
+) -> list[Route]:
+    routes: list[Route | Mount] = [
+        Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
+        Route(
+            "/conformance",
+            ogc_api_common_routes.get_conformance_details,
+            name="conformance-document"
+        ),
+        Route(
+            "/openapi",
+            ogc_api_common_routes.get_openapi_document,
+            name="openapi-document"
+        ),
+    ]
+    if enable_ogcapi_tiles:
+        routes.extend([
             Route(
                 "/tileMatrixSets",
                 ogc_api_tiles_routes.list_tile_matrix_sets,
                 name="list-tilematrixsets"
             ),
+        ])
+    if enable_ogcapi_features:
+        routes.extend([
             Route(
                 "/collections/{collection_id}/items/{item_id}",
                 ogc_api_features_routes.get_item_details,
@@ -138,32 +166,17 @@ def create_app_from_settings(settings: config.PygeoapiStarletteSettings) -> Star
                 ogc_api_features_routes.list_collections,
                 name="list-collections"
             ),
-            Mount(
-                "/static",
-                app=StaticFiles(
-                    directory=settings.static_dir,
-                    packages=[
-                        ("pygeoapi", "static")
-                    ]
-                ),
-                name="static"
+        ])
+    routes.extend([
+        Mount(
+            "/static",
+            app=StaticFiles(
+                directory=settings.static_dir,
+                packages=[
+                    ("pygeoapi", "static")
+                ]
             ),
-        ],
-        middleware=[
-            Middleware(
-                LocaleMiddleware,
-                locales=settings.locales,
-                default_locale=settings.locales[0]
-            ),
-            Middleware(
-                SessionMiddleware,
-                secret_key=settings.session_secret_key.get_secret_value(),
-            ),
-            Middleware(
-                GZipMiddleware,
-                minimum_size=1000, compresslevel=9
-            )
-        ],
-        lifespan=lifespan,
-    )
-    return app
+            name="static"
+        ),
+    ])
+    return routes

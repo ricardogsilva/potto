@@ -10,15 +10,16 @@ export PYGEOAPI_ROOT="wherever-you-cloned-pygeoapi-repo"
 export PYGEOAPI_STARLETTE__PYGEOAPI_CONFIG_FILE=pygeoapi-config-example.yml
 export PYGEOAPI_STARLETTE__LOG_CONFIG_FILE=uvicorn-log-config-example.yml
 export PYGEOAPI_STARLETTE__DEBUG=true
+export PYGEOAPI_STARLETTE__RELOAD_DIRS=$(pwd -P)
 
 # start the server
-pygeoapi-starlette run-server
+uv run pygeoapi-starlette run-server
 ```
 
 This project is a pygeoapi-powered web application written with starlette. It showcases how to build a starlette web 
 application that uses pygeoapi as a library.
 
-Currently pygeoapi tries to offer builtin support for all of starlette, flask and django. This results in a complex 
+Currently, pygeoapi tries to offer builtin support for all of starlette, flask and django. This results in a complex 
 codebase which tries to be a library and a framework at the same time. This project exists to explore a different 
 approach. The vision is:
 
@@ -36,3 +37,14 @@ It means:
   that deals with rendering HTML is not used by this project;
 - pygeoapi does not need to gzip responses - this is handled by the web application framework
 - pygeoapi core does not need to have configuration for the web application server because it does not need to launch it
+
+It also means that there are additional features not currently offered by pygeoapi core which this project can 
+implement in the future, like:
+
+- User authentication
+- Role-based authorization
+- Allowing changes to pygeoapi configuration dynamically without needing to restart the server
+- Improving async support
+- etc.
+
+Additionally, this project aims to provide a blueprint application that can be adapted for different needs.
