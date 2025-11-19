@@ -16,7 +16,7 @@ from .. import util
 logger = logging.getLogger(__name__)
 
 
-async def home(request: Request) -> Response:
+async def get_landing_page(request: Request) -> Response:
     api_: PygeoapiStarlette = request.state.pygeoapi
     requested_format = util.get_accepted_info(request)[1]
     format_to_process = (

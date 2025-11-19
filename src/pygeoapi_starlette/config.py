@@ -21,6 +21,7 @@ class PygeoapiStarletteSettings(pydantic_settings.BaseSettings):
     templates_dir: Path | None = None
     translations_dir: Path | None = None
     locales: list[str] = ["en"]
+    reload_dirs: str | list[str] | None = None
     session_secret_key: pydantic.SecretStr = "somesecretkey"
     static_dir: Path | None = None
 
@@ -32,6 +33,7 @@ def get_settings() -> PygeoapiStarletteSettings:
 def get_pygeoapi_config(settings: PygeoapiStarletteSettings) -> dict:
     read_conf = yaml_load(settings.pygeoapi_config_file.read_text())
     server_conf = read_conf.get("server", {})
+    server_map = server_conf.get("map", {})
     server_limits_conf = server_conf.get("limits", {})
     metadata_conf = read_conf.get("metadata", {})
     identification_conf = metadata_conf.get("identification", {})
@@ -45,6 +47,14 @@ def get_pygeoapi_config(settings: PygeoapiStarletteSettings) -> dict:
             "limits": {
                 "default_items": server_limits_conf.get("default_items", 20),
                 "max_items": server_limits_conf.get("max_items", 50),
+            },
+            "map": {
+                "url": server_map.get(
+                    "map", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+                "attribution": server_map.get(
+                    "attribution",
+                    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+                ),
             },
             "locale_dir": server_conf.get("locale_dir"),
             "url": settings.public_url,

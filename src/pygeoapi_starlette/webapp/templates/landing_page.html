@@ -56,7 +56,7 @@
                     <section id="collections">
                         <h2>{% trans %}Collections{% endtrans %}</h2>
                         <p>
-                            <a href="#">{% trans %}View the collections in this service{% endtrans %}</a>
+                            <a href="{{ url_for('list-collections') }}">{% trans %}View the collections in this service{% endtrans %}</a>
                         </p>
                     </section>
                 {% endif %}

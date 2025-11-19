@@ -9,7 +9,6 @@ from ..config import (
     get_settings,
     PygeoapiStarletteSettings,
 )
-from ..webapp.app import create_app_from_settings
 
 
 pygeoapi_starlette_app = App()
@@ -44,17 +43,28 @@ def run_uvicorn_server(
         *,
         settings: Annotated[PygeoapiStarletteSettings, cyclopts.Parameter(parse=False)],
 ):
-    starlette_app = create_app_from_settings(settings)
     pygeoapi_starlette_app.console.print(
         "About to start uvicorn server with the following settings:")
     pygeoapi_starlette_app.console.print(settings.model_dump())
+
+    # NOTE: passing `app` as a string in order to enable uvicorn's reloading
+    # feature, as per:
+    #
+    # https://github.com/Kludex/uvicorn/discussions/2553#discussion-7774794
+    #
+
+    # FIXME: reload is not working at all when calling uvicorn programmatically
+    # as per https://github.com/Kludex/uvicorn/discussions/2144
+    #
     uvicorn_config = uvicorn.Config(
-        starlette_app,
+        "pygeoapi_starlette.webapp.app:create_app",
+        factory=True,
         host=settings.bind_host,
         port=settings.bind_port,
         log_config=str(settings.log_config_file),
         log_level=logging.DEBUG if settings.debug else logging.INFO,
-        reload=True if settings.debug else False,
+        reload=settings.debug,
+        reload_dirs=settings.reload_dirs if settings.debug else None,
     )
     server = uvicorn.Server(uvicorn_config)
     server.run()

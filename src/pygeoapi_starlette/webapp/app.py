@@ -29,6 +29,7 @@ from . import jinjafilters
 from .routes import (
     ogcapi_common as ogc_api_common_routes,
     ogcapi_tiles as ogc_api_tiles_routes,
+    ogcapi_features as ogc_api_features_routes,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,21 +102,41 @@ def create_app_from_settings(settings: config.PygeoapiStarletteSettings) -> Star
     app = Starlette(
         debug=settings.debug,
         routes=[
-            Route("/", base_routes.home),
+            Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
             Route(
                 "/conformance",
-                base_routes.get_conformance_details,
+                ogc_api_common_routes.get_conformance_details,
                 name="conformance-document"
             ),
             Route(
                 "/openapi",
-                base_routes.get_openapi_document,
+                ogc_api_common_routes.get_openapi_document,
                 name="openapi-document"
             ),
             Route(
                 "/tileMatrixSets",
                 ogc_api_tiles_routes.list_tile_matrix_sets,
                 name="list-tilematrixsets"
+            ),
+            Route(
+                "/collections/{collection_id}/items/{item_id}",
+                ogc_api_features_routes.get_item_details,
+                name="get-item"
+            ),
+            Route(
+                "/collections/{collection_id}/items",
+                ogc_api_features_routes.list_collection_items,
+                name="list-collection-items"
+            ),
+            Route(
+                "/collections/{collection_id}",
+                ogc_api_features_routes.get_collection_details,
+                name="get-collection"
+            ),
+            Route(
+                "/collections",
+                ogc_api_features_routes.list_collections,
+                name="list-collections"
             ),
             Mount(
                 "/static",

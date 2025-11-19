@@ -58,7 +58,7 @@
 <div class="bg-light sticky-top border-bottom">
     <div class="container">
         <header class="d-flex flex-wrap align-items-center py-3 justify-content-between">
-            <a href="{{ url_for('home') }}"
+            <a href="{{ url_for('landing-page') }}"
                class="d-flex align-items-center mb-3 mb-md-0 text-dark text-decoration-none"
             >
                 <img src="{{ logo }}"
@@ -92,7 +92,7 @@
         <div class="row">
             <div class="col-sm-12">
                 {% block crumbs %}
-                    <a href="{{ url_for('home') }}">{% trans %}Home{% endtrans %}</a>
+                    <a href="{{ url_for('landing-page') }}">{% trans %}Home{% endtrans %}</a>
                 {% endblock %}
                 <span style="float: inline-end">
                     {% for link in data.links %}

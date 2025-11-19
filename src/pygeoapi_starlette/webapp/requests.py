@@ -16,11 +16,19 @@ class PygeoapiStarletteRequest:
 
     def __init__(
             self,
-            locale: babel.Locale = None,
+            locale: babel.Locale,
             output_format: str | None = None,
+            data_: bytes | None = None,
+            **query_param: str
     ):
         self.format = output_format
         self.locale = locale
+        self.params = query_param.copy()
+        self.data = data_
+
+    @property
+    def raw_locale(self) -> str:
+        return self.locale.language
 
     def get_linkrel(self, format_: str) -> str:
         return "self" if format_.lower() == self.format else "alternate"

@@ -1,0 +1,64 @@
+{% extends "_base.html" %}
+{% block title %}{{ super() }} {% trans %}Collections{% endtrans %}{% endblock %}
+{% block crumbs %}{{ super() }}
+/ <a href="{{ url_for('list-collections') }}">{% trans %}Collections{% endtrans %}</a>
+{% endblock %}
+{% block body %}
+    <section id="data-collections">
+      <h1>{% trans %}Data collections in this service{% endtrans %}</h1>
+            <table class="table table-striped table-bordered">
+              <thead>
+              <tr>
+                <th>{% trans %}Name{% endtrans %}</th>
+                <th>{% trans %}Description{% endtrans %}</th>
+              </tr>
+              </thead>
+              <tbody>
+                {% for collection in data.collections  %}
+                {% if collection.get('itemType') != 'record' %}
+                <tr>
+                  <td data-label="name">
+                    <a  title="{{ collection.title | striptags | truncate }}"
+                      href="{{ url_for('get-collection', collection_id=collection.id) }}">
+                      <span>{{ collection.title | striptags | truncate }}</span></a>
+                  </td>
+                  <td data-label="description">
+                    {{ collection.description | striptags | truncate }}
+                  </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+              </tbody>
+            </table>
+    </section>
+    <section id="record-collections">
+      <h1>{% trans %}Record collections in this service{% endtrans %}</h1>
+            <table class="table table-striped table-bordered">
+              <thead>
+              <tr>
+                <th>{% trans %}Name{% endtrans %}</th>
+                <th>{% trans %}Description{% endtrans %}</th>
+              </tr>
+              </thead>
+              <tbody>
+                {% for collection in data.collections  %}
+                {% if collection.get('itemType') == 'record' %}
+                <tr>
+                  <td data-label="name">
+                    <a
+                            rel="http://www.opengis.net/def/rel/ogc/1.0/ogc-catalog"
+                            title="{{ collection.title | striptags | truncate }}"
+                            href="{{ url_for('get-collection', collection_id=collection.id) }}"
+                    >
+                      <span>{{ collection.title | striptags | truncate }}</span></a>
+                  </td>
+                  <td data-label="description">
+                    {{ collection.description | striptags | truncate }}
+                  </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+              </tbody>
+            </table>
+    </section>
+{% endblock %}
