@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "babel>=2.17.0",
+    "cyclopts>=4.2.4",
     "jinja2>=3.1.6",
     "pydantic>=2.12.4",
     "pydantic-settings>=2.12.0",
@@ -19,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-pygeoapi-starlette = "pygeoapi_starlette:main"
+pygeoapi-starlette = "pygeoapi_starlette.cliapp.__main__:pygeoapi_starlette_app.meta"
 
 [build-system]
 requires = ["hatchling"]

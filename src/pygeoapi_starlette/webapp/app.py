@@ -7,8 +7,6 @@ from typing import (
 
 import jinja2
 from pygeoapi import __version__ as pygeoapi_version
-from pygeoapi.api import API
-from pygeoapi.openapi import get_oas_30
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -29,7 +27,7 @@ from .. import config
 from ..pygeoapi import PygeoapiStarlette
 from . import jinjafilters
 from .routes import (
-    base as base_routes,
+    ogcapi_common as ogc_api_common_routes,
     ogcapi_tiles as ogc_api_tiles_routes,
 )
 
@@ -138,7 +136,7 @@ def create_app_from_settings(settings: config.PygeoapiStarletteSettings) -> Star
             ),
             Middleware(
                 SessionMiddleware,
-                secret_key=settings.session_secret_key,
+                secret_key=settings.session_secret_key.get_secret_value(),
             ),
             Middleware(
                 GZipMiddleware,

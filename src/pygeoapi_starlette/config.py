@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pydantic
 import pydantic_settings
 from pygeoapi.util import yaml_load
 
@@ -20,7 +21,7 @@ class PygeoapiStarletteSettings(pydantic_settings.BaseSettings):
     templates_dir: Path | None = None
     translations_dir: Path | None = None
     locales: list[str] = ["en"]
-    session_secret_key: str = "somesecretkey"
+    session_secret_key: pydantic.SecretStr = "somesecretkey"
     static_dir: Path | None = None
 
 
