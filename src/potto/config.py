@@ -5,9 +5,9 @@ import pydantic_settings
 from pygeoapi.util import yaml_load
 
 
-class PygeoapiStarletteSettings(pydantic_settings.BaseSettings):
+class PottoSettings(pydantic_settings.BaseSettings):
     model_config = pydantic_settings.SettingsConfigDict(
-        env_prefix="pygeoapi_starlette__",
+        env_prefix="potto__",
         env_nested_delimiter="__",
         secrets_dir="/run/secrets",
     )
@@ -15,7 +15,6 @@ class PygeoapiStarletteSettings(pydantic_settings.BaseSettings):
     bind_host: str = "127.0.0.1"
     bind_port: int = 3001
     debug: bool = False
-    log_config_file: Path | None = None
     public_url: str = "http://localhost:3001"
     pygeoapi_config_file: Path = Path.home() / "pygeoapi-config.yml"
     templates_dir: Path | None = None
@@ -24,13 +23,15 @@ class PygeoapiStarletteSettings(pydantic_settings.BaseSettings):
     reload_dirs: str | list[str] | None = None
     session_secret_key: pydantic.SecretStr = "somesecretkey"
     static_dir: Path | None = None
+    uvicorn_num_workers: int = 8
+    uvicorn_log_config_file: Path | None = None
 
 
-def get_settings() -> PygeoapiStarletteSettings:
-    return PygeoapiStarletteSettings()
+def get_settings() -> PottoSettings:
+    return PottoSettings()
 
 
-def get_pygeoapi_config(settings: PygeoapiStarletteSettings) -> dict:
+def get_pygeoapi_config(settings: PottoSettings) -> dict:
     read_conf = yaml_load(settings.pygeoapi_config_file.read_text())
     server_conf = read_conf.get("server", {})
     server_map = server_conf.get("map", {})
@@ -65,10 +66,10 @@ def get_pygeoapi_config(settings: PygeoapiStarletteSettings) -> dict:
         "metadata": {
             "identification": {
                 "title": identification_conf.get(
-                    "title", {"en": "pygeoapi default instance"}
+                    "title", {"en": "Potto"}
                 ),
                 "description": identification_conf.get(
-                    "description", {"en": "pygeoapi provides an API to geospatial data"}
+                    "description", {"en": "The pygeoapi primate"}
                 ),
                 "keywords": identification_conf.get(
                     "keywords", {"en": ["geospatial", "data", "api"]}

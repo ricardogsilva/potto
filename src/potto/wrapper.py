@@ -19,17 +19,17 @@ from pygeoapi.openapi import get_oas_30
 from pygeoapi.l10n import translate_struct
 
 from . import config
-from .webapp.requests import PygeoapiStarletteRequest
+from .webapp.requests import PottoRequest
 
 
 @dataclasses.dataclass(frozen=True)
-class PygeoapiResponse:
+class PottoResponse:
     content_type: str
     content: dict | bytes
     metadata: dict [str, str] | None = None
 
 
-class PygeoapiStarlette:
+class Potto:
     """A wrapper around pygeoapi core.
 
     This wrapper presents a simpler interface than pygeoapi core and also
@@ -59,7 +59,7 @@ class PygeoapiStarlette:
         self._pygeoapi_api = pygeoapi_api
 
     @classmethod
-    def from_settings(cls, settings: config.PygeoapiStarletteSettings):
+    def from_settings(cls, settings: config.PottoSettings):
         pygeoapi_config = config.get_pygeoapi_config(settings)
         openapi_document = get_oas_30(pygeoapi_config, fail_on_invalid_collection=True)
         core_api = _API(config=pygeoapi_config, openapi=openapi_document)
@@ -120,17 +120,17 @@ class PygeoapiStarlette:
             *,
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
-    ) -> PygeoapiResponse:
+    ) -> PottoResponse:
         original_response = _landing_page(
             self._pygeoapi_api,
-            PygeoapiStarletteRequest(
+            PottoRequest(
                 locale=locale,
                 output_format=output_format,
             )
 
         )
         original_headers, original_status_code, original_content = original_response
-        return PygeoapiResponse(
+        return PottoResponse(
             content_type=original_headers.pop("Content-Type"),
             content=json.loads(original_content),
             metadata={**original_headers}
@@ -141,16 +141,16 @@ class PygeoapiStarlette:
             *,
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
-    ) -> PygeoapiResponse:
+    ) -> PottoResponse:
         original_response = _conformance(
             self._pygeoapi_api,
-            PygeoapiStarletteRequest(
+            PottoRequest(
                 locale=locale,
                 output_format=output_format,
             )
         )
         original_headers, original_status_code, original_content = original_response
-        return PygeoapiResponse(
+        return PottoResponse(
             content_type=original_headers.pop("Content-Type"),
             content=json.loads(original_content),
             metadata={**original_headers}
@@ -158,8 +158,8 @@ class PygeoapiStarlette:
 
     async def get_openapi_document(
             self,
-    ) -> PygeoapiResponse:
-        return PygeoapiResponse(
+    ) -> PottoResponse:
+        return PottoResponse(
             content_type=_FORMAT_TYPES[F_JSON],
             content=self._pygeoapi_api.openapi
         )
@@ -169,17 +169,17 @@ class PygeoapiStarlette:
             *,
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
-    ) -> PygeoapiResponse:
+    ) -> PottoResponse:
         original_response = _describe_collections(
             self._pygeoapi_api,
-            PygeoapiStarletteRequest(
+            PottoRequest(
                 locale=locale,
                 output_format=output_format,
             ),
             dataset=None
         )
         original_headers, original_status_code, original_content = original_response
-        return PygeoapiResponse(
+        return PottoResponse(
             content_type=original_headers.pop("Content-Type"),
             content=json.loads(original_content),
             metadata={**original_headers}
@@ -191,17 +191,17 @@ class PygeoapiStarlette:
             collection_id: str,
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
-    ) -> PygeoapiResponse:
+    ) -> PottoResponse:
         original_response = _describe_collections(
             self._pygeoapi_api,
-            PygeoapiStarletteRequest(
+            PottoRequest(
                 locale=locale,
                 output_format=output_format,
             ),
             dataset=collection_id
         )
         original_headers, original_status_code, original_content = original_response
-        return PygeoapiResponse(
+        return PottoResponse(
             content_type=original_headers.pop("Content-Type"),
             content=json.loads(original_content),
             metadata={**original_headers}
@@ -227,7 +227,7 @@ class PygeoapiStarlette:
             result_type: Literal["results"] | None = "results",
             sort_by: str | None = None,
             skip_geometry: bool = False,
-    ) -> PygeoapiResponse:
+    ) -> PottoResponse:
         query_params = {
             k:v for k, v in {
                 **properties,
@@ -249,7 +249,7 @@ class PygeoapiStarlette:
         }
         original_response = _get_collection_items(
             self._pygeoapi_api,
-            PygeoapiStarletteRequest(
+            PottoRequest(
                 locale=locale,
                 output_format=output_format,
                 **query_params
@@ -257,7 +257,7 @@ class PygeoapiStarlette:
             dataset=collection_id
         )
         original_headers, original_status_code, original_content = original_response
-        return PygeoapiResponse(
+        return PottoResponse(
             content_type=original_headers.pop("Content-Type"),
             content=json.loads(original_content),
             metadata={**original_headers}
@@ -270,10 +270,10 @@ class PygeoapiStarlette:
             collection_id: str,
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
-    ) -> PygeoapiResponse:
+    ) -> PottoResponse:
         original_response = _get_collection_item(
             self._pygeoapi_api,
-            PygeoapiStarletteRequest(
+            PottoRequest(
                 locale=locale,
                 output_format=output_format,
             ),
@@ -281,7 +281,7 @@ class PygeoapiStarlette:
             identifier=item_id,
         )
         original_headers, original_status_code, original_content = original_response
-        return PygeoapiResponse(
+        return PottoResponse(
             content_type=original_headers.pop("Content-Type"),
             content=json.loads(original_content),
             metadata={**original_headers}

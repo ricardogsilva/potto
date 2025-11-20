@@ -1,9 +1,7 @@
 import logging
 
-import babel
 import pygeoapi.api
 import pygeoapi.l10n
-from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 logger = logging.getLogger(__name__)
@@ -30,15 +28,6 @@ def set_html_link_self_relation(original_links: list[dict]) -> list[dict]:
         else:
             result.append(new_link)
     return result
-
-
-def get_localized_pygeoapi_config(
-        pygeoapi_config: dict, current_language: str) -> dict:
-    return pygeoapi.l10n.translate_struct(
-        pygeoapi_config,
-        locale_=babel.Locale.parse(current_language),
-        is_config=True
-    )
 
 
 def get_accepted_info(request: Request) -> tuple[str, str | None]:
@@ -73,23 +62,3 @@ def _get_requested_format(media_type: str) -> str | None:
                 return format_
     else:
         return None
-
-
-def check_media_type(
-        requested: str,
-        able_to_serve_nicknames: list[str] | None = None
-):
-    able_to_serve = able_to_serve_nicknames or [
-        pygeoapi.api.F_JSON,
-        pygeoapi.api.F_HTML
-    ]
-    if not any(
-            (
-                    requested in ("*", "*/*"),
-                    *(nickname in requested for nickname in able_to_serve),
-            )
-    ):
-        raise HTTPException(
-            406, "Cannot produce response in the requested media type"
-        )
-

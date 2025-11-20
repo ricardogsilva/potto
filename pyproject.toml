@@ -1,7 +1,7 @@
 [project]
-name = "pygeoapi-starlette"
+name = "potto"
 version = "0.1.0"
-description = "a starlette application that wraps pygeoapi"
+description = "A starlette application that wraps pygeoapi"
 readme = "README.md"
 authors = [
     { name = "Ricardo Garcia Silva", email = "ricardo.garcia.silva@gmail.com" }
@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-pygeoapi-starlette = "pygeoapi_starlette.cliapp.__main__:pygeoapi_starlette_app.meta"
+potto = "potto.cliapp.__main__:potto_app.meta"
 
 [build-system]
 requires = ["hatchling"]

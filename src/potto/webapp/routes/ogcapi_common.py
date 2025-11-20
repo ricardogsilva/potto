@@ -2,7 +2,12 @@ import json
 import logging
 
 import babel
-import pygeoapi.api
+from pygeoapi.api import (
+    FORMAT_TYPES,
+    F_JSON,
+    F_JSONLD,
+    F_HTML,
+)
 from starlette.requests import Request
 from starlette.responses import (
     JSONResponse,
@@ -10,42 +15,42 @@ from starlette.responses import (
 )
 from starlette_babel import gettext_lazy as _
 
-from ...pygeoapi import PygeoapiStarlette
+from ...wrapper import Potto
 from .. import util
 
 logger = logging.getLogger(__name__)
 
 
 async def get_landing_page(request: Request) -> Response:
-    api_: PygeoapiStarlette = request.state.pygeoapi
+    potto: Potto = request.state.potto
     requested_format = util.get_accepted_info(request)[1]
     format_to_process = (
         requested_format
-        if requested_format != pygeoapi.api.F_HTML
-        else pygeoapi.api.F_JSON
-    ) or pygeoapi.api.F_JSON
+        if requested_format != F_HTML else F_JSON
+    ) or F_JSON
     current_locale = babel.Locale.parse(request.state.language)
-    result = await api_.get_landing_page(
+    result = await potto.get_landing_page(
         locale=current_locale,
         output_format=format_to_process,
     )
-    if requested_format == pygeoapi.api.F_HTML:
+    if requested_format == F_HTML:
         content = result.content
         content["links"] = util.set_html_link_self_relation(content["links"])
-        json_ld_result = await api_.get_landing_page(
+        json_ld_result = await potto.get_landing_page(
             locale=current_locale,
-            output_format=pygeoapi.api.F_JSONLD
+            output_format=F_JSONLD
         )
         return request.state.templates.TemplateResponse(
             request,
             "landing_page.html",
             context={
+                "show_description": False,
                 "data": content,
-                "has_item_collections": api_.has_item_collection_resources(),
-                "has_stac_collections": api_.has_stac_collection_resources(),
-                "has_processes": api_.has_process_resources(),
-                "has_tiles": api_.has_tiles(),
-                "pygeoapi_config": api_.get_localized_config(current_locale),
+                "has_item_collections": potto.has_item_collection_resources(),
+                "has_stac_collections": potto.has_stac_collection_resources(),
+                "has_processes": potto.has_process_resources(),
+                "has_tiles": potto.has_tiles(),
+                "pygeoapi_config": potto.get_localized_config(current_locale),
                 "jsonld_content": json.dumps(json_ld_result.content),
             }
         )
@@ -58,19 +63,17 @@ async def get_landing_page(request: Request) -> Response:
 
 
 async def get_conformance_details(request: Request) -> Response:
-    api_: PygeoapiStarlette = request.state.pygeoapi
+    potto: Potto = request.state.potto
     current_locale = babel.Locale.parse(request.state.language)
     requested_format = util.get_accepted_info(request)[1]
     format_to_process = (
-        requested_format
-        if requested_format != pygeoapi.api.F_HTML
-        else pygeoapi.api.F_JSON
-    ) or pygeoapi.api.F_JSON
-    result = await api_.get_conformance_details(
+        requested_format if requested_format != F_HTML else F_JSON
+    ) or F_JSON
+    result = await potto.get_conformance_details(
         locale=current_locale,
         output_format=format_to_process,
     )
-    if requested_format == pygeoapi.api.F_HTML:
+    if requested_format == F_HTML:
         content = result.content
         conformance_url = str(request.url_for("conformance-document"))
         content["links"] = [
@@ -78,19 +81,19 @@ async def get_conformance_details(request: Request) -> Response:
                 "href": conformance_url,
                 "rel": "self",
                 "title": _("This document as HTML"),
-                "type": pygeoapi.api.FORMAT_TYPES[pygeoapi.api.F_HTML]
+                "type": FORMAT_TYPES[F_HTML]
             },
             {
-                "href": f"{conformance_url}?f={pygeoapi.api.F_JSON}",
+                "href": f"{conformance_url}?f={F_JSON}",
                 "rel": "alternate",
                 "title": _("This document as JSON"),
-                "type": pygeoapi.api.FORMAT_TYPES[pygeoapi.api.F_JSON]
+                "type": FORMAT_TYPES[F_JSON]
             },
             {
-                "href": f"{conformance_url}?f={pygeoapi.api.F_JSONLD}",
+                "href": f"{conformance_url}?f={F_JSONLD}",
                 "rel": "alternate",
                 "title": _("This document as RDF (JSON-LD)"),
-                "type": pygeoapi.api.FORMAT_TYPES[pygeoapi.api.F_JSONLD]
+                "type": FORMAT_TYPES[F_JSONLD]
             },
         ]
         return request.state.templates.TemplateResponse(
@@ -98,7 +101,7 @@ async def get_conformance_details(request: Request) -> Response:
             "conformance.html",
             context={
                 "data": content,
-                "pygeoapi_config": api_.get_localized_config(current_locale),
+                "pygeoapi_config": potto.get_localized_config(current_locale),
             }
         )
     else:
@@ -109,11 +112,11 @@ async def get_conformance_details(request: Request) -> Response:
 
 
 async def get_openapi_document(request: Request) -> Response:
-    api_: PygeoapiStarlette = request.state.pygeoapi
+    potto: Potto = request.state.potto
     current_locale = babel.Locale.parse(request.state.language)
     requested_format = util.get_accepted_info(request)[1]
-    result = await api_.get_openapi_document()
-    if requested_format == pygeoapi.api.F_HTML:
+    result = await potto.get_openapi_document()
+    if requested_format == F_HTML:
         return request.state.templates.TemplateResponse(
             request,
             "openapi/swagger.html",
@@ -121,7 +124,7 @@ async def get_openapi_document(request: Request) -> Response:
                 "data": {
                     "openapi-document-path": request.url_for("openapi-document")
                 },
-                "pygeoapi_config": api_.get_localized_config(current_locale),
+                "pygeoapi_config": potto.get_localized_config(current_locale),
             }
         )
     else:

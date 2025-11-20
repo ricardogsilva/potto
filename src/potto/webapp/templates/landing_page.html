@@ -5,12 +5,22 @@
     <br/>
     <section id="collections">
         <div class="row">
+            <div class="col">
+                <img
+                        src="{{ url_for('static', path="img/potto-logo.png") }}"
+                        style="height: 500px"
+                        class="image-responsive mx-auto d-block"
+                        alt="Potto logo"
+                >
+            </div>
+        </div>
+        <div class="row">
             <div class="col-md-8 col-sm-12">
-
                 <section id="identification">
-                    <h1>{{ pygeoapi_config.metadata.identification.title }}</h1>
-                    <p>{{ pygeoapi_config.metadata.identification.description }}</p>
-
+                    {% if show_description %}
+                        <h1>{{ pygeoapi_config.metadata.identification.title }}</h1>
+                        <p>{{ pygeoapi_config.metadata.identification.description }}</p>
+                    {% endif %}
                     <p>
                         {% for kw in pygeoapi_config.metadata.identification.keywords %}
                             <span class="badge bg-primary text-bg-primary">{{ kw }}</span>

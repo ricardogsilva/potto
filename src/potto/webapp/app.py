@@ -24,11 +24,10 @@ from starlette_babel import (
 )
 
 from .. import config
-from ..pygeoapi import PygeoapiStarlette
+from ..wrapper import Potto
 from . import jinjafilters
 from .routes import (
     ogcapi_common as ogc_api_common_routes,
-    ogcapi_tiles as ogc_api_tiles_routes,
     ogcapi_features as ogc_api_features_routes,
 )
 
@@ -36,20 +35,19 @@ logger = logging.getLogger(__name__)
 
 
 class AppState(TypedDict):
-    settings: config.PygeoapiStarletteSettings
-    pygeoapi: PygeoapiStarlette
+    settings: config.PottoSettings
+    potto: Potto
     templates: Jinja2Templates
 
 
 @contextlib.asynccontextmanager
 async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
     settings = config.get_settings()
-    pygeoapi_ = PygeoapiStarlette.from_settings(settings)
     if settings.translations_dir:
         shared_translator = get_translator()
         shared_translator.load_from_directory(settings.translations_dir)
     template_loaders: list[jinja2.BaseLoader] = [
-        jinja2.PackageLoader("pygeoapi_starlette.webapp", "templates"),
+        jinja2.PackageLoader("potto.webapp", "templates"),
         jinja2.PackageLoader("pygeoapi", "templates"),
     ]
     if settings.templates_dir:
@@ -80,7 +78,7 @@ async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
     yield AppState(
         settings = settings,
         templates=Jinja2Templates(env=jinja_env),
-        pygeoapi=pygeoapi_,
+        potto=Potto.from_settings(settings),
     )
 
 
@@ -89,7 +87,7 @@ def create_app() -> Starlette:
     return create_app_from_settings(settings)
 
 
-def create_app_from_settings(settings: config.PygeoapiStarletteSettings) -> Starlette:
+def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
     if settings.static_dir is not None:
         settings.static_dir.mkdir(parents=True, exist_ok=True)
     app = Starlette(
@@ -119,9 +117,8 @@ def create_app_from_settings(settings: config.PygeoapiStarletteSettings) -> Star
 
 
 def get_routes(
-        settings: config.PygeoapiStarletteSettings,
+        settings: config.PottoSettings,
         enable_ogcapi_features: bool = False,
-        enable_ogcapi_tiles: bool = False,
 ) -> list[Route]:
     routes: list[Route | Mount] = [
         Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
@@ -136,14 +133,6 @@ def get_routes(
             name="openapi-document"
         ),
     ]
-    if enable_ogcapi_tiles:
-        routes.extend([
-            Route(
-                "/tileMatrixSets",
-                ogc_api_tiles_routes.list_tile_matrix_sets,
-                name="list-tilematrixsets"
-            ),
-        ])
     if enable_ogcapi_features:
         routes.extend([
             Route(
@@ -173,6 +162,7 @@ def get_routes(
             app=StaticFiles(
                 directory=settings.static_dir,
                 packages=[
+                    ("potto", "webapp/static"),
                     ("pygeoapi", "static")
                 ]
             ),

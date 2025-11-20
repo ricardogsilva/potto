@@ -1,4 +1,6 @@
-# pygeoapi-starlette
+# Potto - the pygeoapi primate
+Pygeoapi logic, Starlette performance
+
 
 A starlette application that wraps pygeoapi.
 
@@ -7,10 +9,10 @@ Quickstart for development:
 ```shell
 # set some env variables
 export PYGEOAPI_ROOT="wherever-you-cloned-pygeoapi-repo"
-export PYGEOAPI_STARLETTE__PYGEOAPI_CONFIG_FILE=pygeoapi-config-example.yml
-export PYGEOAPI_STARLETTE__LOG_CONFIG_FILE=uvicorn-log-config-example.yml
-export PYGEOAPI_STARLETTE__DEBUG=true
-export PYGEOAPI_STARLETTE__RELOAD_DIRS=$(pwd -P)
+export POTTO__PYGEOAPI_CONFIG_FILE=pygeoapi-config-example.yml
+export POTTO__LOG_CONFIG_FILE=uvicorn-log-config-example.yml
+export POTTO__DEBUG=true
+export POTTO__RELOAD_DIRS=$(pwd -P)
 
 # start the server
 uv run pygeoapi-starlette run-server
@@ -48,3 +50,10 @@ implement in the future, like:
 - etc.
 
 Additionally, this project aims to provide a blueprint application that can be adapted for different needs.
+
+
+### Name inspiration
+
+This project's name is a hommage to the cute [potto mammal](https://en.wikipedia.org/wiki/Potto), which inhabits the
+rainforests of tropical Africa. May the name serve to inspire this project to move as deliberately as a Potto in its
+goal to wrap pygeoapi's core feature-set with web-related features provided by starlette.

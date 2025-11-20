@@ -12,7 +12,7 @@ from starlette.responses import (
     Response,
 )
 
-from ...pygeoapi import PygeoapiStarlette
+from ...wrapper import Potto
 from .. import util
 
 
@@ -23,15 +23,15 @@ async def list_collections(request: Request) -> Response:
         (requested_format if requested_format != F_HTML else F_JSON)
         or F_JSON
     )
-    api_: PygeoapiStarlette = request.state.pygeoapi
-    result = await api_.list_collections(
+    potto: Potto = request.state.potto
+    result = await potto.list_collections(
         locale=current_locale,
         output_format=format_to_process,
     )
     if requested_format == F_HTML:
         content = result.content
         content["links"] = util.set_html_link_self_relation(content["links"])
-        json_ld_result = await api_.list_collections(
+        json_ld_result = await potto.list_collections(
             locale=current_locale,
             output_format=F_JSONLD,
         )
@@ -40,7 +40,7 @@ async def list_collections(request: Request) -> Response:
             "collections/list.html",
             context={
                 "data": content,
-                "pygeoapi_config": api_.get_localized_config(current_locale),
+                "pygeoapi_config": potto.get_localized_config(current_locale),
                 "jsonld_content": json.dumps(json_ld_result.content),
             }
         )
@@ -55,15 +55,15 @@ async def get_collection_details(request: Request) -> Response:
         (requested_format if requested_format != F_HTML else F_JSON)
         or F_JSON
     )
-    api_: PygeoapiStarlette = request.state.pygeoapi
+    potto: Potto = request.state.potto
     collection_id = request.path_params["collection_id"]
-    result = await api_.get_collection(
+    result = await potto.get_collection(
         collection_id=collection_id,
         locale=current_locale,
         output_format=format_to_process,
     )
     if requested_format == F_HTML:
-        json_ld_result = await api_.get_collection(
+        json_ld_result = await potto.get_collection(
             collection_id=collection_id,
             locale=current_locale,
             output_format=F_JSONLD,
@@ -75,7 +75,7 @@ async def get_collection_details(request: Request) -> Response:
             "collections/detail.html",
             context={
                 "data": content,
-                "pygeoapi_config": api_.get_localized_config(current_locale),
+                "pygeoapi_config": potto.get_localized_config(current_locale),
                 "jsonld_content": json.dumps(json_ld_result.content),
             }
         )
@@ -90,8 +90,8 @@ async def list_collection_items(request: Request) -> Response:
         (requested_format if requested_format != F_HTML else F_JSON)
         or F_JSON
     )
-    api_: PygeoapiStarlette = request.state.pygeoapi
-    result = await api_.list_collection_items(
+    potto: Potto = request.state.potto
+    result = await potto.list_collection_items(
         collection_id=request.path_params["collection_id"],
         bbox=request.query_params.get("bbox"),
         bbox_crs=request.query_params.get("bbox-crs"),
@@ -127,8 +127,8 @@ async def get_item_details(request: Request) -> Response:
         (requested_format if requested_format != F_HTML else F_JSON)
         or F_JSON
     )
-    api_: PygeoapiStarlette = request.state.pygeoapi
-    result = await api_.get_item(
+    potto: Potto = request.state.potto
+    result = await potto.get_item(
         collection_id=request.path_params["collection_id"],
         item_id=request.path_params["item_id"],
         locale=current_locale,
