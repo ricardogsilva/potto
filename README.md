@@ -15,7 +15,7 @@ export POTTO__DEBUG=true
 export POTTO__RELOAD_DIRS=$(pwd -P)
 
 # start the server
-uv run pygeoapi-starlette run-server
+uv run potto run-server
 ```
 
 This project is a pygeoapi-powered web application written with starlette. It showcases how to build a starlette web 

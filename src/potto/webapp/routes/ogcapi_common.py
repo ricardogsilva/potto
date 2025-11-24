@@ -29,14 +29,14 @@ async def get_landing_page(request: Request) -> Response:
         if requested_format != F_HTML else F_JSON
     ) or F_JSON
     current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.get_landing_page(
+    result = await potto.api_get_landing_page(
         locale=current_locale,
         output_format=format_to_process,
     )
     if requested_format == F_HTML:
         content = result.content
         content["links"] = util.set_html_link_self_relation(content["links"])
-        json_ld_result = await potto.get_landing_page(
+        json_ld_result = await potto.api_get_landing_page(
             locale=current_locale,
             output_format=F_JSONLD
         )
@@ -69,7 +69,7 @@ async def get_conformance_details(request: Request) -> Response:
     format_to_process = (
         requested_format if requested_format != F_HTML else F_JSON
     ) or F_JSON
-    result = await potto.get_conformance_details(
+    result = await potto.api_get_conformance_details(
         locale=current_locale,
         output_format=format_to_process,
     )
@@ -115,7 +115,7 @@ async def get_openapi_document(request: Request) -> Response:
     potto: Potto = request.state.potto
     current_locale = babel.Locale.parse(request.state.language)
     requested_format = util.get_accepted_info(request)[1]
-    result = await potto.get_openapi_document()
+    result = await potto.api_get_openapi_document()
     if requested_format == F_HTML:
         return request.state.templates.TemplateResponse(
             request,

@@ -19,6 +19,8 @@ from pygeoapi.openapi import get_oas_30
 from pygeoapi.l10n import translate_struct
 
 from . import config
+from .schemas import items
+from .schemas.pygeoapi_config import ItemCollectionConfig
 from .webapp.requests import PottoRequest
 
 
@@ -26,6 +28,12 @@ from .webapp.requests import PottoRequest
 class PottoResponse:
     content_type: str
     content: dict | bytes
+    metadata: dict [str, str] | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class PottoStructuredResponse:
+    content: items.FeatureList
     metadata: dict [str, str] | None = None
 
 
@@ -68,27 +76,34 @@ class Potto:
     def get_raw_config(self) -> dict:
         return self._pygeoapi_api.config.copy()
 
-    def get_resources(self) -> dict:
+    def list_resource_configs(self) -> dict:
         return self.get_raw_config().get("resources", {})
 
-    def get_item_collection_resources(self) -> dict:
+    def list_item_collection_resource_configs(self) -> dict:
         return {
             id_: resource.copy()
-            for id_, resource in self.get_resources().items()
+            for id_, resource in self.list_resource_configs().items()
             if resource.get("type", "collection")
         }
 
-    def get_stac_collection_resources(self) -> dict:
+    def get_item_collection_config(self, collection_id: str) -> ItemCollectionConfig:
+        return ItemCollectionConfig.from_raw_config(
+            self.get_raw_item_collection_config(collection_id))
+
+    def get_raw_item_collection_config(self, collection_id: str) -> dict:
+        return self.list_item_collection_resource_configs().get(collection_id)
+
+    def list_stac_collection_resource_configs(self) -> dict:
         return {
             id_: resource.copy()
-            for id_, resource in self.get_resources().items()
+            for id_, resource in self.list_resource_configs().items()
             if resource.get("type", "stac-collection")
         }
 
-    def get_process_resources(self) -> dict:
+    def list_process_resource_configs(self) -> dict:
         return {
             id_: resource.copy()
-            for id_, resource in self.get_resources().items()
+            for id_, resource in self.list_resource_configs().items()
             if resource.get("type", "process")
         }
 
@@ -100,22 +115,22 @@ class Potto:
         )
 
     def has_item_collection_resources(self) -> bool:
-        return len(self.get_item_collection_resources()) > 0
+        return len(self.list_item_collection_resource_configs()) > 0
 
     def has_stac_collection_resources(self) -> bool:
-        return len(self.get_stac_collection_resources()) > 0
+        return len(self.list_stac_collection_resource_configs()) > 0
 
     def has_process_resources(self) -> bool:
-        return len(self.get_process_resources()) > 0
+        return len(self.list_process_resource_configs()) > 0
 
     def has_tiles(self) -> bool:
-        for resource in self.get_item_collection_resources().values():
+        for resource in self.list_item_collection_resource_configs().values():
             for provider in resource.get("providers", []):
                 if provider.get("type") == "tile":
                     return True
         return False
 
-    async def get_landing_page(
+    async def api_get_landing_page(
             self,
             *,
             locale: babel.Locale,
@@ -136,7 +151,7 @@ class Potto:
             metadata={**original_headers}
         )
 
-    async def get_conformance_details(
+    async def api_get_conformance_details(
             self,
             *,
             locale: babel.Locale,
@@ -156,7 +171,7 @@ class Potto:
             metadata={**original_headers}
         )
 
-    async def get_openapi_document(
+    async def api_get_openapi_document(
             self,
     ) -> PottoResponse:
         return PottoResponse(
@@ -164,7 +179,7 @@ class Potto:
             content=self._pygeoapi_api.openapi
         )
 
-    async def list_collections(
+    async def api_list_collections(
             self,
             *,
             locale: babel.Locale,
@@ -185,7 +200,7 @@ class Potto:
             metadata={**original_headers}
         )
 
-    async def get_collection(
+    async def api_get_collection(
             self,
             *,
             collection_id: str,
@@ -207,63 +222,48 @@ class Potto:
             metadata={**original_headers}
         )
 
-    async def list_collection_items(
+    async def api_list_collection_items(
             self,
             *,
             collection_id: str,
-            bbox: str | None = None,
-            bbox_crs: str | None = None,
-            crs: str | None = None,
-            datetime_filter: str | None = None,
-            filter_: str | None = None,
-            filter_crs: str | None = None,
-            filter_lang: str | None = None,
-            limit: int | None = None,
             locale: babel.Locale,
-            offset: int = 0,
             output_format: Literal["json", "jsonld"] = "json",
-            properties: dict | None = None,
-            query_param: str | None = None,
-            result_type: Literal["results"] | None = "results",
-            sort_by: str | None = None,
-            skip_geometry: bool = False,
-    ) -> PottoResponse:
-        query_params = {
-            k:v for k, v in {
-                **properties,
-                "bbox": bbox,
-                "bbox-crs": bbox_crs,
-                "crs": crs,
-                "datetime": datetime_filter,
-                "filter": filter_,
-                "filter-crs": filter_crs,
-                "filter-lang": filter_lang,
-                "limit": limit,
-                "offset": str(offset),
-                "q": query_param,
-                "resulttype": result_type,
-                "sortby": sort_by,
-                "skipGeometry": "true" if skip_geometry else "false",
-            }.items()
-            if v is not None
-        }
+            filter_: items.FeatureCollectionFilter | None = None,
+    ) -> PottoStructuredResponse:
         original_response = _get_collection_items(
             self._pygeoapi_api,
             PottoRequest(
                 locale=locale,
                 output_format=output_format,
-                **query_params
+                **filter_.as_kwargs()
             ),
-            dataset=collection_id
+            dataset=filter_.collection_id
         )
         original_headers, original_status_code, original_content = original_response
-        return PottoResponse(
-            content_type=original_headers.pop("Content-Type"),
-            content=json.loads(original_content),
-            metadata={**original_headers}
+        parsed_original_content = json.loads(original_content)
+        collection_config = self.get_item_collection_config(collection_id)
+        provider_config = collection_config.get_default_provider_config(type_="feature")
+        return PottoStructuredResponse(
+            content=items.FeatureList(
+                features=[
+                    items.Feature.from_original_feature(feat)
+                    for feat in parsed_original_content["features"]
+                ],
+                feature_title_field=provider_config.title_field,
+                number_matched=parsed_original_content.get("num_matched"),
+                number_returned=parsed_original_content.get("num_returned"),
+                number_total=parsed_original_content.get("num_totel"),
+                timestamp=parsed_original_content.get("timestamp"),
+            ),
+            metadata=original_headers
         )
+        # return PottoResponse(
+        #     content_type=original_headers.pop("Content-Type"),
+        #     content=json.loads(original_content),
+        #     metadata={**original_headers}
+        # )
 
-    async def get_item(
+    async def api_get_item(
             self,
             *,
             item_id: str,

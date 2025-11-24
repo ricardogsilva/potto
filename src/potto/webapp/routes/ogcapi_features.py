@@ -1,6 +1,7 @@
 import json
 
 import babel
+from jinja2 import TemplateNotFound
 from pygeoapi.api import (
     F_HTML,
     F_JSON,
@@ -13,6 +14,7 @@ from starlette.responses import (
 )
 
 from ...wrapper import Potto
+from ...schemas.items import FeatureCollectionFilter
 from .. import util
 
 
@@ -24,14 +26,14 @@ async def list_collections(request: Request) -> Response:
         or F_JSON
     )
     potto: Potto = request.state.potto
-    result = await potto.list_collections(
+    result = await potto.api_list_collections(
         locale=current_locale,
         output_format=format_to_process,
     )
     if requested_format == F_HTML:
         content = result.content
         content["links"] = util.set_html_link_self_relation(content["links"])
-        json_ld_result = await potto.list_collections(
+        json_ld_result = await potto.api_list_collections(
             locale=current_locale,
             output_format=F_JSONLD,
         )
@@ -57,13 +59,13 @@ async def get_collection_details(request: Request) -> Response:
     )
     potto: Potto = request.state.potto
     collection_id = request.path_params["collection_id"]
-    result = await potto.get_collection(
+    result = await potto.api_get_collection(
         collection_id=collection_id,
         locale=current_locale,
         output_format=format_to_process,
     )
     if requested_format == F_HTML:
-        json_ld_result = await potto.get_collection(
+        json_ld_result = await potto.api_get_collection(
             collection_id=collection_id,
             locale=current_locale,
             output_format=F_JSONLD,
@@ -91,33 +93,51 @@ async def list_collection_items(request: Request) -> Response:
         or F_JSON
     )
     potto: Potto = request.state.potto
-    result = await potto.list_collection_items(
-        collection_id=request.path_params["collection_id"],
-        bbox=request.query_params.get("bbox"),
-        bbox_crs=request.query_params.get("bbox-crs"),
-        crs=request.query_params.get("crs"),
-        datetime_filter=request.query_params.get("datetime"),
-        filter_=request.query_params.get("filter"),
-        filter_crs=request.query_params.get("filter-crs"),
-        filter_lang=request.query_params.get("filter-lang"),
-        limit=request.query_params.get("limit"),
+    collection_id = request.path_params["collection_id"]
+    collection_filter = FeatureCollectionFilter.from_query_parameters(
+        request.query_params)
+    result = await potto.api_list_collection_items(
+        collection_id=collection_id,
         locale=current_locale,
-        offset=int(request.query_params.get("offset", 0)),
         output_format=format_to_process,
-        properties=dict(request.query_params),
-        query_param=request.query_params.get("q"),
-        result_type=request.query_params.get("resulttype"),
-        sort_by=request.query_params.get("sortby"),
-        skip_geometry=(
-            True
-            if request.query_params.get("skipGeometry", "").lower()
-               in ("true", "yes", "on", "t", "1") else False
-        ),
+        filter_=collection_filter
     )
     if requested_format == F_HTML:
+        json_ld_result = await potto.api_list_collection_items(
+            collection_id=collection_id,
+            locale=current_locale,
+            output_format=F_JSONLD,
+            filter_=collection_filter
+        )
+        # pygeoapi supports looking for templates also in the configuration
+        # of the underlying resource being acted upon by looking for
+        # a `templates` key in the resource configuration - potto does not
+        # support this but will rather search for templates named
+        # `templates/items/{collection_id}-list.html` and fallback to
+        # `templates/items/list.html`
+        try:
+            template_path = f"items/{collection_id}-list.html"
+            request.state.templates.get_template(template_path)
+        except TemplateNotFound:
+            template_path = f"items/list.html"
+            request.state.templates.get_template(template_path)
+        content = result.content
+        content["links"] = util.set_html_link_self_relation(content["links"])
+        return request.state.templates.TemplateResponse(
+            request,
+            template_path,
+            context={
+                "data": content,
+                "pygeoapi_config": potto.get_localized_config(current_locale),
+                "jsonld_content": json.dumps(json_ld_result.content),
+            }
+        )
         raise NotImplementedError
     else:
-        return JSONResponse(content=result.content, headers=result.metadata)
+        return JSONResponse(
+            content=result.content.model_dump_json(),
+            headers=result.metadata
+        )
 
 
 async def get_item_details(request: Request) -> Response:
@@ -128,7 +148,7 @@ async def get_item_details(request: Request) -> Response:
         or F_JSON
     )
     potto: Potto = request.state.potto
-    result = await potto.get_item(
+    result = await potto.api_get_item(
         collection_id=request.path_params["collection_id"],
         item_id=request.path_params["item_id"],
         locale=current_locale,
