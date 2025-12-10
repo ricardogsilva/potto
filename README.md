@@ -10,7 +10,7 @@ Quickstart for development:
 # set some env variables
 export PYGEOAPI_ROOT="wherever-you-cloned-pygeoapi-repo"
 export POTTO__PYGEOAPI_CONFIG_FILE=pygeoapi-config-example.yml
-export POTTO__LOG_CONFIG_FILE=uvicorn-log-config-example.yml
+export POTTO__UVICORN_LOG_CONFIG_FILE=uvicorn-log-config-example.yml
 export POTTO__DEBUG=true
 export POTTO__RELOAD_DIRS=$(pwd -P)
 
@@ -19,7 +19,7 @@ uv run potto run-server
 ```
 
 This project is a pygeoapi-powered web application written with starlette. It showcases how to build a starlette web 
-application that uses pygeoapi as a library.
+application that uses pygeoapi as a library in an alternative way.
 
 Currently, pygeoapi tries to offer builtin support for all of starlette, flask and django. This results in a complex 
 codebase which tries to be a library and a framework at the same time. This project exists to explore a different 
@@ -32,6 +32,9 @@ library is wrapping it, which in this case happens to be starlette. This means t
 API processing logic and let starlette worry about web application stuff.
 
 What does it mean to let pygeoapi focus solely on the logic of geospatial APIs?
+
+It means that there is a split responsibility between pygeoapi and the wrapping framework with regard to implementing
+the more 'webby' features of OGC APIs, like links and openapi schemas.
 
 It means:
 

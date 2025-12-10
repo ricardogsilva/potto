@@ -1,3 +1,4 @@
+import datetime as dt
 from typing import Literal
 
 import pydantic
@@ -12,14 +13,14 @@ class LimitsConfig(pydantic.BaseModel):
     on_exceed: Literal["error", "throttle"] = "throttle"
 
     @classmethod
-    def from_raw_config(cls, raw_config: dict) -> "LimitsConfig":
+    def from_pygeoapi_config(cls, limits_config: dict) -> "LimitsConfig":
         return cls(
-            max_items=raw_config.get("max_items", 100),
-            default_items=raw_config.get("default_items", 10),
-            max_distance_x=raw_config.get("max_distance", {}).get("x", 100),
-            max_distance_y=raw_config.get("max_distance", {}).get("y", 100),
-            max_distance_units=raw_config.get("max_distance_units", ""),
-            on_exceed=raw_config.get("on_exceed", "throttle"),
+            max_items=limits_config.get("max_items", 100),
+            default_items=limits_config.get("default_items", 10),
+            max_distance_x=limits_config.get("max_distance", {}).get("x", 100),
+            max_distance_y=limits_config.get("max_distance", {}).get("y", 100),
+            max_distance_units=limits_config.get("max_distance_units", ""),
+            on_exceed=limits_config.get("on_exceed", "throttle"),
         )
 
 
@@ -32,14 +33,14 @@ class LinkConfig(pydantic.BaseModel):
     length: int | None = None
 
     @classmethod
-    def from_raw_config(cls, raw_config: dict) -> "LinkConfig":
+    def from_pygeoapi_config(cls, link_config: dict) -> "LinkConfig":
         return cls(
-            type_=raw_config["type"],
-            rel=raw_config["rel"],
-            href=raw_config["href"],
-            title=raw_config.get("title"),
-            href_lang=raw_config.get("hreflang"),
-            length=int(length) if (length :=raw_config.get("length")) else None,
+            type_=link_config["type"],
+            rel=link_config["rel"],
+            href=link_config["href"],
+            title=link_config.get("title"),
+            href_lang=link_config.get("hreflang"),
+            length=int(length) if (length :=link_config.get("length")) else None,
         )
 
 
@@ -50,8 +51,8 @@ class SpatialExtentConfig(pydantic.BaseModel):
 
 
 class TemporalExtentConfig(pydantic.BaseModel):
-    begin: str | None
-    end: str | None
+    begin: dt.datetime | None
+    end: dt.datetime | None
     trs: str = "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian"
 
 
@@ -60,11 +61,11 @@ class ExtentConfig(pydantic.BaseModel):
     temporal: TemporalExtentConfig | None = None
 
     @classmethod
-    def from_raw_config(cls, raw_config: dict) -> "ExtentConfig":
+    def from_pygeoapi_config(cls, extent_config: dict) -> "ExtentConfig":
         return cls(
             spatial=SpatialExtentConfig(
-                bbox=raw_config["spatial"]["bbox"],
-                crs=raw_config["spatial"].get(
+                bbox=extent_config["spatial"]["bbox"],
+                crs=extent_config["spatial"].get(
                     "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84")
             ),
             temporal=TemporalExtentConfig(
@@ -72,7 +73,7 @@ class ExtentConfig(pydantic.BaseModel):
                 end=raw_temporal_config.get("end"),
                 trs=raw_temporal_config.get(
                     "trs", "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian")
-            ) if (raw_temporal_config := raw_config.get("temporal")) else None
+            ) if (raw_temporal_config := extent_config.get("temporal")) else None
         )
 
 
@@ -81,10 +82,10 @@ class FormatConfig(pydantic.BaseModel):
     media_type: str
 
     @classmethod
-    def from_raw_config(cls, raw_config: dict) -> "FormatConfig":
+    def from_pygeoapi_config(cls, format_config: dict) -> "FormatConfig":
         return cls(
-            name=raw_config["name"],
-            media_type=raw_config["mimetype"]
+            name=format_config["name"],
+            media_type=format_config["mimetype"]
         )
 
 
@@ -108,7 +109,7 @@ class ProviderConfig(pydantic.BaseModel):
     geometry_y_field: str | None = None
     time_field: str | None = None
     title_field: str | None = None
-    default_format: FormatConfig = None
+    default_format: FormatConfig | None = None
     extra_options: dict | None = None
     properties_to_return: list[str] | None = pydantic.Field(min_length=1)
     supported_crs: list[str] | None = None
@@ -117,26 +118,26 @@ class ProviderConfig(pydantic.BaseModel):
     include_extra_query_parameters: bool = True
 
     @classmethod
-    def from_raw_config(cls, raw_config: dict) -> "ProviderConfig":
+    def from_pygeoapi_config(cls, provider_config: dict) -> "ProviderConfig":
         return cls(
-            type_=raw_config["type"],
-            name=raw_config["name"],
-            data_=raw_config["data_"],
-            is_default_for_collection=raw_config.get("default", False),
-            is_editable=raw_config.get("editable", False),
-            table=raw_config.get("table"),
-            id_field=raw_config.get("id_field"),
-            geometry_x_field=raw_config.get("geometry", {}).get("x_field"),
-            geometry_y_field=raw_config.get("geometry", {}).get("y_field"),
-            time_field=raw_config.get("time_field"),
-            title_field=raw_config.get("title_field"),
-            default_format=FormatConfig.from_raw_config(raw_format) if (raw_format := raw_config.get("format")) else None,
-            extra_options=raw_config.get("options"),
-            properties_to_return=raw_config.get("properties"),
-            supported_crs=raw_config.get("crs"),
-            storage_crs=raw_config.get("storage_crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84"),
-            storage_crs_coordinate_epoch=raw_config.get("storage_crs_coordinate_epoch"),
-            include_extra_query_parameters=raw_config.get("include_extra_query_parameters"),
+            type_=provider_config["type"],
+            name=provider_config["name"],
+            data_=provider_config["data"],
+            is_default_for_collection=provider_config.get("default", False),
+            is_editable=provider_config.get("editable", False),
+            table=provider_config.get("table"),
+            id_field=provider_config.get("id_field"),
+            geometry_x_field=provider_config.get("geometry", {}).get("x_field"),
+            geometry_y_field=provider_config.get("geometry", {}).get("y_field"),
+            time_field=provider_config.get("time_field"),
+            title_field=provider_config.get("title_field"),
+            default_format=FormatConfig.from_pygeoapi_config(raw_format) if (raw_format := provider_config.get("format")) else None,
+            extra_options=provider_config.get("options"),
+            properties_to_return=provider_config.get("properties"),
+            supported_crs=provider_config.get("crs"),
+            storage_crs=provider_config.get("storage_crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84"),
+            storage_crs_coordinate_epoch=provider_config.get("storage_crs_coordinate_epoch"),
+            include_extra_query_parameters=provider_config.get("include_extra_query_parameters", True),
         )
 
 
@@ -187,21 +188,21 @@ class ItemCollectionConfig(pydantic.BaseModel):
             return self.providers[0]
 
     @classmethod
-    def from_raw_config(cls, raw_config: dict) -> "ItemCollectionConfig":
+    def from_pygeoapi_config(cls, collection_config: dict) -> "ItemCollectionConfig":
         return cls(
-            type_=raw_config["type"],
-            title=raw_config["title"],
-            description=raw_config["description"],
-            keywords=raw_config["keywords"],
-            extents=ExtentConfig.from_raw_config(raw_config["extents"]),
+            type_=collection_config["type"],
+            title=collection_config["title"],
+            description=collection_config["description"],
+            keywords=collection_config["keywords"],
+            extents=ExtentConfig.from_pygeoapi_config(collection_config["extents"]),
             providers=[
-                ProviderConfig.from_raw_config(raw_provider)
-                for raw_provider in raw_config["providers"]
+                ProviderConfig.from_pygeoapi_config(raw_provider)
+                for raw_provider in collection_config["providers"]
             ],
-            visibility=raw_config.get("visibility", "default"),
-            linked_data=raw_config.get("linked_data"),
+            visibility=collection_config.get("visibility", "default"),
+            linked_data=collection_config.get("linked_data"),
             links=[
-                LinkConfig.from_raw_config(raw_link) for raw_link in raw_links
-            ] if (raw_links:=raw_config.get("links")) else None,
-            limits=LimitsConfig.from_raw_config(raw_limits) if (raw_limits:=raw_config.get("limits")) else None,
+                LinkConfig.from_pygeoapi_config(raw_link) for raw_link in raw_links
+            ] if (raw_links:=collection_config.get("links")) else None,
+            limits=LimitsConfig.from_pygeoapi_config(raw_limits) if (raw_limits:=collection_config.get("limits")) else None,
         )

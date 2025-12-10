@@ -45,7 +45,7 @@ class FeatureCollectionFilter(CollectionFilter):
             offset=int(params.get("offset", 0)),
             extra_properties=dict(params),
             query=params.get("q"),
-            result_type=params.get("resulttype"),
+            result_type=params.get("resulttype", "results"),
             sort_by=params.get("sortby"),
             skip_geometry=(
                 True

@@ -1,11 +1,9 @@
-import logging
 import os
 import sys
 from pathlib import Path
 from typing import Annotated
 
 import cyclopts
-import uvicorn
 from cyclopts import App
 
 from ..config import (
@@ -54,10 +52,6 @@ def run_uvicorn_server(
     # feature, as per:
     #
     # https://github.com/Kludex/uvicorn/discussions/2553#discussion-7774794
-    #
-
-    # FIXME: reload is not working at all when calling uvicorn programmatically
-    # as per https://github.com/Kludex/uvicorn/discussions/2144
     #
 
     uvicorn_args = [

@@ -87,7 +87,7 @@ class Potto:
         }
 
     def get_item_collection_config(self, collection_id: str) -> ItemCollectionConfig:
-        return ItemCollectionConfig.from_raw_config(
+        return ItemCollectionConfig.from_pygeoapi_config(
             self.get_raw_item_collection_config(collection_id))
 
     def get_raw_item_collection_config(self, collection_id: str) -> dict:
@@ -237,7 +237,7 @@ class Potto:
                 output_format=output_format,
                 **filter_.as_kwargs()
             ),
-            dataset=filter_.collection_id
+            dataset=collection_id
         )
         original_headers, original_status_code, original_content = original_response
         parsed_original_content = json.loads(original_content)
