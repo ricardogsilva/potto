@@ -52,7 +52,7 @@ loggers:
     level: ERROR
     propagate: false
 
-  pygeoapi_starlette:
+  potto:
     handlers:
       - default
     level: DEBUG

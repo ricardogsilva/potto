@@ -15,6 +15,10 @@ from starlette.responses import (
 
 from ...wrapper import Potto
 from ...schemas.items import FeatureCollectionFilter
+from ...schemas.web import (
+    GeoJsonItemCollection,
+    JsonLdItemCollection,
+)
 from .. import util
 
 
@@ -88,10 +92,6 @@ async def get_collection_details(request: Request) -> Response:
 async def list_collection_items(request: Request) -> Response:
     current_locale = babel.Locale.parse(request.state.language)
     requested_format = util.get_accepted_info(request)[1]
-    format_to_process = (
-        (requested_format if requested_format != F_HTML else F_JSON)
-        or F_JSON
-    )
     potto: Potto = request.state.potto
     collection_id = request.path_params["collection_id"]
     collection_filter = FeatureCollectionFilter.from_query_parameters(
@@ -99,16 +99,10 @@ async def list_collection_items(request: Request) -> Response:
     result = await potto.api_list_collection_items(
         collection_id=collection_id,
         locale=current_locale,
-        output_format=format_to_process,
         filter_=collection_filter
     )
+
     if requested_format == F_HTML:
-        json_ld_result = await potto.api_list_collection_items(
-            collection_id=collection_id,
-            locale=current_locale,
-            output_format=F_JSONLD,
-            filter_=collection_filter
-        )
         # pygeoapi supports looking for templates also in the configuration
         # of the underlying resource being acted upon by looking for
         # a `templates` key in the resource configuration - potto does not
@@ -116,26 +110,42 @@ async def list_collection_items(request: Request) -> Response:
         # `templates/items/{collection_id}-list.html` and fallback to
         # `templates/items/list.html`
         try:
-            template_path = f"items/{collection_id}-list.html"
+            template_path = f"items/{result.context.resource.identifier}-list.html"
             request.state.templates.get_template(template_path)
         except TemplateNotFound:
             template_path = f"items/list.html"
             request.state.templates.get_template(template_path)
-        content = result.content
-        content["links"] = util.set_html_link_self_relation(content["links"])
+        # content["links"] = util.set_html_link_self_relation(content["links"])
+        json_ld_response_content = JsonLdItemCollection.from_potto(
+            result,
+            url_resolver=request.url_for
+        )
         return request.state.templates.TemplateResponse(
             request,
             template_path,
             context={
-                "data": content,
+                "data": response_content,
                 "pygeoapi_config": potto.get_localized_config(current_locale),
-                "jsonld_content": json.dumps(json_ld_result.content),
+                "jsonld_content": json_ld_response_content.model_dump_json(by_alias=True),
             }
         )
         raise NotImplementedError
-    else:
+    elif requested_format == F_JSONLD:
+        response_content = JsonLdItemCollection.from_potto(
+            result,
+            url_resolver=request.url_for
+        )
         return JSONResponse(
-            content=result.content.model_dump_json(),
+            response_content.model_dump(by_alias=True),
+            headers=result.metadata
+        )
+    else:
+        response_content = GeoJsonItemCollection.from_potto(
+            result,
+            url_resolver=request.url_for
+        )
+        return JSONResponse(
+            content=response_content.model_dump(by_alias=True),
             headers=result.metadata
         )
 

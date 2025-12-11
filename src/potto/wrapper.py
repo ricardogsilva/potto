@@ -1,5 +1,5 @@
-import dataclasses
 import json
+import logging
 from typing import Literal
 
 import babel
@@ -21,20 +21,14 @@ from pygeoapi.l10n import translate_struct
 from . import config
 from .schemas import items
 from .schemas.pygeoapi_config import ItemCollectionConfig
+from .schemas.potto import (
+    PottoResponse,
+    PottoStructuredResponse,
+    ResponseContext,
+)
 from .webapp.requests import PottoRequest
 
-
-@dataclasses.dataclass(frozen=True)
-class PottoResponse:
-    content_type: str
-    content: dict | bytes
-    metadata: dict [str, str] | None = None
-
-
-@dataclasses.dataclass(frozen=True)
-class PottoStructuredResponse:
-    content: items.FeatureList
-    metadata: dict [str, str] | None = None
+logger = logging.getLogger(__name__)
 
 
 class Potto:
@@ -88,7 +82,9 @@ class Potto:
 
     def get_item_collection_config(self, collection_id: str) -> ItemCollectionConfig:
         return ItemCollectionConfig.from_pygeoapi_config(
-            self.get_raw_item_collection_config(collection_id))
+            collection_id,
+            self.get_raw_item_collection_config(collection_id)
+        )
 
     def get_raw_item_collection_config(self, collection_id: str) -> dict:
         return self.list_item_collection_resource_configs().get(collection_id)
@@ -227,41 +223,39 @@ class Potto:
             *,
             collection_id: str,
             locale: babel.Locale,
-            output_format: Literal["json", "jsonld"] = "json",
             filter_: items.FeatureCollectionFilter | None = None,
     ) -> PottoStructuredResponse:
         original_response = _get_collection_items(
             self._pygeoapi_api,
             PottoRequest(
                 locale=locale,
-                output_format=output_format,
+                output_format="json",
                 **filter_.as_kwargs()
             ),
             dataset=collection_id
         )
         original_headers, original_status_code, original_content = original_response
         parsed_original_content = json.loads(original_content)
+        logger.debug(f"{parsed_original_content=}")
         collection_config = self.get_item_collection_config(collection_id)
         provider_config = collection_config.get_default_provider_config(type_="feature")
         return PottoStructuredResponse(
+            context=ResponseContext(
+                resource=collection_config,
+                provider=provider_config,
+            ),
             content=items.FeatureList(
                 features=[
                     items.Feature.from_original_feature(feat)
                     for feat in parsed_original_content["features"]
                 ],
-                feature_title_field=provider_config.title_field,
-                number_matched=parsed_original_content.get("num_matched"),
-                number_returned=parsed_original_content.get("num_returned"),
-                number_total=parsed_original_content.get("num_totel"),
-                timestamp=parsed_original_content.get("timestamp"),
+                feature_title_field=provider_config.title_field or collection_config.title,
+                number_matched=parsed_original_content.get("numberMatched"),
+                number_returned=parsed_original_content.get("numberReturned"),
+                timestamp=parsed_original_content.get("timeStamp"),
             ),
             metadata=original_headers
         )
-        # return PottoResponse(
-        #     content_type=original_headers.pop("Content-Type"),
-        #     content=json.loads(original_content),
-        #     metadata={**original_headers}
-        # )
 
     async def api_get_item(
             self,

@@ -142,6 +142,7 @@ class ProviderConfig(pydantic.BaseModel):
 
 
 class ItemCollectionConfig(pydantic.BaseModel):
+    identifier: str
     type_: Literal["collection"]
     title: str
     description: str
@@ -188,8 +189,9 @@ class ItemCollectionConfig(pydantic.BaseModel):
             return self.providers[0]
 
     @classmethod
-    def from_pygeoapi_config(cls, collection_config: dict) -> "ItemCollectionConfig":
+    def from_pygeoapi_config(cls, identifier: str, collection_config: dict) -> "ItemCollectionConfig":
         return cls(
+            identifier=identifier,
             type_=collection_config["type"],
             title=collection_config["title"],
             description=collection_config["description"],

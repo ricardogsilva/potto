@@ -119,10 +119,10 @@
                     <table class="table table-striped table-bordered">
                         <thead>
                         <tr>
-                            {% if data.get('uri_field') %}
+                            {% if data.context.resource.get('uri_field') %}
                                 {% set uri_field = data.uri_field %}
                                 <th>{{ uri_field }}</th>
-                            {% elif data.get('title_field') %}
+                            {% elif data.context.resource.get('title_field') %}
                                 {% set title_field = data.title_field %}
                                 <th>{{ title_field }}</th>
                             {% else %}

@@ -1,9 +1,26 @@
+import json
+import logging
 from typing import (
+    Any,
     Literal,
     Mapping,
+    Protocol,
     Sequence,
 )
+
 import pydantic
+import shapely
+from starlette.datastructures import URL
+
+from . import pygeoapi_config
+
+logger = logging.getLogger(__name__)
+
+
+class UrlResolver(Protocol):
+
+    def __call__(self, route: str, /, **path_param: Any) -> URL:
+        ...
 
 
 class CollectionFilter(pydantic.BaseModel):
@@ -77,17 +94,46 @@ class FeatureCollectionFilter(CollectionFilter):
 
 
 class Feature(pydantic.BaseModel):
-    id_: str
-    properties: dict[str, str]
-    geometry_wkt: str
+    model_config = pydantic.ConfigDict(
+        arbitrary_types_allowed=True
+    )
+
+    id_: str = pydantic.Field(alias="id")
+    properties: dict[str, str | int | float | bool]
+    geometry: shapely.Geometry
 
     @classmethod
     def from_original_feature(cls, original_feature: dict) -> "Feature":
         return cls(
-            id_=original_feature["id"],
-            properties=original_feature["properties"],
-            geometry_wkt=original_feature["geometry"],
+            id=str(original_feature["id"]),
+            properties={k: v for k, v in original_feature["properties"].items() if k != "id"},
+            geometry=shapely.from_geojson(json.dumps(original_feature["geometry"]))
         )
+
+    def as_geojson(self) -> dict:
+        return {
+            **self.model_dump(
+                exclude={
+                    "geometry",
+                }
+            ),
+            "geometry": json.loads(shapely.to_geojson(self.geometry))
+        }
+
+    def as_jsonld(
+            self,
+            resource_config: pygeoapi_config.ItemCollectionConfig,
+            url_resolver: UrlResolver
+    ) -> dict:
+        detail_url = url_resolver(
+            "get-item",
+            collection_id=resource_config.identifier,
+            item_id=self.id_
+        )
+        return {
+            "@type": "schema:Place",
+            "@id": str(detail_url),
+        }
 
 
 class FeatureList(pydantic.BaseModel):
@@ -95,7 +141,6 @@ class FeatureList(pydantic.BaseModel):
     feature_title_field: str
     number_matched: int
     number_returned: int
-    number_total: int
     timestamp: str
 
 
