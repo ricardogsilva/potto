@@ -1,26 +1,27 @@
 import json
 import logging
+import typing
 from typing import (
-    Any,
     Literal,
     Mapping,
-    Protocol,
     Sequence,
 )
 
 import pydantic
 import shapely
-from starlette.datastructures import URL
+from pygeoapi.api import (
+    F_HTML,
+    F_JSON,
+    F_JSONLD,
+)
 
+from ..webapp.protocols import UrlResolver
 from . import pygeoapi_config
 
+if typing.TYPE_CHECKING:
+    from .web import Link
+
 logger = logging.getLogger(__name__)
-
-
-class UrlResolver(Protocol):
-
-    def __call__(self, route: str, /, **path_param: Any) -> URL:
-        ...
 
 
 class CollectionFilter(pydantic.BaseModel):
@@ -93,6 +94,43 @@ class FeatureCollectionFilter(CollectionFilter):
         }
 
 
+class FeatureCollectionPaginationContext(pydantic.BaseModel):
+    limit: int
+    number_matched: int
+    number_returned: int
+    offset: int
+
+    def get_links(
+            self,
+            base_url: str,
+            target_media_type: str = F_JSON,
+            additional_query_params: dict[str, str] | None = None,
+    ) -> list["Link"]:
+        additional = "&".join(f"{k}={v}" for k, v in additional_query_params.items())
+        result = []
+        if self.offset > 0:
+            prev_offset = max(0, self.offset - self.limit)
+            result.append(
+                Link(
+                    type=target_media_type,
+                    rel="prev",
+                    href=f"{base_url}?offset={prev_offset}{f'&{additional}' if additional else ''}",
+                    title="Previous page of this resultset"
+                )
+            )
+        if self.number_matched > self.offset + self.limit:
+            next_offset = self.offset + self.limit
+            result.append(
+                Link(
+                    type=target_media_type,
+                    rel="next",
+                    href=f"{base_url}?offset={next_offset}{f'&{additional}' if additional else ''}",
+                    title="Next page of this resultset"
+                )
+            )
+        return result
+
+
 class Feature(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(
         arbitrary_types_allowed=True
@@ -134,14 +172,6 @@ class Feature(pydantic.BaseModel):
             "@type": "schema:Place",
             "@id": str(detail_url),
         }
-
-
-class FeatureList(pydantic.BaseModel):
-    features: list[Feature]
-    feature_title_field: str
-    number_matched: int
-    number_returned: int
-    timestamp: str
 
 
 class RecordList(pydantic.BaseModel):

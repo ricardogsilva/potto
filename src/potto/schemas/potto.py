@@ -12,13 +12,10 @@ class PottoResponse:
 
 
 @dataclasses.dataclass(frozen=True)
-class ResponseContext:
-    resource: pygeoapi_config.ItemCollectionConfig  # | ProcessConfig | StacCollectionConfig
+class CollectionFeatureListResponse:
+    resource: pygeoapi_config.ItemCollectionConfig
     provider: pygeoapi_config.ProviderConfig
-
-
-@dataclasses.dataclass(frozen=True)
-class PottoStructuredResponse:
-    context: ResponseContext
-    content: items.FeatureList
+    features: list[items.Feature]
+    pagination: items.FeatureCollectionPaginationContext
+    filter_: items.FeatureCollectionFilter | None = None
     metadata: dict [str, str] | None = None

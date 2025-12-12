@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import Literal
@@ -8,6 +9,7 @@ from pygeoapi.api import (
     landing_page as _landing_page,
     conformance as _conformance,
     describe_collections as _describe_collections,
+    evaluate_limit as _evaluate_limit,
     F_JSON,
     FORMAT_TYPES as _FORMAT_TYPES,
 )
@@ -23,8 +25,7 @@ from .schemas import items
 from .schemas.pygeoapi_config import ItemCollectionConfig
 from .schemas.potto import (
     PottoResponse,
-    PottoStructuredResponse,
-    ResponseContext,
+    CollectionFeatureListResponse,
 )
 from .webapp.requests import PottoRequest
 
@@ -224,8 +225,9 @@ class Potto:
             collection_id: str,
             locale: babel.Locale,
             filter_: items.FeatureCollectionFilter | None = None,
-    ) -> PottoStructuredResponse:
-        original_response = _get_collection_items(
+    ) -> CollectionFeatureListResponse:
+        pygeoapi_response = await asyncio.to_thread(
+            _get_collection_items,
             self._pygeoapi_api,
             PottoRequest(
                 locale=locale,
@@ -234,27 +236,36 @@ class Potto:
             ),
             dataset=collection_id
         )
-        original_headers, original_status_code, original_content = original_response
-        parsed_original_content = json.loads(original_content)
-        logger.debug(f"{parsed_original_content=}")
+        pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
+        parsed_pygeoapi_content = json.loads(pygeoapi_content)
+        logger.debug(f"{parsed_pygeoapi_content=}")
         collection_config = self.get_item_collection_config(collection_id)
-        provider_config = collection_config.get_default_provider_config(type_="feature")
-        return PottoStructuredResponse(
-            context=ResponseContext(
-                resource=collection_config,
-                provider=provider_config,
+        features=[
+            items.Feature.from_original_feature(feat)
+            for feat in parsed_pygeoapi_content["features"]
+        ]
+        return CollectionFeatureListResponse(
+            resource=collection_config,
+            provider=collection_config.get_default_provider_config(type_="feature"),
+            features=features,
+            pagination=items.FeatureCollectionPaginationContext(
+                limit=_evaluate_limit(
+                    requested=filter_.limit,
+                    server_limits=self._pygeoapi_api.config["server"].get("limits", {}),
+                    collection_limits=(
+                        col_limits.as_pygeoapi_config
+                        if (col_limits := collection_config.limits) else {}
+                    ),
+                ),
+                number_matched=parsed_pygeoapi_content.get("numberMatched", 0),
+                number_returned=parsed_pygeoapi_content.get("numberReturned", len(features)),
+                offset=parsed_pygeoapi_content.get("offset", 0),
             ),
-            content=items.FeatureList(
-                features=[
-                    items.Feature.from_original_feature(feat)
-                    for feat in parsed_original_content["features"]
-                ],
-                feature_title_field=provider_config.title_field or collection_config.title,
-                number_matched=parsed_original_content.get("numberMatched"),
-                number_returned=parsed_original_content.get("numberReturned"),
-                timestamp=parsed_original_content.get("timeStamp"),
-            ),
-            metadata=original_headers
+            filter_=filter_,
+            metadata={
+                **pygeoapi_headers,
+                "timestamp": parsed_pygeoapi_content.get("timeStamp"),
+            },
         )
 
     async def api_get_item(

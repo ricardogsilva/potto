@@ -1,3 +1,5 @@
+import datetime as dt
+
 from pygeoapi.api import (
     FORMAT_TYPES,
     F_JSON,
@@ -6,13 +8,9 @@ from pygeoapi.api import (
 )
 import pydantic
 
-from .potto import PottoStructuredResponse
-from .items import (
-    Feature,
-    UrlResolver,
-)
-from .pygeoapi_config import (
-    ItemCollectionConfig,
+from ..webapp.protocols import UrlResolver
+from .potto import (
+    CollectionFeatureListResponse,
 )
 
 
@@ -36,12 +34,21 @@ class GeoJsonItemCollection(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            potto_response: PottoStructuredResponse,
+            potto_response: CollectionFeatureListResponse,
             url_resolver: UrlResolver
     ) -> "GeoJsonItemCollection":
+        pagination_links = potto_response.pagination.get_links(
+            str(
+                url_resolver(
+                    "list-collection-items",
+                    collection_id=potto_response.resource.identifier
+                )
+            ),
+            additional_query_params=potto_response.filter_.as_kwargs()
+        )
         return cls(
             type="FeatureCollection",
-            features=[feat.as_geojson() for feat in potto_response.content.features],
+            features=[feat.as_geojson() for feat in potto_response.features],
             links=[
                 Link(
                     type=FORMAT_TYPES[F_JSON],
@@ -49,7 +56,7 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     href=str(
                         url_resolver(
                             "list-collection-items",
-                            collection_id=potto_response.context.resource.identifier
+                            collection_id=potto_response.resource.identifier
                         )
                     ),
                     title="This document"
@@ -60,7 +67,7 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     href=str(
                         url_resolver(
                             "list-collection-items",
-                            collection_id=potto_response.context.resource.identifier
+                            collection_id=potto_response.resource.identifier
                         )
                     ),
                     title="This document as JSON-LD"
@@ -71,7 +78,7 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     href=str(
                         url_resolver(
                             "list-collection-items",
-                            collection_id=potto_response.context.resource.identifier
+                            collection_id=potto_response.resource.identifier
                         )
                     ),
                     title="This document as HTML"
@@ -82,15 +89,17 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     href=str(
                         url_resolver(
                             "get-collection",
-                            collection_id=potto_response.context.resource.identifier
+                            collection_id=potto_response.resource.identifier
                         )
                     ),
-                    title=potto_response.context.resource.title
+                    title=potto_response.resource.title
                 ),
+                *pagination_links,
             ],
-            numberMatched=potto_response.content.number_matched,
-            numberReturned=potto_response.content.number_returned,
-            timeStamp=potto_response.content.timestamp,
+            numberMatched=potto_response.pagination.number_matched,
+            numberReturned=potto_response.pagination.number_returned,
+            timeStamp=potto_response.metadata.get(
+                "timestamp", dt.datetime.now(tz=dt.timezone.utc).isoformat()),
         )
 
 
@@ -103,12 +112,12 @@ class JsonLdItemCollection(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            potto_response: PottoStructuredResponse,
+            potto_response: CollectionFeatureListResponse,
             url_resolver: UrlResolver
     ) -> "JsonLdItemCollection":
         detail_url = url_resolver(
             "get-collection",
-            collection_id=potto_response.context.resource.identifier,
+            collection_id=potto_response.resource.identifier,
         )
         return cls(
             context={
@@ -121,38 +130,44 @@ class JsonLdItemCollection(pydantic.BaseModel):
             type="FeatureCollection",
             features=[
                 feat.as_jsonld(
-                    potto_response.context.resource,
+                    potto_response.resource,
                     url_resolver
-                ) for feat in potto_response.content.features
+                ) for feat in potto_response.features
             ]
         )
 
 
 class HtmlItemCollection(pydantic.BaseModel):
-    resource: ItemCollectionConfig
-    features: list[Feature]
+    response: CollectionFeatureListResponse
     links: list[Link]
-    number_matched: int = pydantic.Field(alias="numberMatched")
-    number_returned: int = pydantic.Field(alias="numberReturned")
-    timestamp: str = pydantic.Field(alias="timeStamp")
 
     @classmethod
     def from_potto(
         cls,
-        potto_response: PottoStructuredResponse,
+        potto_response: CollectionFeatureListResponse,
         url_resolver: UrlResolver
     ) -> "HtmlItemCollection":
+        pagination_links = potto_response.pagination.get_links(
+            str(
+                url_resolver(
+                    "list-collection-items",
+                    collection_id=potto_response.resource.identifier
+                )
+            ),
+            target_media_type=F_HTML,
+            additional_query_params=potto_response.filter_.as_kwargs()
+        )
         return cls(
-            resource=potto_response.context.resource,
-            features=potto_response.content.features,
+            response=potto_response,
             links=[
+                *pagination_links,
                 Link(
                     type=FORMAT_TYPES[F_HTML],
                     rel="self",
                     href=str(
                         url_resolver(
                             "list-collection-items",
-                            collection_id=potto_response.context.resource.identifier
+                            collection_id=potto_response.resource.identifier
                         )
                     ),
                     title="This document"
@@ -163,7 +178,7 @@ class HtmlItemCollection(pydantic.BaseModel):
                     href=str(
                         url_resolver(
                             "list-collection-items",
-                            collection_id=potto_response.context.resource.identifier
+                            collection_id=potto_response.resource.identifier
                         )
                     ) + f"?f={F_JSON}",
                     title="This document as JSON"
@@ -174,13 +189,10 @@ class HtmlItemCollection(pydantic.BaseModel):
                     href=str(
                         url_resolver(
                             "list-collection-items",
-                            collection_id=potto_response.context.resource.identifier
+                            collection_id=potto_response.resource.identifier
                         )
                     ) + f"?f={F_JSONLD}",
                     title="This document as JSON-LD"
                 ),
             ],
-            numberMatched=potto_response.content.number_matched,
-            numberReturned=potto_response.content.number_returned,
-            timeStamp=potto_response.content.timestamp,
         )

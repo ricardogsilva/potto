@@ -23,6 +23,18 @@ class LimitsConfig(pydantic.BaseModel):
             on_exceed=limits_config.get("on_exceed", "throttle"),
         )
 
+    def as_pygeoapi_config(self) -> dict:
+        return {
+            "max_items": self.max_items,
+            "default_items": self.default_items,
+            "max_distance": {
+                "x": self.max_distance_x,
+                "y": self.max_distance_y,
+            },
+            "max_distance_units": self.max_distance_units,
+            "on_exceed": self.on_exceed,
+        }
+
 
 class LinkConfig(pydantic.BaseModel):
     type_: str
@@ -105,6 +117,7 @@ class ProviderConfig(pydantic.BaseModel):
     is_editable: bool = False
     table: str | None = None
     id_field: str | None = None
+    uri_field: str | None = None
     geometry_x_field: str | None = None
     geometry_y_field: str | None = None
     time_field: str | None = None
@@ -127,6 +140,7 @@ class ProviderConfig(pydantic.BaseModel):
             is_editable=provider_config.get("editable", False),
             table=provider_config.get("table"),
             id_field=provider_config.get("id_field"),
+            uri_field=provider_config.get("uri_field"),
             geometry_x_field=provider_config.get("geometry", {}).get("x_field"),
             geometry_y_field=provider_config.get("geometry", {}).get("y_field"),
             time_field=provider_config.get("time_field"),
