@@ -1,6 +1,5 @@
 import json
 import logging
-import typing
 from typing import (
     Literal,
     Mapping,
@@ -10,16 +9,13 @@ from typing import (
 import pydantic
 import shapely
 from pygeoapi.api import (
-    F_HTML,
     F_JSON,
-    F_JSONLD,
+    FORMAT_TYPES,
 )
 
 from ..webapp.protocols import UrlResolver
 from . import pygeoapi_config
-
-if typing.TYPE_CHECKING:
-    from .web import Link
+from .base import Link
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +101,7 @@ class FeatureCollectionPaginationContext(pydantic.BaseModel):
             base_url: str,
             target_media_type: str = F_JSON,
             additional_query_params: dict[str, str] | None = None,
-    ) -> list["Link"]:
+    ) -> list[Link]:
         additional = "&".join(f"{k}={v}" for k, v in additional_query_params.items())
         result = []
         if self.offset > 0:
@@ -148,15 +144,37 @@ class Feature(pydantic.BaseModel):
             geometry=shapely.from_geojson(json.dumps(original_feature["geometry"]))
         )
 
-    def as_geojson(self) -> dict:
-        return {
+    def as_geojson(
+            self,
+            resource_config: pygeoapi_config.ItemCollectionConfig,
+            url_resolver: UrlResolver,
+            detail_link_format: str = F_JSON
+    ) -> dict:
+        serialized = {
             **self.model_dump(
+                by_alias=True,
                 exclude={
                     "geometry",
                 }
             ),
-            "geometry": json.loads(shapely.to_geojson(self.geometry))
+            "type": "Feature",
+            "geometry": json.loads(shapely.to_geojson(self.geometry)),
         }
+        serialized["properties"]["links"] = [
+            Link(
+                type=FORMAT_TYPES.get(detail_link_format, F_JSON),
+                rel="detail",
+                href=str(
+                    url_resolver(
+                        "get-item",
+                        collection_id=resource_config.identifier,
+                        item_id=self.id_
+                    )
+                ),
+                title="This feature's detail",
+            ).model_dump(exclude_none=True)
+        ]
+        return serialized
 
     def as_jsonld(
             self,
@@ -172,7 +190,3 @@ class Feature(pydantic.BaseModel):
             "@type": "schema:Place",
             "@id": str(detail_url),
         }
-
-
-class RecordList(pydantic.BaseModel):
-    ...

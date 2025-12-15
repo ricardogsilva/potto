@@ -19,3 +19,11 @@ class CollectionFeatureListResponse:
     pagination: items.FeatureCollectionPaginationContext
     filter_: items.FeatureCollectionFilter | None = None
     metadata: dict [str, str] | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class FeatureResponse:
+    resource: pygeoapi_config.ItemCollectionConfig
+    provider: pygeoapi_config.ProviderConfig
+    feature: items.Feature
+    metadata: dict [str, str] | None = None

@@ -1,9 +1,9 @@
 {% extends "_base.html" %}
-{% block title %}{{ super() }} {{ data.response.resource.title }} {% endblock %}
+{% block title %}{{ super() }} {{ data.resource.title }} {% endblock %}
 {% block crumbs %}{{ super() }}
     / <a href="{{ url_for('list-collections') }}">{% trans %}Collections{% endtrans %}</a>
-    / <a href="{{ url_for('get-collection', collection_id=data.response.resource.identifier) }}">{{ data.response.resource.title }}</a>
-    / <a href="{{ url_for('list-collection-items', collection_id=data.response.resource.identifier) }}">{% trans %}Items{% endtrans %}</a>
+    / <a href="{{ url_for('get-collection', collection_id=data.resource.identifier) }}">{{ data.resource.title }}</a>
+    / <a href="{{ url_for('list-collection-items', collection_id=data.resource.identifier) }}">{% trans %}Items{% endtrans %}</a>
 {% endblock %}
 {% block extrahead %}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"/>
@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js"></script>
 
-    {% if data.response.provider.type_ == 'record' %}
+    {% if data.provider.type_ == 'record' %}
         <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"></script>
         <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
     {% endif %}
@@ -20,11 +20,11 @@
 
 {% block body %}
     <section id="collection">
-        <h1>{{ data.response.resource.title }}</h1>
+        <h1>{{ data.resource.title }}</h1>
     </section>
     <section id="items">
-        {% if data.response.features %}
-            {% if data.response.provider.type_ == 'record' %}
+        {% if data.features %}
+            {% if data.provider.type_ == 'record' %}
                 <div class="row">
                     <div class="col-sm-12 col-md-6">
                         <div class="row">
@@ -63,8 +63,8 @@
                         <div class="col-sm-12">
                             <div class="row">
                                 <div class="col-sm-12">
-                                    {% if data.response.pagination.number_matched %}
-                                        <p>{% trans %}Items in this collection{% endtrans %}: {{ data.response.pagination.number_matched }}</p>
+                                    {% if data.pagination.number_matched %}
+                                        <p>{% trans %}Items in this collection{% endtrans %}: {{ data.pagination.number_matched }}</p>
                                     {% endif %}
                                 </div>
                             </div>
@@ -95,9 +95,9 @@
                             <div class="row">
                                 <div class="col-sm-12">
                                     {% for link in data.links %}
-                                        {% if link.rel == 'prev' and data.response.filter_.offset > 0 %}
+                                        {% if link.rel == 'prev' and data.filter_.offset > 0 %}
                                             <a role="button" href="{{ link.href }}">{% trans %}Prev{% endtrans %}</a>
-                                        {% elif link.rel == 'next' and data.response.features %}
+                                        {% elif link.rel == 'next' and data.features %}
                                             <a role="button" href="{{ link.href }}">{% trans %}Next{% endtrans %}</a>
                                         {% endif %}
                                     {% endfor %}
@@ -112,18 +112,18 @@
                     <table class="table table-striped table-bordered">
                         <thead>
                         <tr>
-                            {% if data.response.provider.uri_field %}
-                                {% set uri_field = data.uri_field %}
+                            {% if data.provider.uri_field %}
+                                {% set uri_field = data.provider.uri_field %}
                                 <th>{{ uri_field }}</th>
-                            {% elif data.response.provider.title_field %}
-                                {% set title_field = data.title_field %}
+                            {% elif data.provider.title_field %}
+                                {% set title_field = data.provider.title_field %}
                                 <th>{{ title_field }}</th>
                             {% else %}
                                 <th>id</th>
                             {% endif %}
 
-                            {% for k in data.response.features[0].properties.keys() %}
-                                {% if k not in [data.id_field, data.title_field, data.uri_field, 'extent'] %}
+                            {% for k in data.features.features[0].properties %}
+                                {% if k not in [data.provider.id_field, data.provider.title_field, data.provider.uri_field, 'extent', 'links'] %}
                                     {% set props = props.append(k) %}
                                     <th>{{ k | striptags }}</th>
                                 {% endif %}
@@ -131,35 +131,34 @@
                         </tr>
                         </thead>
                         <tbody>
-                        {% for ft in data.response.features %}
+                        {% for feature in data.features.features %}
                             <tr>
-                                {% if data.response.provider.uri_field %}
-                                    {% set uri_field = data.uri_field %}
+                                {% if data.provider.uri_field %}
+                                    {% set uri_field = data.provider.uri_field %}
                                     <td data-label="{{ uri_field }}">
-                                        <a href="{{ ft.properties.get(uri_field) }}"
-                                           title="{{ ft.properties.get(uri_field) }}">
-                                            {{ ft.properties.get(uri_field) }}
+                                        <a href="{{ feature.properties.get(uri_field) }}"
+                                           title="{{ feature.properties.get(uri_field) }}">
+                                            {{ feature.properties.get(uri_field) }}
                                         </a>
                                     </td>
-                                {% elif data.response.provider.title_field %}
-                                    {% set title_field = data.title_field %}
+                                {% elif data.provider.title_field %}
+                                    {% set title_field = data.provider.title_field %}
                                     <td data-label="{{ title_field }}">
-                                        <a href="{{ data.items_path }}/{{ ft.id }}"
-                                           title="{{ ft.properties.get(title_field) }}">
-                                            {{ ft.properties.get(title_field) | string | truncate( 35 ) }}
+                                        <a href="{{ data.provider.items_path }}/{{ feature.id }}"
+                                           title="{{ feature.properties.get(title_field) }}">
+                                            {{ feature.properties.get(title_field) | string | truncate( 35 ) }}
                                         </a>
                                     </td>
                                 {% else %}
                                     <td data-label="id">
-                                        <a href="{{ data.items_path }}/{{ ft.id }}" title="{{ ft.id }}">
-                                            {{ ft.id | string | truncate( 12 ) }}
+                                        <a href="{{ feature.properties.links[0].href }}" title="{{ feature.id }}">
+                                            {{ feature.id | string | truncate( 12 ) }}
                                         </a>
                                     </td>
                                 {% endif %}
-
                                 {% for prop in props %}
                                     <td data-label="{{ prop }}">
-                                        {{ ft.properties.get(prop, '') | string | truncate( 35 ) }}
+                                        {{ feature.properties.get(prop, '') | string | truncate( 35 ) }}
                                     </td>
                                 {% endfor %}
 
@@ -169,10 +168,10 @@
                     </table>
                 </div>
             </div>
-        {% elif data.response.pagination.number_matched %}
+        {% elif data.pagination.number_matched %}
             <div class="row">
                 <div class="col-sm-12">
-                    <p>{% trans %}Items in this collection{% endtrans %}: {{ data.response.pagination.number_matched }}</p>
+                    <p>{% trans %}Items in this collection{% endtrans %}: {{ data.pagination.number_matched }}</p>
                 </div>
             </div>
         {% else %}
@@ -184,9 +183,9 @@
 {% endblock %}
 
 {% block extrafoot %}
-    {% if data.response.features %}
+    {% if data.features %}
         <script>
-            {% if data.response.provider.type_ == 'record' %}
+            {% if data.provider.type_ == 'record' %}
 
                 document.getElementById("q").addEventListener("keydown", function (event) {
                     if (event.key === "Enter") {
@@ -227,7 +226,7 @@
                     }
 
                     if (query_string.length > 0) {
-                        document.location.href = '{{ data.items_path }}' + '?' + query_string.join('&');
+                        document.location.href = '{{ data.provider.items_path }}' + '?' + query_string.join('&');
                     }
                 }
             {% endif %}
@@ -238,12 +237,11 @@
                     attribution: '{{ pygeoapi_config.server.map.attribution | safe }}'
                 }
             ));
-            var geojson_data = {{ data.response.features | tojson }};
+            var geojson_data = {{ data.features | tojson }};
 
             var items = new L.GeoJSON(geojson_data, {
                 onEachFeature: function (feature, layer) {
-                    var url = '{{ data.items_path }}/' + feature.id + '?f=html';
-                    var html = '<span><a href="' + url + '">' + {% if data.title_field %} feature.properties['{{ data['title_field'] }}'] {% else %}
+                    var html = '<span><a href="' + feature.properties.links[0].href + '">' + {% if data.provider.title_field %}feature.properties['{{ data.provider.title_field }}'] {% else %}
                         feature.id {% endif %} + '</a></span>';
                     layer.bindPopup(html);
                 }
@@ -258,7 +256,7 @@
 
             map.fitBounds(items.getBounds());
 
-            {% if data.itemtype == 'record' %}
+            {% if data.provider.itemtype == 'record' %}
                 function getBbox(rect) {
                     bounds = rect.getBounds();
 

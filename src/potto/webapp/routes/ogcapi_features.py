@@ -1,4 +1,5 @@
 import json
+import logging
 
 import babel
 from jinja2 import TemplateNotFound
@@ -16,11 +17,14 @@ from starlette.responses import (
 from ...wrapper import Potto
 from ...schemas.items import FeatureCollectionFilter
 from ...schemas.web import (
+    GeoJsonItem,
     GeoJsonItemCollection,
     JsonLdItemCollection,
     HtmlItemCollection,
 )
 from .. import util
+
+logger = logging.getLogger(__name__)
 
 
 async def list_collections(request: Request) -> Response:
@@ -142,19 +146,20 @@ async def list_collection_items(request: Request) -> Response:
 
 async def get_item_details(request: Request) -> Response:
     current_locale = babel.Locale.parse(request.state.language)
-    requested_format = util.get_accepted_info(request)[1]
-    format_to_process = (
-        (requested_format if requested_format != F_HTML else F_JSON)
-        or F_JSON
-    )
     potto: Potto = request.state.potto
     result = await potto.api_get_item(
         collection_id=request.path_params["collection_id"],
         item_id=request.path_params["item_id"],
         locale=current_locale,
-        output_format=format_to_process,
     )
-    if requested_format == F_HTML:
+    logger.debug(f"{result=}")
+    if (requested_format := util.get_accepted_info(request)[1]) == F_HTML:
         raise NotImplementedError
-    else:
+    elif requested_format == F_JSONLD:
         return JSONResponse(content=result.content, headers=result.metadata)
+    else:
+        response_content = GeoJsonItem.from_potto(result, request.url_for)
+        return JSONResponse(
+            content=response_content.model_dump(by_alias=True),
+            headers=result.metadata
+        )

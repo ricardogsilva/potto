@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import Annotated
 
 from pygeoapi.api import (
     FORMAT_TYPES,
@@ -11,16 +12,28 @@ import pydantic
 from ..webapp.protocols import UrlResolver
 from .potto import (
     CollectionFeatureListResponse,
+    FeatureResponse,
 )
+from . import (
+    items,
+    pygeoapi_config,
+)
+from .base import Link
 
 
-class Link(pydantic.BaseModel):
-    media_type: str = pydantic.Field(alias="type")
-    rel: str
-    href: str
-    title: str | None = None
-    href_lang: str | None = None
-    length: int | None = None
+class GeoJsonItem(pydantic.BaseModel):
+    id_: str = pydantic.Field(alias="id")
+    type_: Annotated[str, pydantic.Field(alias="type")] = "feature"
+    properties: dict
+    geometry: dict
+
+    @classmethod
+    def from_potto(
+            cls,
+            potto_response: FeatureResponse,
+            url_resolver: UrlResolver
+    ) -> "GeoJsonItem":
+        raise NotImplementedError
 
 
 class GeoJsonItemCollection(pydantic.BaseModel):
@@ -48,7 +61,10 @@ class GeoJsonItemCollection(pydantic.BaseModel):
         )
         return cls(
             type="FeatureCollection",
-            features=[feat.as_geojson() for feat in potto_response.features],
+            features=[
+                feat.as_geojson(potto_response.resource, url_resolver)
+                for feat in potto_response.features
+            ],
             links=[
                 Link(
                     type=FORMAT_TYPES[F_JSON],
@@ -138,7 +154,11 @@ class JsonLdItemCollection(pydantic.BaseModel):
 
 
 class HtmlItemCollection(pydantic.BaseModel):
-    response: CollectionFeatureListResponse
+    resource: pygeoapi_config.ItemCollectionConfig
+    provider: pygeoapi_config.ProviderConfig
+    features: dict
+    pagination: items.FeatureCollectionPaginationContext
+    filter_: items.FeatureCollectionFilter
     links: list[Link]
 
     @classmethod
@@ -158,7 +178,17 @@ class HtmlItemCollection(pydantic.BaseModel):
             additional_query_params=potto_response.filter_.as_kwargs()
         )
         return cls(
-            response=potto_response,
+            resource=potto_response.resource,
+            provider=potto_response.provider,
+            features={
+                "type": "FeatureCollection",
+                "features": [
+                    f.as_geojson(potto_response.resource, url_resolver)
+                    for f in potto_response.features
+                ],
+            },
+            pagination=potto_response.pagination,
+            filter_=potto_response.filter_,
             links=[
                 *pagination_links,
                 Link(

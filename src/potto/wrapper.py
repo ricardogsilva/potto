@@ -26,6 +26,7 @@ from .schemas.pygeoapi_config import ItemCollectionConfig
 from .schemas.potto import (
     PottoResponse,
     CollectionFeatureListResponse,
+    FeatureResponse,
 )
 from .webapp.requests import PottoRequest
 
@@ -275,8 +276,9 @@ class Potto:
             collection_id: str,
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
-    ) -> PottoResponse:
-        original_response = _get_collection_item(
+    ) -> FeatureResponse:
+        pygeoapi_response = await asyncio.to_thread(
+            _get_collection_item,
             self._pygeoapi_api,
             PottoRequest(
                 locale=locale,
@@ -285,9 +287,16 @@ class Potto:
             dataset=collection_id,
             identifier=item_id,
         )
-        original_headers, original_status_code, original_content = original_response
-        return PottoResponse(
-            content_type=original_headers.pop("Content-Type"),
-            content=json.loads(original_content),
-            metadata={**original_headers}
+        pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
+
+        parsed_pygeoapi_content = json.loads(pygeoapi_content)
+        collection_config = self.get_item_collection_config(collection_id)
+        return FeatureResponse(
+            resource=collection_config,
+            provider=collection_config.get_default_provider_config(type_="feature"),
+            feature=items.Feature.from_original_feature(parsed_pygeoapi_content),
+            metadata={
+                **pygeoapi_headers,
+                "timestamp": parsed_pygeoapi_content.get("timeStamp"),
+            }
         )
