@@ -21,6 +21,7 @@ from ...schemas.web import (
     GeoJsonItemCollection,
     JsonLdItemCollection,
     HtmlItemCollection,
+    HtmlItemFeature,
 )
 from .. import util
 
@@ -154,12 +155,39 @@ async def get_item_details(request: Request) -> Response:
     )
     logger.debug(f"{result=}")
     if (requested_format := util.get_accepted_info(request)[1]) == F_HTML:
-        raise NotImplementedError
+        # pygeoapi supports looking for templates also in the configuration
+        # of the underlying resource being acted upon by looking for
+        # a `templates` key in the resource configuration - potto does not
+        # support this but will rather search for templates named
+        # `templates/items/{collection_id}-item-feature.html` and fallback to
+        # `templates/items/item-feature.html`
+        try:
+            template_path = f"items/{result.resource.identifier}-item-feature.html"
+            request.state.templates.get_template(template_path)
+        except TemplateNotFound:
+            template_path = f"items/item-feature.html"
+
+        response_content = HtmlItemFeature.from_potto(result, request.url_for)
+        return request.state.templates.TemplateResponse(
+            request,
+            template_path,
+            context={
+                "data": response_content,
+                "pygeoapi_config": potto.get_localized_config(current_locale),
+            },
+            headers={
+                **result.metadata,
+                "Content-Type": "text/html; charset=utf-8",
+            }
+        )
+
+
     elif requested_format == F_JSONLD:
-        return JSONResponse(content=result.content, headers=result.metadata)
+        raise NotImplementedError
     else:
-        response_content = GeoJsonItem.from_potto(result, request.url_for)
+        response_content = GeoJsonItem.from_potto(
+            result.feature, result.resource, request.url_for)
         return JSONResponse(
-            content=response_content.model_dump(by_alias=True),
+            content=response_content.model_dump(by_alias=True, exclude_none=True),
             headers=result.metadata
         )

@@ -144,38 +144,6 @@ class Feature(pydantic.BaseModel):
             geometry=shapely.from_geojson(json.dumps(original_feature["geometry"]))
         )
 
-    def as_geojson(
-            self,
-            resource_config: pygeoapi_config.ItemCollectionConfig,
-            url_resolver: UrlResolver,
-            detail_link_format: str = F_JSON
-    ) -> dict:
-        serialized = {
-            **self.model_dump(
-                by_alias=True,
-                exclude={
-                    "geometry",
-                }
-            ),
-            "type": "Feature",
-            "geometry": json.loads(shapely.to_geojson(self.geometry)),
-        }
-        serialized["properties"]["links"] = [
-            Link(
-                type=FORMAT_TYPES.get(detail_link_format, F_JSON),
-                rel="detail",
-                href=str(
-                    url_resolver(
-                        "get-item",
-                        collection_id=resource_config.identifier,
-                        item_id=self.id_
-                    )
-                ),
-                title="This feature's detail",
-            ).model_dump(exclude_none=True)
-        ]
-        return serialized
-
     def as_jsonld(
             self,
             resource_config: pygeoapi_config.ItemCollectionConfig,

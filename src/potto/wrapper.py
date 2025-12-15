@@ -288,6 +288,9 @@ class Potto:
             identifier=item_id,
         )
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
+        logger.debug(f"{pygeoapi_content=}")
+        logger.debug(f"{pygeoapi_headers=}")
+        logger.debug(f"{pygeoapi_status_code=}")
 
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
         collection_config = self.get_item_collection_config(collection_id)
@@ -295,8 +298,5 @@ class Potto:
             resource=collection_config,
             provider=collection_config.get_default_provider_config(type_="feature"),
             feature=items.Feature.from_original_feature(parsed_pygeoapi_content),
-            metadata={
-                **pygeoapi_headers,
-                "timestamp": parsed_pygeoapi_content.get("timeStamp"),
-            }
+            metadata=pygeoapi_headers
         )
