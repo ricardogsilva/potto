@@ -30,14 +30,13 @@ from .routes import (
     ogcapi_common as ogc_api_common_routes,
     ogcapi_features as ogc_api_features_routes,
 )
+from .state import AppState
+from .api.main import create_api_app_from_settings
 
 logger = logging.getLogger(__name__)
 
 
-class AppState(TypedDict):
-    settings: config.PottoSettings
-    potto: Potto
-    templates: Jinja2Templates
+_default_app_state: AppState | None = None
 
 
 @contextlib.asynccontextmanager
@@ -75,11 +74,14 @@ async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
         "pygeoapi_version": pygeoapi_version,
     })
     configure_jinja_env(jinja_env)
-    yield AppState(
+    global _default_app_state
+    _default_app_state = AppState(
         settings = settings,
         templates=Jinja2Templates(env=jinja_env),
         potto=Potto.from_settings(settings),
     )
+    yield _default_app_state
+    _default_app_state = None
 
 
 def create_app() -> Starlette:
@@ -156,7 +158,13 @@ def get_routes(
                 name="list-collections"
             ),
         ])
+    api_app = create_api_app_from_settings(settings)
     routes.extend([
+        Mount(
+            "/api",
+            app=api_app,
+            name="api"
+        ),
         Mount(
             "/static",
             app=StaticFiles(

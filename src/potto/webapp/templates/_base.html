@@ -107,9 +107,9 @@
                 {% endblock %}
                 <span style="float: inline-end">
                     {% for link in data.links %}
-                        {% if link.rel == 'alternate' and link.type and link.type in ['application/json', 'application/geo+json', 'application/prs.coverage+json'] %}
+                        {% if link.rel == 'alternate' and link.media_type in ['application/json', 'application/geo+json', 'application/prs.coverage+json'] %}
                             <a href="{{ link.href }}">{% trans %}json{% endtrans %}</a>
-                        {% elif link.rel == 'alternate' and link.type and link.type == 'application/ld+json' %}
+                        {% elif link.rel == 'alternate' and link.media_type == 'application/ld+json' %}
                             <a href="{{ link.href }}">{% trans %}jsonld{% endtrans %}</a>
                         {% endif %}
                     {% endfor %}

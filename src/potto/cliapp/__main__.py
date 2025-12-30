@@ -1,4 +1,4 @@
-from .app import potto_app
+from .main import potto_app
 
 
 if __name__ == "__main__":

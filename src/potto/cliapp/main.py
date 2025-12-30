@@ -56,7 +56,7 @@ def run_uvicorn_server(
 
     uvicorn_args = [
         "uvicorn",
-        "potto.webapp.app:create_app",
+        "potto.webapp.main:create_app",
         f"--port={settings.bind_port}",
         f"--host={settings.bind_host}",
         "--factory",

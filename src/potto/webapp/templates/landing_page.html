@@ -18,8 +18,8 @@
             <div class="col-md-8 col-sm-12">
                 <section id="identification">
                     {% if show_description %}
-                        <h1>{{ pygeoapi_config.metadata.identification.title }}</h1>
-                        <p>{{ pygeoapi_config.metadata.identification.description }}</p>
+                        <h1>{{ data.title }}</h1>
+                        <p>{{ data.description }}</p>
                     {% endif %}
                     <p>
                         {% for kw in pygeoapi_config.metadata.identification.keywords %}

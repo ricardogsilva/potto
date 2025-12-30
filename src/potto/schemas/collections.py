@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import (
+    Annotated,
     Literal,
     Mapping,
     Sequence,
@@ -8,45 +9,55 @@ from typing import (
 
 import pydantic
 import shapely
-from pygeoapi.api import (
-    F_JSON,
-    FORMAT_TYPES,
-)
+from pygeoapi.api import F_JSON
 
+from .. import constants
 from ..webapp.protocols import UrlResolver
 from . import pygeoapi_config
-from .base import Link
+from .base import (
+    Extent,
+    Link,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class CollectionFilter(pydantic.BaseModel):
+class Collection(pydantic.BaseModel):
+    id_: Annotated[str, pydantic.Field(alias="id")]
+    title: str | None = None
+    description: str | None = None
+    extent: Extent | None = None
+    item_type: Annotated[str, pydantic.Field(alias="itemType")] | None = "feature"
+    crs: list[str] = pydantic.Field(default_factory=lambda : [constants.CRS_84])
+
+
+class ItemFilter(pydantic.BaseModel):
     bbox: str | None = None
-    bbox_crs: str | None = None
+    bbox_crs: Annotated[str | None, pydantic.Field(alias="bbox-crs")] = None
     cql_text: str | None = None
-    datetime_: str | None = None
+    datetime_: Annotated[str | None, pydantic.Field(alias="datetime")] = None
     extra_properties: dict[str, str] | None = None
-    filter_: str | None = None
+    filter_: Annotated[str | None, pydantic.Field(alias="filter")] = None
     filter_lang: str | None = None
     filter_crs_uri: str | None = None
     limit: int = 20
-    locale: str | None = None
+    locale: Annotated[str | None, pydantic.Field(alias="language")] = None
     offset: int = 0
     query: str | None = None
     result_type: Literal["hits", "results"] = "results"
-    select_properties: list[str] | None = None
-    skip_geometry: bool | None = None
-    sort_by: str | None = None
+    select_properties: Annotated[list[str] | None, pydantic.Field(alias="properties")] = None
+    skip_geometry: Annotated[bool | None, pydantic.Field(alias="skipGeometry")] = None
+    sort_by: Annotated[str | None, pydantic.Field(alias="sortby")] = None
 
 
-class FeatureCollectionFilter(CollectionFilter):
+class FeatureFilter(ItemFilter):
     crs: str | None = None
 
     @classmethod
     def from_query_parameters(
             cls,
             params: Mapping[str, str | Sequence[str]],
-    ) -> "FeatureCollectionFilter":
+    ) -> "FeatureFilter":
         return cls(
             bbox=params.get("bbox"),
             bbox_crs=params.get("bbox-crs"),
@@ -68,29 +79,8 @@ class FeatureCollectionFilter(CollectionFilter):
             ),
         )
 
-    def as_kwargs(self) -> dict:
-        return {
-            k: v for k, v in {
-                **self.extra_properties,
-                "bbox": self.bbox,
-                "bbox-crs": self.bbox_crs,
-                "crs": self.crs,
-                "datetime": self.datetime_,
-                "filter": self.filter_,
-                "filter-crs": self.filter_crs_uri,
-                "filter-lang": self.filter_lang,
-                "limit": self.limit,
-                "offset": str(self.offset),
-                "q": self.query,
-                "resulttype": self.result_type,
-                "sortby": self.sort_by,
-                "skipGeometry": "true" if self.skip_geometry else "false",
-            }.items()
-            if v is not None
-        }
 
-
-class FeatureCollectionPaginationContext(pydantic.BaseModel):
+class CollectionItemsPaginationContext(pydantic.BaseModel):
     limit: int
     number_matched: int
     number_returned: int
@@ -99,7 +89,7 @@ class FeatureCollectionPaginationContext(pydantic.BaseModel):
     def get_links(
             self,
             base_url: str,
-            target_media_type: str = F_JSON,
+            target_media_type: str = constants.MEDIA_TYPE_JSON,
             additional_query_params: dict[str, str] | None = None,
     ) -> list[Link]:
         additional = "&".join(f"{k}={v}" for k, v in additional_query_params.items())

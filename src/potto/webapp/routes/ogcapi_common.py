@@ -1,4 +1,3 @@
-import json
 import logging
 
 import babel
@@ -15,6 +14,8 @@ from starlette.responses import (
 )
 from starlette_babel import gettext_lazy as _
 
+from ... import constants
+from ...schemas.web.landing import HtmlLanding
 from ...wrapper import Potto
 from .. import util
 
@@ -23,43 +24,24 @@ logger = logging.getLogger(__name__)
 
 async def get_landing_page(request: Request) -> Response:
     potto: Potto = request.state.potto
-    requested_format = util.get_accepted_info(request)[1]
-    format_to_process = (
-        requested_format
-        if requested_format != F_HTML else F_JSON
-    ) or F_JSON
     current_locale = babel.Locale.parse(request.state.language)
     result = await potto.api_get_landing_page(
         locale=current_locale,
-        output_format=format_to_process,
+        output_format=constants.PYGEOAPI_F_JSON,
     )
-    if requested_format == F_HTML:
-        content = result.content
-        content["links"] = util.set_html_link_self_relation(content["links"])
-        json_ld_result = await potto.api_get_landing_page(
-            locale=current_locale,
-            output_format=F_JSONLD
-        )
-        return request.state.templates.TemplateResponse(
-            request,
-            "landing_page.html",
-            context={
-                "show_description": False,
-                "data": content,
-                "has_item_collections": potto.has_item_collection_resources(),
-                "has_stac_collections": potto.has_stac_collection_resources(),
-                "has_processes": potto.has_process_resources(),
-                "has_tiles": potto.has_tiles(),
-                "pygeoapi_config": potto.get_localized_config(current_locale),
-                "jsonld_content": json.dumps(json_ld_result.content),
-            }
-        )
-    else:
-        return JSONResponse(
-            content=result.content,
-            status_code=200,
-            headers=result.metadata
-        )
+    return request.state.templates.TemplateResponse(
+        request,
+        "landing_page.html",
+        context={
+            "show_description": False,
+            "data": HtmlLanding.from_potto(result, request.url_for),
+            "has_item_collections": potto.has_item_collection_resources(),
+            "has_stac_collections": potto.has_stac_collection_resources(),
+            "has_processes": potto.has_process_resources(),
+            "has_tiles": potto.has_tiles(),
+            "pygeoapi_config": potto.get_localized_config(current_locale),
+        }
+    )
 
 
 async def get_conformance_details(request: Request) -> Response:

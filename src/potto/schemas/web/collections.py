@@ -1,29 +1,61 @@
-import json
 import datetime as dt
+import json
 from typing import (
     Annotated,
+    Literal,
     Sequence,
 )
 
 import pydantic
 import shapely
-from pygeoapi.api import (
-    FORMAT_TYPES,
-    F_JSON,
-    F_JSONLD,
-    F_HTML,
+
+from ... import constants
+from ...webapp.protocols import UrlResolver
+from ..base import (
+    Extent,
+    Link,
+)
+from .. import (
+    collections as internal_collections,
+    pygeoapi_config,
+    potto,
 )
 
-from ..webapp.protocols import UrlResolver
-from .potto import (
-    CollectionFeatureListResponse,
-    FeatureResponse,
-)
-from . import (
-    items,
-    pygeoapi_config,
-)
-from .base import Link
+
+class ItemFilter(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="allow")
+
+    bbox: str | None = None
+    bbox_crs: Annotated[str | None, pydantic.Field(alias="bbox-crs")] = None
+    cql_text: str | None = None
+    datetime_: Annotated[str | None, pydantic.Field(alias="datetime")] = None
+    extra_properties: dict[str, str] | None = None
+    filter_: Annotated[str | None, pydantic.Field(alias="filter")] = None
+    filter_lang: str | None = None
+    filter_crs_uri: str | None = None
+    limit: int = 20
+    locale: Annotated[str | None, pydantic.Field(alias="language")] = None
+    offset: int = 0
+    query: str | None = None
+    result_type: Literal["hits", "results"] = "results"
+    select_properties: Annotated[list[str] | None, pydantic.Field(alias="properties")] = None
+    skip_geometry: Annotated[bool | None, pydantic.Field(alias="skipGeometry")] = None
+    sort_by: Annotated[str | None, pydantic.Field(alias="sortby")] = None
+
+
+class JsonCollection(pydantic.BaseModel):
+    id_: Annotated[str, pydantic.Field(alias="id")]
+    title: str | None = None
+    description: str | None = None
+    links: list[Link]
+    extent: Extent | None = None
+    item_type: Annotated[str, pydantic.Field(alias="itemType")] | None = "feature"
+    crs: list[str] = pydantic.Field(default_factory=lambda : [constants.CRS_84])
+
+
+class JsonCollectionList(pydantic.BaseModel):
+    links: list[Link]
+    collections: list[JsonCollection]
 
 
 class GeoJsonItem(pydantic.BaseModel):
@@ -36,7 +68,7 @@ class GeoJsonItem(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            feature: items.Feature,
+            feature: internal_collections.Feature,
             resource: pygeoapi_config.ItemCollectionConfig,
             url_resolver: UrlResolver,
             exclude_link_relations: Sequence[str] | None = None
@@ -47,7 +79,7 @@ class GeoJsonItem(pydantic.BaseModel):
                 rel="self",
                 href=str(
                     url_resolver(
-                        "get-item",
+                        "api:get-item",
                         collection_id=resource.identifier,
                         item_id=feature.id_
                     )
@@ -55,19 +87,7 @@ class GeoJsonItem(pydantic.BaseModel):
                 title="Details about this feature",
             ),
             Link(
-                type=FORMAT_TYPES.get(F_JSONLD),
-                rel="alternate",
-                href=str(
-                    url_resolver(
-                        "get-item",
-                        collection_id=resource.identifier,
-                        item_id=feature.id_
-                    )
-                ),
-                title="Details about this feature as JSON-LD",
-            ),
-            Link(
-                type=FORMAT_TYPES.get(F_HTML),
+                type=constants.MEDIA_TYPE_HTML,
                 rel="alternate",
                 href=str(
                     url_resolver(
@@ -79,18 +99,18 @@ class GeoJsonItem(pydantic.BaseModel):
                 title="Details about this feature as HTML",
             ),
             Link(
-                type=FORMAT_TYPES.get(F_JSON),
+                type=constants.MEDIA_TYPE_JSON,
                 rel="collection",
                 href=str(
                     url_resolver(
-                        "get-collection",
+                        "api:get-collection",
                         collection_id=resource.identifier,
                     )
                 ),
                 title="This feature's collection",
             ),
             Link(
-                type=FORMAT_TYPES.get(F_HTML),
+                type=constants.MEDIA_TYPE_HTML,
                 rel="collection",
                 href=str(
                     url_resolver(
@@ -120,7 +140,7 @@ class GeoJsonItemCollection(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            potto_response: CollectionFeatureListResponse,
+            potto_response: potto.CollectionFeatureListResponse,
             url_resolver: UrlResolver
     ) -> "GeoJsonItemCollection":
         pagination_links = potto_response.pagination.get_links(
@@ -130,7 +150,8 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     collection_id=potto_response.resource.identifier
                 )
             ),
-            additional_query_params=potto_response.filter_.as_kwargs()
+            additional_query_params=potto_response.filter_.model_dump(
+                by_alias=True, exclude_none=True, exclude={"offset"})
         )
         return cls(
             type="FeatureCollection",
@@ -143,29 +164,18 @@ class GeoJsonItemCollection(pydantic.BaseModel):
             ],
             links=[
                 Link(
-                    type=FORMAT_TYPES[F_JSON],
+                    type=constants.MEDIA_TYPE_JSON,
                     rel="self",
                     href=str(
                         url_resolver(
-                            "list-collection-items",
+                            "api:list-collection-items",
                             collection_id=potto_response.resource.identifier
                         )
                     ),
                     title="This document"
                 ),
                 Link(
-                    type=FORMAT_TYPES[F_JSONLD],
-                    rel="alternate",
-                    href=str(
-                        url_resolver(
-                            "list-collection-items",
-                            collection_id=potto_response.resource.identifier
-                        )
-                    ),
-                    title="This document as JSON-LD"
-                ),
-                Link(
-                    type=FORMAT_TYPES[F_HTML],
+                    type=constants.MEDIA_TYPE_HTML,
                     rel="alternate",
                     href=str(
                         url_resolver(
@@ -176,7 +186,7 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     title="This document as HTML"
                 ),
                 Link(
-                    type=FORMAT_TYPES[F_HTML],
+                    type=constants.MEDIA_TYPE_HTML,
                     rel="collection",
                     href=str(
                         url_resolver(
@@ -204,7 +214,7 @@ class JsonLdItemCollection(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            potto_response: CollectionFeatureListResponse,
+            potto_response: potto.CollectionFeatureListResponse,
             url_resolver: UrlResolver
     ) -> "JsonLdItemCollection":
         detail_url = url_resolver(
@@ -233,15 +243,15 @@ class HtmlItemCollection(pydantic.BaseModel):
     resource: pygeoapi_config.ItemCollectionConfig
     provider: pygeoapi_config.ProviderConfig
     features: dict
-    pagination: items.FeatureCollectionPaginationContext
-    filter_: items.FeatureCollectionFilter
+    pagination: internal_collections.CollectionItemsPaginationContext
+    filter_: internal_collections.FeatureFilter
     links: list[Link]
 
     @classmethod
     def from_potto(
-        cls,
-        potto_response: CollectionFeatureListResponse,
-        url_resolver: UrlResolver
+            cls,
+            potto_response: potto.CollectionFeatureListResponse,
+            url_resolver: UrlResolver
     ) -> "HtmlItemCollection":
         pagination_links = potto_response.pagination.get_links(
             str(
@@ -250,8 +260,8 @@ class HtmlItemCollection(pydantic.BaseModel):
                     collection_id=potto_response.resource.identifier
                 )
             ),
-            target_media_type=F_HTML,
-            additional_query_params=potto_response.filter_.as_kwargs()
+            target_media_type=constants.MEDIA_TYPE_HTML,
+            additional_query_params=potto_response.filter_.model_dump(by_alias=True)
         )
         return cls(
             resource=potto_response.resource,
@@ -271,7 +281,7 @@ class HtmlItemCollection(pydantic.BaseModel):
             links=[
                 *pagination_links,
                 Link(
-                    type=FORMAT_TYPES[F_HTML],
+                    type=constants.MEDIA_TYPE_HTML,
                     rel="self",
                     href=str(
                         url_resolver(
@@ -282,26 +292,15 @@ class HtmlItemCollection(pydantic.BaseModel):
                     title="This document"
                 ),
                 Link(
-                    type=FORMAT_TYPES[F_JSON],
+                    type=constants.MEDIA_TYPE_JSON,
                     rel="alternate",
                     href=str(
                         url_resolver(
-                            "list-collection-items",
+                            "api:list-collection-items",
                             collection_id=potto_response.resource.identifier
                         )
-                    ) + f"?f={F_JSON}",
+                    ),
                     title="This document as JSON"
-                ),
-                Link(
-                    type=FORMAT_TYPES[F_JSONLD],
-                    rel="alternate",
-                    href=str(
-                        url_resolver(
-                            "list-collection-items",
-                            collection_id=potto_response.resource.identifier
-                        )
-                    ) + f"?f={F_JSONLD}",
-                    title="This document as JSON-LD"
                 ),
             ],
         )
