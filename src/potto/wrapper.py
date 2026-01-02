@@ -6,8 +6,6 @@ from typing import Literal
 import babel
 from pygeoapi.api import (
     API as _API,
-    landing_page as _landing_page,
-    conformance as _conformance,
     describe_collections as _describe_collections,
     evaluate_limit as _evaluate_limit,
     F_JSON,
@@ -20,12 +18,18 @@ from pygeoapi.api.itemtypes import (
 from pygeoapi.openapi import get_oas_30
 from pygeoapi.l10n import translate_struct
 
-from . import config
+from . import (
+    config,
+    constants,
+)
 from .schemas import (
     collections as collections_schemas,
     potto as potto_schemas,
 )
-from .schemas.pygeoapi_config import ItemCollectionConfig
+from .schemas.pygeoapi_config import (
+    ItemCollectionConfig,
+    ServerMetadataIdentificationConfig,
+)
 from .webapp.requests import PottoRequest
 
 logger = logging.getLogger(__name__)
@@ -73,35 +77,46 @@ class Potto:
     def list_resource_configs(self) -> dict:
         return self.get_raw_config().get("resources", {})
 
-    def list_item_collection_resource_configs(self) -> dict:
+    def _list_raw_item_collection_resource_configs(self) -> dict[str, dict]:
         return {
             id_: resource.copy()
             for id_, resource in self.list_resource_configs().items()
-            if resource.get("type", "collection")
+            if resource.get("type", "collection") == "collection"
         }
+
+    def _get_raw_item_collection_config(self, collection_id: str) -> dict:
+        return self._list_raw_item_collection_resource_configs().get(collection_id)
+
+    def list_item_collection_configs(self) -> list[ItemCollectionConfig]:
+        return [
+            ItemCollectionConfig.from_pygeoapi_config(id_, raw_conf)
+            for id_, raw_conf
+            in self._list_raw_item_collection_resource_configs().items()
+        ]
 
     def get_item_collection_config(self, collection_id: str) -> ItemCollectionConfig:
         return ItemCollectionConfig.from_pygeoapi_config(
             collection_id,
-            self.get_raw_item_collection_config(collection_id)
+            self._get_raw_item_collection_config(collection_id)
         )
 
-    def get_raw_item_collection_config(self, collection_id: str) -> dict:
-        return self.list_item_collection_resource_configs().get(collection_id)
-
-    def list_stac_collection_resource_configs(self) -> dict:
+    def _list_raw_stac_collection_resource_configs(self) -> dict:
         return {
             id_: resource.copy()
             for id_, resource in self.list_resource_configs().items()
             if resource.get("type", "stac-collection")
         }
 
-    def list_process_resource_configs(self) -> dict:
+    def _list_raw_process_resource_configs(self) -> dict:
         return {
             id_: resource.copy()
             for id_, resource in self.list_resource_configs().items()
             if resource.get("type", "process")
         }
+
+    def get_server_identification_config(self) -> ServerMetadataIdentificationConfig:
+        return ServerMetadataIdentificationConfig.from_pygeoapi_config(
+            self.get_raw_config()["metadata"]["identification"])
 
     def get_localized_config(self, locale: babel.Locale) -> dict:
         return translate_struct(
@@ -111,61 +126,41 @@ class Potto:
         )
 
     def has_item_collection_resources(self) -> bool:
-        return len(self.list_item_collection_resource_configs()) > 0
+        return len(self.list_item_collection_configs()) > 0
 
     def has_stac_collection_resources(self) -> bool:
-        return len(self.list_stac_collection_resource_configs()) > 0
+        return len(self._list_raw_stac_collection_resource_configs()) > 0
 
     def has_process_resources(self) -> bool:
-        return len(self.list_process_resource_configs()) > 0
+        return len(self._list_raw_process_resource_configs()) > 0
 
     def has_tiles(self) -> bool:
-        for resource in self.list_item_collection_resource_configs().values():
+        for resource in self._list_raw_item_collection_resource_configs().values():
             for provider in resource.get("providers", []):
                 if provider.get("type") == "tile":
                     return True
         return False
 
     async def api_get_landing_page(
-            self,
-            *,
-            locale: babel.Locale,
-            output_format: Literal["json", "jsonld"] = "json"
-    ) -> potto_schemas.LandingPage:
-        pygeoapi_response = _landing_page(
-            self._pygeoapi_api,
-            PottoRequest(
-                locale=locale,
-                output_format=output_format,
-            )
-
-        )
-        pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
-        parsed_pygeoapi_response = json.loads(pygeoapi_content)
+            self, *, language: str | None = None) -> potto_schemas.LandingPage:
+        identification_config = self.get_server_identification_config()
         return potto_schemas.LandingPage(
-            title=parsed_pygeoapi_response.get("title"),
-            description=parsed_pygeoapi_response.get("description"),
-            attribution=parsed_pygeoapi_response.get("attribution")
+            title=identification_config.title.get_value(language),
+            description=identification_config.description.get_value(language),
+            attribution=None,
+            collections=[
+                collections_schemas.Collection.from_config(coll_conf, language)
+                for coll_conf in self.list_item_collection_configs()
+            ]
         )
 
-    async def api_get_conformance_details(
-            self,
-            *,
-            locale: babel.Locale,
-            output_format: Literal["json", "jsonld"] = "json"
-    ) -> potto_schemas.PottoResponse:
-        original_response = _conformance(
-            self._pygeoapi_api,
-            PottoRequest(
-                locale=locale,
-                output_format=output_format,
-            )
-        )
-        original_headers, original_status_code, original_content = original_response
-        return potto_schemas.PottoResponse(
-            content_type=original_headers.pop("Content-Type"),
-            content=json.loads(original_content),
-            metadata={**original_headers}
+    async def api_get_conformance_details(self) -> potto_schemas.ConformanceDetail:
+        return potto_schemas.ConformanceDetail(
+            conforms_to=[
+                constants.CONFORMANCE_CLASS_OGCAPI_FEATURES_CORE,
+                constants.CONFORMANCE_CLASS_OGCAPI_FEATURES_GEOJSON,
+                constants.CONFORMANCE_CLASS_OGCAPI_FEATURES_OPENAPI3
+            ]
         )
 
     async def api_get_openapi_document(

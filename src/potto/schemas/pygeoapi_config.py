@@ -4,6 +4,57 @@ from typing import Literal
 import pydantic
 
 
+class LocalizableConfigString(pydantic.RootModel):
+    root: dict[str, str]
+
+    def get_value(self, language: str | None = None) -> str:
+        return self.root.get(language) or list(self.root.values())[0]
+
+    @classmethod
+    def from_pygeoapi_config(cls, value: str | dict[str, str]) -> "LocalizableConfigString":
+        return cls({"en": value} if isinstance(value, str) else value.copy())
+
+
+class LocalizableConfigStringList(pydantic.RootModel):
+    root: dict[str, list[str]]
+
+    def get_value(self, language: str | None = None) -> list[str]:
+        return self.root.get(language) or list(self.root.values())[0]
+
+    @classmethod
+    def from_pygeoapi_config(
+            cls, value: list[str] | dict[str, list[str]]
+    ) -> "LocalizableConfigStringList":
+        if isinstance(value, list):
+            return cls({"en": value})
+        else:
+            return cls(value.copy())
+
+
+class ServerMetadataIdentificationConfig(pydantic.BaseModel):
+    title: LocalizableConfigString
+    description: LocalizableConfigString
+    keywords: LocalizableConfigStringList
+    keywords_type: str
+    terms_of_service: str
+    url: str
+
+    @classmethod
+    def from_pygeoapi_config(
+            cls,
+            identification_config: dict
+    ) -> "ServerMetadataIdentificationConfig":
+        return cls(
+            title=identification_config["title"],
+            description=identification_config["description"],
+            keywords=identification_config["keywords"],
+            keywords_type=identification_config["keywords_type"],
+            terms_of_service=identification_config["terms_of_service"],
+            url=identification_config["url"],
+        )
+
+
+
 class LimitsConfig(pydantic.BaseModel):
     max_items: int = 100
     default_items: int = 10
@@ -158,9 +209,9 @@ class ProviderConfig(pydantic.BaseModel):
 class ItemCollectionConfig(pydantic.BaseModel):
     identifier: str
     type_: Literal["collection"]
-    title: str
-    description: str
-    keywords: list[str]
+    title: LocalizableConfigString
+    description: LocalizableConfigString
+    keywords: LocalizableConfigStringList
     extents: ExtentConfig
     providers: list[ProviderConfig]
     visibility: Literal["default", "hidden"] = "default"
@@ -207,9 +258,12 @@ class ItemCollectionConfig(pydantic.BaseModel):
         return cls(
             identifier=identifier,
             type_=collection_config["type"],
-            title=collection_config["title"],
-            description=collection_config["description"],
-            keywords=collection_config["keywords"],
+            title=LocalizableConfigString.from_pygeoapi_config(
+                collection_config["title"]),
+            description=LocalizableConfigString.from_pygeoapi_config(
+                collection_config["description"]),
+            keywords=LocalizableConfigStringList.from_pygeoapi_config(
+                collection_config["keywords"]),
             extents=ExtentConfig.from_pygeoapi_config(collection_config["extents"]),
             providers=[
                 ProviderConfig.from_pygeoapi_config(raw_provider)

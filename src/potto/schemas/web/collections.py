@@ -49,13 +49,38 @@ class JsonCollection(pydantic.BaseModel):
     description: str | None = None
     links: list[Link]
     extent: Extent | None = None
-    item_type: Annotated[str, pydantic.Field(alias="itemType")] | None = "feature"
+    item_type: Annotated[str | None, pydantic.Field(alias="itemType")] = constants.FEATURE_COLLECTION_ITEM_TYPE
     crs: list[str] = pydantic.Field(default_factory=lambda : [constants.CRS_84])
+
+    @classmethod
+    def from_potto(
+            cls,
+            collection: internal_collections.Collection,
+            url_resolver: UrlResolver
+    ) -> "JsonCollection":
+        return cls(
+            **collection.model_dump(by_alias=True),
+            links=[]
+        )
 
 
 class JsonCollectionList(pydantic.BaseModel):
     links: list[Link]
     collections: list[JsonCollection]
+
+    @classmethod
+    def from_potto(
+            cls,
+            potto_result: potto.CollectionList,
+            url_resolver: UrlResolver
+    ) -> "JsonCollectionList":
+        return cls(
+            collections=[
+                JsonCollection.from_potto(c, url_resolver)
+                for c in potto_result.collections
+            ],
+            links=[]
+        )
 
 
 class GeoJsonItem(pydantic.BaseModel):

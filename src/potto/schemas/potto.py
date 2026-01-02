@@ -18,6 +18,12 @@ class LandingPage:
     title: str | None = None
     description: str | None = None
     attribution: str | None = None
+    collections: list[collections_schemas.Collection] | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class ConformanceDetail:
+    conforms_to: list[str]
 
 
 @dataclasses.dataclass(frozen=True)

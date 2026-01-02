@@ -9,7 +9,6 @@ from typing import (
 
 import pydantic
 import shapely
-from pygeoapi.api import F_JSON
 
 from .. import constants
 from ..webapp.protocols import UrlResolver
@@ -27,8 +26,23 @@ class Collection(pydantic.BaseModel):
     title: str | None = None
     description: str | None = None
     extent: Extent | None = None
-    item_type: Annotated[str, pydantic.Field(alias="itemType")] | None = "feature"
+    item_type: Annotated[str, pydantic.Field(alias="itemType")] | None = constants.FEATURE_COLLECTION_ITEM_TYPE
     crs: list[str] = pydantic.Field(default_factory=lambda : [constants.CRS_84])
+
+    @classmethod
+    def from_config(
+            cls,
+            collection_config: pygeoapi_config.ItemCollectionConfig,
+            language: str | None = None,
+    ) -> "Collection":
+        return cls(
+            id=collection_config.identifier,
+            title=collection_config.title.get_value(language),
+            description=collection_config.description.get_value(language),
+            extent=Extent.from_config(collection_config.extents),
+            itemType=collection_config.type_,
+            crs=[collection_config.extents.spatial.crs],
+        )
 
 
 class ItemFilter(pydantic.BaseModel):

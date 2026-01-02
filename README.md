@@ -18,15 +18,11 @@ uv run potto run-server
 This project is a pygeoapi-powered web application written with starlette and FastAPI. It showcases how to use 
 pygeoapi as a library.
 
-Currently, pygeoapi tries to offer builtin support for all of starlette, flask and django. This results in a complex 
+Currently, pygeoapi offers builtin support for all of starlette, flask and django. This results in a complex 
 codebase which tries to be a library and a framework at the same time. This project exists to explore a different 
-approach. The vision is:
-
-> "Let pygeoapi be a library and focus on geospatial API logic - leave web application stuff for wrapping frameworks"
-
-The main idea behind this project is thus to clearly separate the job of core pygeoapi from whatever framework 
-library is wrapping it, which in this case happens to be starlette/fastapi. This means to let pygeoapi focus on 
-geospatial API processing logic exclusively.
+approach. The idea is to clearly separate the job of core pygeoapi from whatever framework library is wrapping it, 
+which in this case happens to be starlette/fastapi. This means to let pygeoapi focus on geospatial API processing 
+logic exclusively.
 
 What does it mean to let pygeoapi focus solely on the logic of geospatial APIs?
 
@@ -40,6 +36,7 @@ It means:
 - pygeoapi does not need to render links - this is handled by the web application framework
 - pygeoapi does not need to gzip responses - this is handled by the web application framework
 - pygeoapi core does not need to have configuration for the web application server because it does not need to launch it
+- pygeoapi does not need to generate an OpenAPI document, this is a job for the web framework
 
 It also means that there are additional features not currently offered by pygeoapi core which this project can 
 implement in the future, like:
@@ -50,12 +47,10 @@ implement in the future, like:
 - Improving async support
 - etc.
 
-Additionally, this project aims to provide a blueprint application that can be adapted for different needs.
-
 
 ### OGC API compliance notes
 
-Potto presents a single OGC API compliant landing page under `/api` with the main media type of responses being of the
+Potto presents a single OGC API compliant landing page under `/api/` with the main media type of responses being of the
 JSON family. It also has a web UI under `/` - the web UI is intentionally not OGC API compliant. The reason being 
 that the author is of the opinion that replicating all OGC API path operations in a UI results in an overly 
 complicated user experience.

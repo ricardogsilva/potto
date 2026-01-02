@@ -27,7 +27,7 @@ router = APIRouter()
 
 @router.get(
     "/collections",
-    name="list-collections"
+    name="list-collections",
 )
 async def list_collections(request: Request) -> JsonCollectionList:
     current_locale = babel.Locale.parse(request.state.language)
@@ -36,10 +36,7 @@ async def list_collections(request: Request) -> JsonCollectionList:
         locale=current_locale,
         output_format=constants.PYGEOAPI_F_JSON,
     )
-    return JsonCollectionList(
-        collections=[c.model_dump(by_alias=True) for c in result.collections],
-        links=[],
-    )
+    return JsonCollectionList.from_potto(result, request.url_for)
 
 
 @router.get(

@@ -14,8 +14,7 @@ from starlette.responses import (
 )
 from starlette_babel import gettext_lazy as _
 
-from ... import constants
-from ...schemas.web.landing import HtmlLanding
+from ...schemas.web.base import HtmlLanding
 from ...wrapper import Potto
 from .. import util
 
@@ -26,8 +25,7 @@ async def get_landing_page(request: Request) -> Response:
     potto: Potto = request.state.potto
     current_locale = babel.Locale.parse(request.state.language)
     result = await potto.api_get_landing_page(
-        locale=current_locale,
-        output_format=constants.PYGEOAPI_F_JSON,
+        language=current_locale.language,
     )
     return request.state.templates.TemplateResponse(
         request,
@@ -51,10 +49,7 @@ async def get_conformance_details(request: Request) -> Response:
     format_to_process = (
         requested_format if requested_format != F_HTML else F_JSON
     ) or F_JSON
-    result = await potto.api_get_conformance_details(
-        locale=current_locale,
-        output_format=format_to_process,
-    )
+    result = await potto.api_get_conformance_details()
     if requested_format == F_HTML:
         content = result.content
         conformance_url = str(request.url_for("conformance-document"))

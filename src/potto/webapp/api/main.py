@@ -12,7 +12,7 @@ from ... import config
 
 from .routers import (
     collections,
-    landing,
+    base,
 )
 
 
@@ -31,7 +31,7 @@ def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
         tags=["OGC API - Features"]
     )
     app.include_router(
-        landing.router,
-        tags=["landing"]
+        base.router,
+        tags=["base"]
     )
     return app

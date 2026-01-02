@@ -1,6 +1,10 @@
+import typing
 import pydantic
 
 from .. import constants
+
+if typing.TYPE_CHECKING:
+    from .pygeoapi_config import ExtentConfig
 
 
 class Link(pydantic.BaseModel):
@@ -30,3 +34,26 @@ class TemporalExtent(pydantic.BaseModel):
 class Extent(pydantic.BaseModel):
     spatial: TwoDimensionalSpatialExtent | ThreeDimensionSpatialExtent | None = None
     temporal : TemporalExtent | None = None
+
+    @classmethod
+    def from_config(cls, extent_config: "ExtentConfig") -> "Extent":
+        if extent_config.temporal:
+            temporal_conf = {
+                "interval": [
+                    (
+                        begin.strftime("%Y-%m-%DT%H:%M:%SZ") if (begin := extent_config.temporal.begin) else None,
+                        end.strftime("%Y-%m-%DT%H:%M:%SZ") if (end := extent_config.temporal.end) else None
+                    )
+                ],
+                "trs": extent_config.temporal.trs
+            }
+        else:
+            temporal_conf = None
+
+        return cls(
+            spatial={
+                "bbox": [extent_config.spatial.bbox],
+                "crs": extent_config.spatial.crs,
+            },
+            temporal=temporal_conf
+        )
