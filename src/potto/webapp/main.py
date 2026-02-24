@@ -32,6 +32,7 @@ from .routes import (
 )
 from .state import AppState
 from .api.main import create_api_app_from_settings
+from .admin.main import create_admin_app_from_settings
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,8 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
         ],
         lifespan=lifespan,
     )
+    admin_app = create_admin_app_from_settings(settings)
+    admin_app.mount_to(app)
     return app
 
 

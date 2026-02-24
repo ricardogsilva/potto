@@ -1,8 +1,16 @@
+import warnings
 from pathlib import Path
 
 import pydantic
 import pydantic_settings
+from pydantic.networks import PostgresDsn
 from pygeoapi.util import yaml_load
+
+warnings.filterwarnings(
+    "ignore",
+    message="directory .* does not exist",
+    module="pydantic_settings",
+)
 
 
 class PottoSettings(pydantic_settings.BaseSettings):
@@ -14,6 +22,9 @@ class PottoSettings(pydantic_settings.BaseSettings):
 
     bind_host: str = "127.0.0.1"
     bind_port: int = 3001
+    database_dsn: PostgresDsn = PostgresDsn(
+        "postgresql+psycopg://potto:pottopass@localhost/potto"
+    )
     debug: bool = False
     public_url: str = "http://localhost:3001"
     pygeoapi_config_file: Path = Path.home() / "pygeoapi-config.yml"

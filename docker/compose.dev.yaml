@@ -1,0 +1,26 @@
+# docker compose file that can be used for development - do not use this in production!
+
+name: potto
+
+services:
+
+  db:
+    image: "postgis/postgis:17-3.5-alpine"
+    environment:
+      POSTGRES_DB: potto
+      POSTGRES_USER: potto
+      POSTGRES_PASSWORD: pottopass
+    healthcheck:
+      test: "pg_isready -d potto -U potto"
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+    ports:
+      - target: 5432
+        published: 55432
+    volumes:
+      - db:/var/lib/postgresql/data
+
+volumes:
+  db:
