@@ -1,0 +1,14 @@
+<div class="{%if error%}is-invalid{%endif%}">
+    <p>This is a custom field</p>
+    <input
+            type="text"
+            id="{{field.id}}"
+            name="{{field.id}}"
+    />
+    {% if field.help_text %}
+        <small class="form-hint">{{field.help_text}}</small>
+    {%endif%}
+</div>
+{%if error %}
+    <div class="invalid-feedback">{{error}}</div>
+{%endif%}

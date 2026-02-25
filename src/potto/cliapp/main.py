@@ -6,6 +6,7 @@ from typing import Annotated
 import cyclopts
 from cyclopts import App
 from rich.console import Console
+from rich.table import Table
 from rich.traceback import install as rich_install_traceback
 
 from ..config import (
@@ -65,9 +66,12 @@ def run_uvicorn_server(
         *,
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ):
-    potto_app.console.print(
-        "About to start uvicorn server with the following settings:")
-    potto_app.console.print(settings.model_dump())
+    table = Table(title="Potto configuration")
+    table.add_column("Parameter")
+    table.add_column("Value")
+    for k, v in settings.model_dump().items():
+        table.add_row(k, str(v))
+    potto_app.console.print(table)
 
     # NOTE: passing `app` as a string in order to enable uvicorn's reloading
     # feature, as per:

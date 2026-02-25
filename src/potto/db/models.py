@@ -1,12 +1,17 @@
-from typing import (
-    TypedDict,
-)
+import logging
+import json
+from typing import Annotated
 
-import pydantic
+import shapely
 import sqlalchemy
+from geoalchemy2 import (
+    Geometry,
+    WKBElement,
+)
 from pydantic import (
     ConfigDict,
     field_serializer,
+    field_validator,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import (
@@ -14,6 +19,15 @@ from sqlmodel import (
     Field,
     SQLModel,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def serialize_wkbelement(wkbelement: WKBElement | None) -> shapely.Polygon | None:
+    if wkbelement is None:
+        return None
+    geom = shapely.from_wkb(bytes(wkbelement.data))
+    return json.loads(shapely.to_geojson(geom))
 
 
 def serialize_localizable_field(value: dict[str, str], _info):
@@ -57,6 +71,25 @@ class CollectionResource(SQLModel, table=True):
     title: dict[str, str] = Field(sa_column=Column(JSONB))
     description: dict[str, str] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
     keywords: dict[str, list[str]] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    spatial_extent: WKBElement | None = Field(
+        default=None,
+        sa_column=Column(
+            Geometry(srid=4326, geometry_type="POLYGON", spatial_index=True),
+            nullable=True
+        )
+    )
+
+    @field_serializer("spatial_extent")
+    def _serialize_wkbelement(self, value: WKBElement | None, info) -> shapely.Polygon:
+        return serialize_wkbelement(value)
+
+    @field_validator("spatial_extent", mode="plain")
+    @classmethod
+    def _validate_spatial_extent(cls, value: shapely.Polygon | None) -> WKBElement | None:
+        logger.debug(f"Validating spatial extent: {value=}")
+        if not value:
+            return None
+        return WKBElement(data=value.wkb, srid=4326)
 
     @field_serializer("title", "description")
     def _serialize_localizable(self, value: dict[str, str] | None, info) -> dict[str, str] | None:
