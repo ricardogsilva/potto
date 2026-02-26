@@ -91,6 +91,7 @@ export class SpatialExtentMap extends HTMLElement {
                 }),
             ]
         })
+
         this.draw.on("finish", (id, context) => {
             if (context.action === "draw") {
                 const feature = this.draw.getSnapshot().find(f => f.id === id)
@@ -109,7 +110,12 @@ export class SpatialExtentMap extends HTMLElement {
         })
 
         this.draw.start()
-        this.draw.setMode("rectangle")
+        const drawMode = this.getAttribute("data-enable-draw-mode") === "true"
+        if (drawMode) {
+            this.draw.setMode("rectangle")
+        } else {
+            this.draw.setMode('static')
+        }
         this._suppressUpdate = false
 
         setTimeout(() => {

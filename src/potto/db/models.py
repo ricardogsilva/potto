@@ -1,5 +1,9 @@
+import datetime as dt
 import logging
-from typing import Annotated
+from typing import (
+    Annotated,
+    Any,
+)
 
 import shapely
 import sqlalchemy
@@ -19,6 +23,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import (
     Column,
     Field,
+    Relationship,
     SQLModel,
 )
 
@@ -125,6 +130,14 @@ class CollectionResource(SQLModel, table=True):
             nullable=True
         )
     )
+    temporal_extent_begin: dt.datetime | None = None
+    temporal_extent_end: dt.datetime | None = None
+    providers: list[dict[str, Any]] = Field(sa_column=Column(JSONB, nullable=True))
+    additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True))
+
+    # providers
+    # limits
 
     @field_serializer("title", "description")
     def _serialize_localizable(self, value: dict[str, str] | None, info) -> dict[str, str] | None:
@@ -135,7 +148,4 @@ class CollectionResource(SQLModel, table=True):
         self, value: dict[str, list[str]], info
     ) -> dict[str, list[str]]:
         return serialize_localizable_list_field(value, info) if value is not None else None
-    # extents
-    # providers
-    # links
-    # limits
+

@@ -4,6 +4,7 @@ import logging
 from typing import Literal
 
 import babel
+import shapely
 from pygeoapi.api import (
     API as _API,
     describe_collections as _describe_collections,
@@ -17,10 +18,15 @@ from pygeoapi.api.itemtypes import (
 )
 from pygeoapi.openapi import get_oas_30
 from pygeoapi.l10n import translate_struct
+from sqlalchemy.ext.asyncio.session import async_sessionmaker
 
 from . import (
     config,
     constants,
+)
+from .db.queries.collections import (
+    collect_all_collections,
+    paginated_list_collections,
 )
 from .schemas import (
     collections as collections_schemas,
@@ -33,6 +39,14 @@ from .schemas.pygeoapi_config import (
 from .webapp.requests import PottoRequest
 
 logger = logging.getLogger(__name__)
+
+
+async def get_pygeoapi_config(settings: config.PottoSettings):
+    with settings.get_db_session_maker() as db_session:
+        all_collections = await collect_all_collections(db_session)
+        pygeoapi_config = config.get_pygeoapi_config(settings)
+        for db_collection in all_collections:
+            pygeoapi_config["resources"][db_collection.resource_identifier] = convert_collection_to_pygeoapi_resource(db_collection)
 
 
 class Potto:
@@ -60,16 +74,21 @@ class Potto:
       were needed for each particular method
     """
     _pygeoapi_api: _API
+    _db_session_maker: async_sessionmaker
 
-    def __init__(self, pygeoapi_api: _API) -> None:
+    def __init__(self, pygeoapi_api: _API, db_session_maker: async_sessionmaker) -> None:
         self._pygeoapi_api = pygeoapi_api
+        self._db_session_maker = db_session_maker
 
     @classmethod
     def from_settings(cls, settings: config.PottoSettings):
         pygeoapi_config = config.get_pygeoapi_config(settings)
         openapi_document = get_oas_30(pygeoapi_config, fail_on_invalid_collection=True)
         core_api = _API(config=pygeoapi_config, openapi=openapi_document)
-        return cls(core_api)
+        return cls(
+            core_api,
+            db_session_maker=settings.get_db_session_maker(),
+        )
 
     def get_raw_config(self) -> dict:
         return self._pygeoapi_api.config.copy()
@@ -87,7 +106,7 @@ class Potto:
     def _get_raw_item_collection_config(self, collection_id: str) -> dict:
         return self._list_raw_item_collection_resource_configs().get(collection_id)
 
-    def list_item_collection_configs(self) -> list[ItemCollectionConfig]:
+    def _list_legacy_item_collection_configs(self) -> list[ItemCollectionConfig]:
         return [
             ItemCollectionConfig.from_pygeoapi_config(id_, raw_conf)
             for id_, raw_conf
@@ -125,8 +144,9 @@ class Potto:
             is_config=True
         )
 
-    def has_item_collection_resources(self) -> bool:
-        return len(self.list_item_collection_configs()) > 0
+    async def has_item_collection_resources(self) -> bool:
+        _, _, total_connections = await self.list_item_collections()
+        return total_connections > 0
 
     def has_stac_collection_resources(self) -> bool:
         return len(self._list_raw_stac_collection_resource_configs()) > 0
@@ -141,16 +161,41 @@ class Potto:
                     return True
         return False
 
+    async def list_item_collections(
+            self,
+            spatial_intersect: shapely.Polygon | None = None,
+            identifier_filter: str | None = None,
+            page: int = 1,
+            page_size: int = 20
+    ) -> tuple[list[ItemCollectionConfig], int, int]:
+        async with self._db_session_maker() as session:
+            items, num_total = await paginated_list_collections(
+                session,
+                include_total=True,
+                spatial_intersect=spatial_intersect,
+                identifier_filter=identifier_filter,
+                page=page,
+                page_size=page_size
+            )
+            _, num_unfiltered_total = await paginated_list_collections(session, include_total=True)
+            result = [
+                ItemCollectionConfig.from_potto_db(item) for item in items
+            ]
+            legacy_collection_configs = self._list_legacy_item_collection_configs()
+            legacy_num_unfiltered_total = num_unfiltered_total + len(legacy_collection_configs)
+            return result + legacy_collection_configs, num_total, num_unfiltered_total
+
     async def api_get_landing_page(
             self, *, language: str | None = None) -> potto_schemas.LandingPage:
         identification_config = self.get_server_identification_config()
+        collections_page, _, num_total_collections = await self.list_item_collections()
         return potto_schemas.LandingPage(
             title=identification_config.title.get_value(language),
             description=identification_config.description.get_value(language),
             attribution=None,
             collections=[
                 collections_schemas.Collection.from_config(coll_conf, language)
-                for coll_conf in self.list_item_collection_configs()
+                for coll_conf in collections_page
             ]
         )
 

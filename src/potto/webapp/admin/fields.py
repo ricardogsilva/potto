@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class SpatialExtentField(BaseField):
+    render_function_key: str = "spatial_extent_render_key"
+    tile_url: str = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
     display_template: str = "displays/spatial-extent.html"
     form_template: str = "forms/spatial-extent.html"
 
@@ -24,12 +26,10 @@ class SpatialExtentField(BaseField):
             form_data: FormData,
             action: RequestAction,
     ) -> shapely.Polygon | None:
-        logger.debug(f"{form_data=}")
         min_lon = form_data.get(f"{self.id}-min-lon")
         max_lon = form_data.get(f"{self.id}-max-lon")
         min_lat = form_data.get(f"{self.id}-min-lat")
         max_lat = form_data.get(f"{self.id}-max-lat")
-        logger.debug(f"{min_lon=}, {max_lon=}, {min_lat=}, {max_lat=}")
         if not all((min_lon, max_lon, min_lat, max_lat)):
             return None
         min_lon = float(min_lon)
@@ -40,15 +40,20 @@ class SpatialExtentField(BaseField):
         x_max = max(min_lon, max_lon)
         y_min = min(min_lat, max_lat)
         y_max = max(min_lat, max_lat)
-        bbox = shapely.box(x_min, y_min, x_max, y_max)
-        logger.debug(f"{bbox=}")
-        return bbox
+        return shapely.box(x_min, y_min, x_max, y_max)
 
     async def serialize_value(
         self, request: Request, value: shapely.Polygon | None, action: RequestAction
     ) -> str | None:
-        logger.debug(f"{value=} - {type(value)=}")
-        return shapely.to_geojson(value) if value else None
+        if value is None:
+            return None
+        min_x, min_y, max_x, max_y = value.bounds
+        return {
+            "min-lon": min_x,
+            "min-lat": min_y,
+            "max-lon": max_x,
+            "max-lat": max_y,
+        }
 
     def dict(self) -> dict[str, Any]:
         return super().dict()

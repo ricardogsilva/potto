@@ -33,7 +33,7 @@ async def get_landing_page(request: Request) -> Response:
         context={
             "show_description": False,
             "data": HtmlLanding.from_potto(result, request.url_for),
-            "has_item_collections": potto.has_item_collection_resources(),
+            "has_item_collections": await potto.has_item_collection_resources(),
             "has_stac_collections": potto.has_stac_collection_resources(),
             "has_processes": potto.has_process_resources(),
             "has_tiles": potto.has_tiles(),
