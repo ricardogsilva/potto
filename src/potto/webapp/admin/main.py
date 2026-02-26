@@ -29,9 +29,8 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
             settings.static_dir or Path(__file__).parents[1] / "static"),
         title="Potto admin",
     )
-    logger.debug(f"admin {app.templates_dir=}")
-    logger.debug(f"admin {app.statics_dir=}")
-    logger.debug(f"admin {app.routes=}")
-    app.add_view(views.CollectionResourceView(models.CollectionResource, identity="collection-resource"))
-    # app.add_view(views.CollectionLinkView(models.CollectionLink, identity="collection-link"))
+    app.add_view(
+        views.CollectionResourceView(
+            models.CollectionResource, identity="collection-resource")
+    )
     return app

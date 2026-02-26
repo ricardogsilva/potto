@@ -37,7 +37,7 @@ async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
     _default_app_state = AppState(
         settings = settings,
         templates=Jinja2Templates(env=settings.get_jinja_env()),
-        potto=Potto.from_settings(settings),
+        potto=await Potto.from_settings(settings),
     )
     yield _default_app_state
     _default_app_state = None

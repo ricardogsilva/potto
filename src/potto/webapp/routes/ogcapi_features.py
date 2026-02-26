@@ -16,6 +16,7 @@ from ...schemas.web.collections import (
     JsonLdItemCollection,
 )
 
+from ...config import PottoSettings
 from ...wrapper import Potto
 from ...schemas.collections import FeatureFilter
 from .. import util
@@ -25,7 +26,8 @@ logger = logging.getLogger(__name__)
 
 async def list_collections(request: Request) -> Response:
     current_locale = babel.Locale.parse(request.state.language)
-    potto: Potto = request.state.potto
+    settings: PottoSettings = request.state.settings
+    potto = await Potto.from_settings(settings)
     result = await potto.api_list_collections(
         locale=current_locale,
         output_format=constants.PYGEOAPI_F_JSON,

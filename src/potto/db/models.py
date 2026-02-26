@@ -120,9 +120,11 @@ class CollectionResource(SQLModel, table=True):
         max_length=100,
         index=True,
     )
-    title: dict[str, str] = Field(sa_column=Column(JSONB))
-    description: dict[str, str] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
-    keywords: dict[str, list[str]] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    title: dict[str, str] | str = Field(sa_column=Column(JSONB))
+    description: dict[str, str] | str | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True))
+    keywords: dict[str, list[str]] | list[str] | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True))
     spatial_extent: ShapelyGeometry = Field(
         default=None,
         sa_column=Column(
@@ -136,8 +138,6 @@ class CollectionResource(SQLModel, table=True):
     additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
         default=None, sa_column=Column(JSONB, nullable=True))
 
-    # providers
-    # limits
 
     @field_serializer("title", "description")
     def _serialize_localizable(self, value: dict[str, str] | None, info) -> dict[str, str] | None:
