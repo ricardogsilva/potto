@@ -70,6 +70,8 @@ def run_uvicorn_server(
     table.add_column("Parameter")
     table.add_column("Value")
     for k, v in settings.model_dump().items():
+        if k == "uvicorn_num_workers" and settings.debug:
+            v = "1 (reload mode)"
         table.add_row(k, str(v))
     potto_app.console.print(table)
 

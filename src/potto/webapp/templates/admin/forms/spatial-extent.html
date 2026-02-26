@@ -1,14 +1,70 @@
-<div class="{%if error%}is-invalid{%endif%}">
-    <p>This is a custom field</p>
-    <input
-            type="text"
-            id="{{field.id}}"
-            name="{{field.id}}"
-    />
-    {% if field.help_text %}
-        <small class="form-hint">{{field.help_text}}</small>
-    {%endif%}
+<script type="module" src="{{ url_for('static', path='/js/admin/spatialExtent.js') }}"></script>
+<spatial-extent-map
+        id="{{ field.id }}-map"
+        data-tile-url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        data-center-lon="0"
+        data-center-lat="0"
+        data-zoom="2"
+        data-min-lat=""
+        data-min-lon=""
+        data-max-lat=""
+        data-max-lon=""
+        style="display: block; width: 100%; height: 30vh"
+></spatial-extent-map>
+
+<div class="row g-2 {% if error %}{{ field.error_class }}{% endif %}">
+    <div class="col-6">
+        <label class="form-label text-muted" for="{{ field.id }}-min-lon">Min lon</label>
+        <input id="{{ field.id }}-min-lon" name="{{ field.id }}-min-lon" type="number" step="any"
+               class="{{ field.class_ }}" value="" />
+    </div>
+    <div class="col-6">
+        <label class="form-label text-muted" for="{{ field.id }}-min-lat">Min lat</label>
+        <input id="{{ field.id }}-min-lat" name="{{ field.id }}-min-lat" type="number" step="any"
+               class="{{ field.class_ }}" value="" />
+    </div>
+    <div class="col-6">
+        <label class="form-label text-muted" for="{{ field.id }}-max-lon">Max lon</label>
+        <input id="{{ field.id }}-max-lon" name="{{ field.id }}-max-lon" type="number" step="any"
+               class="{{ field.class_ }}" value="" />
+    </div>
+    <div class="col-6">
+        <label class="form-label text-muted" for="{{ field.id }}-max-lat">Max lat</label>
+        <input id="{{ field.id }}-max-lat" name="{{ field.id }}-max-lat" type="number" step="any"
+               class="{{ field.class_ }}" value="" />
+    </div>
 </div>
-{%if error %}
-    <div class="invalid-feedback">{{error}}</div>
-{%endif%}
+
+{% if field.help_text %}
+    <small class="form-hint">{{ field.help_text }}</small>
+{% endif %}
+{% include "forms/_error.html" %}
+
+<script type="module">
+    const map = document.getElementById('{{ field.id }}-map')
+    const inputs = {
+        minLat: document.getElementById('{{ field.id }}-min-lat'),
+        minLon: document.getElementById('{{ field.id }}-min-lon'),
+        maxLat: document.getElementById('{{ field.id }}-max-lat'),
+        maxLon: document.getElementById('{{ field.id }}-max-lon'),
+    }
+
+    // Map → Inputs
+    map.addEventListener('bbox-changed', (e) => {
+        const { minLat, minLon, maxLat, maxLon } = e.detail.bbox
+        inputs.minLat.value = minLat
+        inputs.minLon.value = minLon
+        inputs.maxLat.value = maxLat
+        inputs.maxLon.value = maxLon
+    })
+
+    // Inputs → Map
+    function syncInputsToMap() {
+        map.setAttribute('data-min-lat', inputs.minLat.value)
+        map.setAttribute('data-min-lon', inputs.minLon.value)
+        map.setAttribute('data-max-lat', inputs.maxLat.value)
+        map.setAttribute('data-max-lon', inputs.maxLon.value)
+    }
+
+    Object.values(inputs).forEach(input => input.addEventListener('change', syncInputsToMap))
+</script>

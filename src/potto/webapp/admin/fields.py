@@ -24,15 +24,30 @@ class SpatialExtentField(BaseField):
             form_data: FormData,
             action: RequestAction,
     ) -> shapely.Polygon | None:
-        logger.debug(f"Processing form data: {form_data=}")
-        if not (raw_value := form_data.get(self.name)):
+        logger.debug(f"{form_data=}")
+        min_lon = form_data.get(f"{self.id}-min-lon")
+        max_lon = form_data.get(f"{self.id}-max-lon")
+        min_lat = form_data.get(f"{self.id}-min-lat")
+        max_lat = form_data.get(f"{self.id}-max-lat")
+        logger.debug(f"{min_lon=}, {max_lon=}, {min_lat=}, {max_lat=}")
+        if not all((min_lon, max_lon, min_lat, max_lat)):
             return None
-        return shapely.from_wkt(raw_value)
+        min_lon = float(min_lon)
+        max_lon = float(max_lon)
+        min_lat = float(min_lat)
+        max_lat = float(max_lat)
+        x_min = min(min_lon, max_lon)
+        x_max = max(min_lon, max_lon)
+        y_min = min(min_lat, max_lat)
+        y_max = max(min_lat, max_lat)
+        bbox = shapely.box(x_min, y_min, x_max, y_max)
+        logger.debug(f"{bbox=}")
+        return bbox
 
     async def serialize_value(
-        self, request: Request, value: Any, action: RequestAction
-    ) -> Any:
-        return value
+        self, request: Request, value: shapely.Polygon | None, action: RequestAction
+    ) -> str | None:
+        return shapely.to_geojson(value) if value else None
 
     def dict(self) -> dict[str, Any]:
         return super().dict()
@@ -46,6 +61,8 @@ class SpatialExtentField(BaseField):
 
     def additional_js_links(self, request: Request, action: RequestAction) -> list[str]:
         return [
-            "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"
+            "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js",
+            "https://unpkg.com/terra-draw@1.0.0/dist/terra-draw.umd.js",
+            "https://unpkg.com/terra-draw-maplibre-gl-adapter@1.0.0/dist/terra-draw-maplibre-gl-adapter.umd.js"
         ]
 

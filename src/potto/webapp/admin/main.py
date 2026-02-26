@@ -17,6 +17,9 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
     app = Admin(
         settings.get_sync_db_engine(),
         templates_dir=templates_dir,
+        statics_dir=str(
+            settings.static_dir or Path(__file__).parents[1] / "static"),
+        title="Potto admin",
     )
     app.add_view(views.CollectionResourceView(models.CollectionResource))
     return app
