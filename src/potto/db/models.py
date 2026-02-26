@@ -14,6 +14,7 @@ from pydantic import (
     field_serializer,
     PlainSerializer,
 )
+
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import (
     Column,
@@ -40,6 +41,35 @@ def serialize_localizable_list_field(value: dict[str, list[str]], _info):
     the need for this function.
     """
     return value
+
+
+class ShapelyGeometryAdapter(Geometry):
+    """Geometry column type that converts to/from shapely objects transparently.
+
+    geoalchemy2's bind_processor passes unrecognised types through as-is,
+    causing psycopg3 to fail on raw shapely objects. This subclass intercepts
+    both directions: shapely → EWKT string on writes, WKBElement → shapely on reads.
+    """
+
+    def bind_processor(self, dialect):
+        parent = super().bind_processor(dialect)
+
+        def process(value):
+            if isinstance(value, shapely.Geometry):
+                return f"SRID={self.srid};{shapely.to_wkt(value)}"
+            return parent(value)
+
+        return process
+
+    def result_processor(self, dialect, coltype):
+        parent = super().result_processor(dialect, coltype)
+
+        def process(value):
+            if parent is not None:
+                value = parent(value)
+            return to_shape(value) if value is not None else None
+
+        return process
 
 
 def to_shapely(
@@ -91,7 +121,7 @@ class CollectionResource(SQLModel, table=True):
     spatial_extent: ShapelyGeometry = Field(
         default=None,
         sa_column=Column(
-            Geometry(srid=4326, geometry_type="POLYGON", spatial_index=True),
+            ShapelyGeometryAdapter(),
             nullable=True
         )
     )

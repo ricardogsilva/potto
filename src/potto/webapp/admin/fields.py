@@ -47,6 +47,7 @@ class SpatialExtentField(BaseField):
     async def serialize_value(
         self, request: Request, value: shapely.Polygon | None, action: RequestAction
     ) -> str | None:
+        logger.debug(f"{value=} - {type(value)=}")
         return shapely.to_geojson(value) if value else None
 
     def dict(self) -> dict[str, Any]:
