@@ -1,9 +1,17 @@
 import asyncio
+import copy
 import json
 import logging
-from typing import Literal
+import os
+import re
+from typing import (
+    Literal,
+    Sequence,
+    TypeAlias,
+)
 
 import babel
+import shapely
 from pygeoapi.api import (
     API as _API,
     describe_collections as _describe_collections,
@@ -17,11 +25,12 @@ from pygeoapi.api.itemtypes import (
 )
 from pygeoapi.openapi import get_oas_30
 from pygeoapi.l10n import translate_struct
+from pygeoapi.util import yaml_load
 
-from . import (
-    config,
-    constants,
-)
+from . import constants
+from .config import PottoSettings
+from .db.models import CollectionResource
+from .db.queries.collections import collect_all_collections
 from .schemas import (
     collections as collections_schemas,
     potto as potto_schemas,
@@ -33,6 +42,179 @@ from .schemas.pygeoapi_config import (
 from .webapp.requests import PottoRequest
 
 logger = logging.getLogger(__name__)
+
+ResourceTypes: TypeAlias = Sequence[Literal["collection", "stac-collection", "process"]]
+
+
+async def get_pygeoapi_config(
+        settings: PottoSettings,
+        *,
+        resource_types: ResourceTypes | Literal["all"] = "all",
+        resource_page: int = 1,
+        resource_page_size: int | None = None,
+) -> dict:
+    read_conf = yaml_load(settings.pygeoapi_config_file.read_text())
+    server_conf = read_conf.get("server", {})
+    server_map = server_conf.get("map", {})
+    server_limits_conf = server_conf.get("limits", {})
+    metadata_conf = read_conf.get("metadata", {})
+    identification_conf = metadata_conf.get("identification", {})
+    license_conf = metadata_conf.get("license", {})
+    provider_conf = metadata_conf.get("provider", {})
+    contact_conf = metadata_conf.get("contact", {})
+    pygeoapi_config = {
+        "server": {
+            "admin": server_conf.get("admin", False),
+            "languages": settings.locales,
+            "limits": {
+                "default_items": server_limits_conf.get("default_items", 20),
+                "max_items": server_limits_conf.get("max_items", 50),
+            },
+            "map": {
+                "url": server_map.get(
+                    "map", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+                "attribution": server_map.get(
+                    "attribution",
+                    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+                ),
+            },
+            "locale_dir": server_conf.get("locale_dir"),
+            "url": settings.public_url,
+        },
+        "logging": {
+            "level": "DEBUG" if settings.debug else "WARNING"
+        },
+        "metadata": {
+            "identification": {
+                "title": identification_conf.get(
+                    "title", {"en": "Potto"}
+                ),
+                "description": identification_conf.get(
+                    "description", {"en": "The pygeoapi primate"}
+                ),
+                "keywords": identification_conf.get(
+                    "keywords", {"en": ["geospatial", "data", "api"]}
+                ),
+                "keywords_type": identification_conf.get("keywords_type", "theme"),
+                "terms_of_service": identification_conf.get(
+                    "terms_of_service", "https://creativecommons.org/licenses/by/4.0/"),
+                "url": identification_conf.get("url", "https://example.org"),
+            },
+            "license": {
+                "name": license_conf.get("name", "CC-BY 4.0 license"),
+                "url": license_conf.get("url", "https://creativecommons.org/licenses/by/4.0/"),
+            },
+            "provider": {
+                "name": provider_conf.get("name", "Organization Name"),
+                "url": provider_conf.get("url", "https://pygeoapi.io"),
+            },
+            "contact": {
+                "name": contact_conf.get("name", "Lastname, Firstname"),
+                "position": contact_conf.get("position", "Position Title"),
+                "address": contact_conf.get("address", "Mailing Address"),
+                "city": contact_conf.get("city", "City"),
+                "stateorprovince": contact_conf.get("stateorprovince", "Administrative Area"),
+                "postalcode": contact_conf.get("postalcode", "Zip or Postal Code"),
+                "country": contact_conf.get("country", "Country"),
+                "phone": contact_conf.get("phone", "+xx-xxx-xxx-xxxx"),
+                "fax": contact_conf.get("fax", "+xx-xxx-xxx-xxxx"),
+                "email": contact_conf.get("email", "you@example.org"),
+                "url": contact_conf.get("url", "Contact URL"),
+                "hours": contact_conf.get("hours", "Mo-Fr 08:00-17:00"),
+                "instructions": contact_conf.get("instructions", "During hours of service. Off on weekends."),
+                "role": contact_conf.get("role", "pointOfContact"),
+            },
+        },
+        "resources": read_conf.get("resources", {}),
+    }
+
+    session_maker = settings.get_db_session_maker()
+    async with session_maker() as db_session:
+        all_collections = await collect_all_collections(db_session)
+        for db_collection in all_collections:
+            pygeoapi_config["resources"][db_collection.resource_identifier] = (
+                _convert_collection_to_pygeoapi_resource(db_collection)
+            )
+
+    # filter and paginate the resources - in a future iteration, when we stop
+    # reading the config both from a file and from the db (and just read it all
+    # from the db), we can perform these on the db side, which will be more
+    # efficient
+    resource_filter = (
+        ("collection", "stac-collection", "process")
+        if resource_types == "all" else resource_types
+    )
+    resources_as_list = [
+        (id_, res)
+        for id_, res in pygeoapi_config["resources"].items()
+        if res.get("type") in resource_filter
+    ]
+    if resource_page_size is None:
+        relevant_resources = resources_as_list
+    else:
+        offset = (max(resource_page - 1, 0)) * resource_page_size
+        relevant_indexes = slice(
+            offset,
+            min(offset + resource_page_size, len(resources_as_list))
+        )
+        relevant_resources = resources_as_list[relevant_indexes]
+    pygeoapi_config["resources"] = {id_: res for id_, res in relevant_resources}
+    # TODO: validate the config
+    return pygeoapi_config
+
+
+def _convert_collection_to_pygeoapi_resource(
+        collection: CollectionResource) -> dict:
+    links = []
+    for collection_link in collection.additional_links or []:
+        link_ = dict(collection_link)
+        type_ = link_.pop("media_type", "")
+        links.append(
+            {
+                "type": type_,
+                **link_
+            }
+        )
+    providers = []
+    for provider in collection.providers or []:
+        raw_data_value = provider.pop("data", "")
+        interpolated_data_value = re.sub(
+            r"\${?(\w+)}?",
+            lambda re_match: os.getenv(re_match.group(1), "ENV_VAR_NOT_FOUND"),
+            raw_data_value,
+        )
+        provider["data"] = interpolated_data_value
+        providers.append(provider)
+
+    return {
+        "type": "collection",
+        "title": collection.title,
+        "description": collection.description or "",
+        "keywords": collection.keywords or [],
+        "linked-data": None,
+        "links": links,
+        "extents": {
+            "spatial": {
+                "bbox": (
+                    collection.spatial_extent.bounds
+                    if collection.spatial_extent
+                    else shapely.box(-180, -90, 180, 90).bounds
+                ),
+                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+            },
+            "temporal": {
+                "begin": (
+                    collection.temporal_extent_begin.isoformat()
+                    if collection.temporal_extent_begin else None
+                ),
+                "end": (
+                    collection.temporal_extent_end.isoformat()
+                    if collection.temporal_extent_end else None
+                ),
+            }
+        },
+        "providers": providers,
+    }
 
 
 class Potto:
@@ -59,98 +241,125 @@ class Potto:
       not focus on parsing HTTP Requests but rather whatever input parameters
       were needed for each particular method
     """
-    _pygeoapi_api: _API
+    _settings: PottoSettings
 
-    def __init__(self, pygeoapi_api: _API) -> None:
-        self._pygeoapi_api = pygeoapi_api
+    def __init__(self, settings: PottoSettings) -> None:
+        self._settings = settings
 
-    @classmethod
-    def from_settings(cls, settings: config.PottoSettings):
-        pygeoapi_config = config.get_pygeoapi_config(settings)
+    async def _get_core_api(
+            self,
+            resource_types: ResourceTypes | Literal["all"] = "all",
+            resource_page: int = 1,
+            resource_page_size: int | None = None,
+    ) -> _API:
+        pygeoapi_config = await get_pygeoapi_config(
+            self._settings,
+            resource_types=resource_types,
+            resource_page=resource_page,
+            resource_page_size=resource_page_size
+        )
         openapi_document = get_oas_30(pygeoapi_config, fail_on_invalid_collection=True)
-        core_api = _API(config=pygeoapi_config, openapi=openapi_document)
-        return cls(core_api)
+        return _API(config=pygeoapi_config, openapi=openapi_document)
 
-    def get_raw_config(self) -> dict:
-        return self._pygeoapi_api.config.copy()
+    async def list_resource_configs(
+            self,
+            resource_types: ResourceTypes | Literal["all"] = "all",
+            page: int = 1,
+            page_size: int | None = 20,
+    ) -> list[ItemCollectionConfig | tuple[str, dict]]:
+        pygeoapi_api = await self._get_core_api(
+            resource_types=resource_types,
+            resource_page=page,
+            resource_page_size=page_size,
+        )
+        result = []
+        for id_, raw_resource in pygeoapi_api.config["resources"].items():
+            if (type_ := raw_resource.get("type")) == "collection":
+                result.append(
+                    ItemCollectionConfig.from_pygeoapi_config(id_, raw_resource))
+            elif type_ in ("stac-collection", "process"):
+                result.append((id_, raw_resource))
+            else:
+                logger.warning(
+                    f"Resource {id_} has unknown resource type {type_!r}, ignoring...")
+        return result
 
-    def list_resource_configs(self) -> dict:
-        return self.get_raw_config().get("resources", {})
+    async def list_process_configs(
+            self, page: int = 1, page_size: int | None = 20
+    ) -> list[tuple[str, dict]]:
+        pygeoapi_api = await self._get_core_api(
+            resource_types=["process"],
+            resource_page=page,
+            resource_page_size=page_size,
+        )
+        return list(pygeoapi_api.config["resources"].items())
 
-    def _list_raw_item_collection_resource_configs(self) -> dict[str, dict]:
-        return {
-            id_: resource.copy()
-            for id_, resource in self.list_resource_configs().items()
-            if resource.get("type", "collection") == "collection"
-        }
-
-    def _get_raw_item_collection_config(self, collection_id: str) -> dict:
-        return self._list_raw_item_collection_resource_configs().get(collection_id)
-
-    def list_item_collection_configs(self) -> list[ItemCollectionConfig]:
+    async def list_item_collection_configs(
+            self, page: int = 1, page_size: int | None = 20
+    ) -> list[ItemCollectionConfig]:
+        pygeoapi_api = await self._get_core_api(
+            resource_types=["collection"],
+            resource_page=page,
+            resource_page_size=page_size,
+        )
         return [
             ItemCollectionConfig.from_pygeoapi_config(id_, raw_conf)
-            for id_, raw_conf
-            in self._list_raw_item_collection_resource_configs().items()
+            for id_, raw_conf in pygeoapi_api.config["resources"].items()
         ]
 
-    def get_item_collection_config(self, collection_id: str) -> ItemCollectionConfig:
-        return ItemCollectionConfig.from_pygeoapi_config(
-            collection_id,
-            self._get_raw_item_collection_config(collection_id)
+    async def list_stac_collection_configs(
+            self, page: int = 1, page_size: int | None = 20
+    ) -> list[tuple[str, dict]]:
+        pygeoapi_api = await self._get_core_api(
+            resource_types=["stac-collection"],
+            resource_page=page,
+            resource_page_size=page_size,
         )
+        return list(pygeoapi_api.config["resources"].items())
 
-    def _list_raw_stac_collection_resource_configs(self) -> dict:
-        return {
-            id_: resource.copy()
-            for id_, resource in self.list_resource_configs().items()
-            if resource.get("type", "stac-collection")
-        }
+    async def get_item_collection_config(
+            self, collection_id: str) -> ItemCollectionConfig | None:
+        # TODO: in a future iteration, when we are no longer reading the
+        #  config from both a file and the db (and read it all from the db),
+        #  we can skip instantiation of pygeoapi api and just retrieve the
+        #  item directly
+        pygeoapi_api = await self._get_core_api()
+        if not (
+                raw_resource := pygeoapi_api.config.get(
+                    "resources", {}).get(collection_id)
+        ):
+            return None
 
-    def _list_raw_process_resource_configs(self) -> dict:
-        return {
-            id_: resource.copy()
-            for id_, resource in self.list_resource_configs().items()
-            if resource.get("type", "process")
-        }
+        if not raw_resource.get("type") == "collection":
+            logger.warning(f"resource {collection_id!r} is not of type 'collection'")
+            return None
 
-    def get_server_identification_config(self) -> ServerMetadataIdentificationConfig:
+        return ItemCollectionConfig.from_pygeoapi_config(collection_id, raw_resource)
+
+    async def get_server_identification_config(self) -> ServerMetadataIdentificationConfig:
+        pygeoapi_api = await self._get_core_api(resource_page_size=0)
         return ServerMetadataIdentificationConfig.from_pygeoapi_config(
-            self.get_raw_config()["metadata"]["identification"])
+            pygeoapi_api.config["metadata"]["identification"])
 
-    def get_localized_config(self, locale: babel.Locale) -> dict:
+    async def get_localized_config(self, locale: babel.Locale) -> dict:
+        pygeoapi_api = await self._get_core_api()
         return translate_struct(
-            self.get_raw_config(),
+            pygeoapi_api.config,
             locale_=locale,
             is_config=True
         )
 
-    def has_item_collection_resources(self) -> bool:
-        return len(self.list_item_collection_configs()) > 0
-
-    def has_stac_collection_resources(self) -> bool:
-        return len(self._list_raw_stac_collection_resource_configs()) > 0
-
-    def has_process_resources(self) -> bool:
-        return len(self._list_raw_process_resource_configs()) > 0
-
-    def has_tiles(self) -> bool:
-        for resource in self._list_raw_item_collection_resource_configs().values():
-            for provider in resource.get("providers", []):
-                if provider.get("type") == "tile":
-                    return True
-        return False
-
     async def api_get_landing_page(
             self, *, language: str | None = None) -> potto_schemas.LandingPage:
-        identification_config = self.get_server_identification_config()
+        identification_config = await self.get_server_identification_config()
         return potto_schemas.LandingPage(
             title=identification_config.title.get_value(language),
             description=identification_config.description.get_value(language),
             attribution=None,
+            # TODO: add processes and stac collections too
             collections=[
                 collections_schemas.Collection.from_config(coll_conf, language)
-                for coll_conf in self.list_item_collection_configs()
+                for coll_conf in await self.list_item_collection_configs(page_size=20)
             ]
         )
 
@@ -166,9 +375,10 @@ class Potto:
     async def api_get_openapi_document(
             self,
     ) -> potto_schemas.PottoResponse:
+        pygeoapi_api = await self._get_core_api()
         return potto_schemas.PottoResponse(
             content_type=_FORMAT_TYPES[F_JSON],
-            content=self._pygeoapi_api.openapi
+            content=pygeoapi_api.openapi
         )
 
     async def api_list_collections(
@@ -177,8 +387,13 @@ class Potto:
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
     ) -> potto_schemas.CollectionList:
+        # TODO: this ought to be paginated
+        pygeoapi_api = await self._get_core_api(
+            resource_types=["collection"],
+            resource_page_size=None
+        )
         pygeoapi_response = _describe_collections(
-            self._pygeoapi_api,
+            pygeoapi_api,
             PottoRequest(
                 locale=locale,
                 output_format=output_format,
@@ -204,8 +419,12 @@ class Potto:
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
     ) -> potto_schemas.CollectionDetail:
+        pygeoapi_api = await self._get_core_api(
+            resource_types=["collection"],
+            resource_page_size=None
+        )
         pygeoapi_response = _describe_collections(
-            self._pygeoapi_api,
+            pygeoapi_api,
             PottoRequest(
                 locale=locale,
                 output_format=output_format,
@@ -216,20 +435,24 @@ class Potto:
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
         return potto_schemas.CollectionDetail(
             collection=collections_schemas.Collection(**parsed_pygeoapi_content),
-            resource=self.get_item_collection_config(collection_id),
+            resource=await self.get_item_collection_config(collection_id),
             metadata={**pygeoapi_headers}
         )
 
     async def api_list_collection_items(
             self,
-            *,
             collection_id: str,
+            *,
             locale: babel.Locale,
             filter_: collections_schemas.FeatureFilter | None = None,
     ) -> potto_schemas.CollectionFeatureListResponse:
+        pygeoapi_api = await self._get_core_api(
+            resource_types=["collection"],
+            resource_page_size=None
+        )
         pygeoapi_response = await asyncio.to_thread(
             _get_collection_items,
-            self._pygeoapi_api,
+            pygeoapi_api,
             PottoRequest(
                 locale=locale,
                 output_format="json",
@@ -240,7 +463,7 @@ class Potto:
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
         logger.debug(f"{parsed_pygeoapi_content=}")
-        collection_config = self.get_item_collection_config(collection_id)
+        collection_config = await self.get_item_collection_config(collection_id)
         features=[
             collections_schemas.Feature.from_original_feature(feat)
             for feat in parsed_pygeoapi_content["features"]
@@ -251,8 +474,8 @@ class Potto:
             features=features,
             pagination=collections_schemas.CollectionItemsPaginationContext(
                 limit=_evaluate_limit(
-                    requested=filter_.limit,
-                    server_limits=self._pygeoapi_api.config["server"].get("limits", {}),
+                    requested=filter_.limit if filter_ else None,
+                    server_limits=pygeoapi_api.config["server"].get("limits", {}),
                     collection_limits=(
                         col_limits.as_pygeoapi_config
                         if (col_limits := collection_config.limits) else {}
@@ -277,9 +500,11 @@ class Potto:
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
     ) -> potto_schemas.FeatureResponse:
+        pygeoapi_api = await self._get_core_api(
+            resource_types=["collection"], resource_page_size=None)
         pygeoapi_response = await asyncio.to_thread(
             _get_collection_item,
-            self._pygeoapi_api,
+            pygeoapi_api,
             PottoRequest(
                 locale=locale,
                 output_format=output_format,
@@ -293,7 +518,7 @@ class Potto:
         logger.debug(f"{pygeoapi_status_code=}")
 
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
-        collection_config = self.get_item_collection_config(collection_id)
+        collection_config = await self.get_item_collection_config(collection_id)
         return potto_schemas.FeatureResponse(
             resource=collection_config,
             provider=collection_config.get_default_provider_config(type_="feature"),

@@ -15,6 +15,7 @@ from starlette.responses import (
 from starlette_babel import gettext_lazy as _
 
 from ...schemas.web.base import HtmlLanding
+from ...schemas.pygeoapi_config import ItemCollectionConfig
 from ...wrapper import Potto
 from .. import util
 
@@ -27,17 +28,35 @@ async def get_landing_page(request: Request) -> Response:
     result = await potto.api_get_landing_page(
         language=current_locale.language,
     )
+    all_resources = await potto.list_resource_configs(page_size=None)
+    item_collections = [
+        res for res in all_resources if isinstance(res, ItemCollectionConfig)]
+    has_tiles = False
+    for item_collection in item_collections:
+        for provider in item_collection.providers:
+            if provider.type_ == "tile":
+                has_tiles = True
+                break
+        if has_tiles:
+            break
+
     return request.state.templates.TemplateResponse(
         request,
         "landing_page.html",
         context={
             "show_description": False,
             "data": HtmlLanding.from_potto(result, request.url_for),
-            "has_item_collections": potto.has_item_collection_resources(),
-            "has_stac_collections": potto.has_stac_collection_resources(),
-            "has_processes": potto.has_process_resources(),
-            "has_tiles": potto.has_tiles(),
-            "pygeoapi_config": potto.get_localized_config(current_locale),
+            "has_item_collections": len(item_collections) > 0,
+            "has_stac_collections": any(
+                res[1].get("type") == "stac-collection"
+                for res in all_resources if isinstance(res, tuple)
+            ),
+            "has_processes": any(
+                res[1].get("type") == "process"
+                for res in all_resources if isinstance(res, tuple)
+            ),
+            "has_tiles": has_tiles,
+            "pygeoapi_config": await potto.get_localized_config(current_locale),
         }
     )
 
@@ -78,7 +97,7 @@ async def get_conformance_details(request: Request) -> Response:
             "conformance.html",
             context={
                 "data": content,
-                "pygeoapi_config": potto.get_localized_config(current_locale),
+                "pygeoapi_config": await potto.get_localized_config(current_locale),
             }
         )
     else:
@@ -101,7 +120,7 @@ async def get_openapi_document(request: Request) -> Response:
                 "data": {
                     "openapi-document-path": request.url_for("openapi-document")
                 },
-                "pygeoapi_config": potto.get_localized_config(current_locale),
+                "pygeoapi_config": await potto.get_localized_config(current_locale),
             }
         )
     else:

@@ -219,7 +219,8 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                             collection_id=potto_response.resource.identifier
                         )
                     ),
-                    title=potto_response.resource.title
+                    # TODO: localize this
+                    title=potto_response.resource.title.get_value()
                 ),
                 *pagination_links,
             ],

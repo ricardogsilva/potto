@@ -5,14 +5,34 @@ from typing import Annotated
 
 import cyclopts
 from cyclopts import App
+from rich.console import Console
+from rich.table import Table
+from rich.traceback import install as rich_install_traceback
 
 from ..config import (
     get_settings,
     PottoSettings,
 )
+from .db import db_app
 
 
-potto_app = App()
+_console = Console()
+_error_console = Console(stderr=True)
+
+
+potto_app = App(
+    console=_console,
+    error_console=_error_console,
+)
+rich_install_traceback(console=_error_console)
+
+db_app.console = _console
+db_app.error_console = _error_console
+
+potto_app.command(
+    db_app.meta,
+    name="db"
+)
 
 
 @potto_app.meta.default
@@ -22,9 +42,11 @@ def launcher(
         cyclopts.Parameter(show=False, allow_leading_hyphen=True)
     ],
 ):
-    """Custom cli launcher that injects potto's settings if needed.
+    """Potto
 
-    This custom launcher detects if access to the pygeoapi_starlette settings is
+    Custom cli launcher that injects potto's settings if needed.
+
+    This custom launcher detects if access to the potto settings is
     being requested by the underlying CLI command and injects them if needed.
 
     Note that this strategy is used because we do not use cyclopts builtin
@@ -44,9 +66,14 @@ def run_uvicorn_server(
         *,
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ):
-    potto_app.console.print(
-        "About to start uvicorn server with the following settings:")
-    potto_app.console.print(settings.model_dump())
+    table = Table(title="Potto configuration")
+    table.add_column("Parameter")
+    table.add_column("Value")
+    for k, v in settings.model_dump().items():
+        if k == "uvicorn_num_workers" and settings.debug:
+            v = "1 (reload mode)"
+        table.add_row(k, str(v))
+    potto_app.console.print(table)
 
     # NOTE: passing `app` as a string in order to enable uvicorn's reloading
     # feature, as per:

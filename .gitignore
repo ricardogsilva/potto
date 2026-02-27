@@ -11,3 +11,5 @@ wheels/
 
 .idea
 .python-version
+
+*.env

@@ -2,6 +2,9 @@ import datetime as dt
 from typing import Literal
 
 import pydantic
+import shapely
+
+from ..db.models import CollectionResource
 
 
 class LocalizableConfigString(pydantic.RootModel):
@@ -11,8 +14,12 @@ class LocalizableConfigString(pydantic.RootModel):
         return self.root.get(language) or list(self.root.values())[0]
 
     @classmethod
-    def from_pygeoapi_config(cls, value: str | dict[str, str]) -> "LocalizableConfigString":
+    def from_potto_db(cls, value: str | dict[str, str]) -> "LocalizableConfigString":
         return cls({"en": value} if isinstance(value, str) else value.copy())
+
+    @classmethod
+    def from_pygeoapi_config(cls, value: str | dict[str, str]) -> "LocalizableConfigString":
+        return cls.from_potto_db(value)
 
 
 class LocalizableConfigStringList(pydantic.RootModel):
@@ -22,13 +29,19 @@ class LocalizableConfigStringList(pydantic.RootModel):
         return self.root.get(language) or list(self.root.values())[0]
 
     @classmethod
-    def from_pygeoapi_config(
+    def from_potto_db(
             cls, value: list[str] | dict[str, list[str]]
     ) -> "LocalizableConfigStringList":
         if isinstance(value, list):
             return cls({"en": value})
         else:
             return cls(value.copy())
+
+    @classmethod
+    def from_pygeoapi_config(
+            cls, value: list[str] | dict[str, list[str]]
+    ) -> "LocalizableConfigStringList":
+        return cls.from_potto_db(value)
 
 
 class ServerMetadataIdentificationConfig(pydantic.BaseModel):
@@ -96,6 +109,17 @@ class LinkConfig(pydantic.BaseModel):
     length: int | None = None
 
     @classmethod
+    def from_potto_db(cls, link_config: dict) -> "LinkConfig":
+        return cls(
+            type_=link_config["media_type"],
+            rel=link_config["rel"],
+            href=link_config["href"],
+            title=list(link_config.get("title", {}).values())[0] if link_config else None,
+            href_lang=link_config.get("hreflang"),
+            length=int(length) if (length :=link_config.get("length")) else None,
+        )
+
+    @classmethod
     def from_pygeoapi_config(cls, link_config: dict) -> "LinkConfig":
         return cls(
             type_=link_config["type"],
@@ -122,6 +146,23 @@ class TemporalExtentConfig(pydantic.BaseModel):
 class ExtentConfig(pydantic.BaseModel):
     spatial: SpatialExtentConfig
     temporal: TemporalExtentConfig | None = None
+
+    @classmethod
+    def from_potto_db(
+            cls,
+            spatial_extent: shapely.Polygon | None,
+            temporal_extent: tuple[dt.datetime | None, dt.datetime | None],
+    ):
+        bbox = spatial_extent if spatial_extent else shapely.box(-180, -90, 180, 90)
+        return cls(
+            spatial=SpatialExtentConfig(
+                bbox=bbox.bounds,
+            ),
+            temporal=TemporalExtentConfig(
+                begin=temporal_extent[0],
+                end=temporal_extent[1],
+            )
+        )
 
     @classmethod
     def from_pygeoapi_config(cls, extent_config: dict) -> "ExtentConfig":
@@ -182,7 +223,7 @@ class ProviderConfig(pydantic.BaseModel):
     include_extra_query_parameters: bool = True
 
     @classmethod
-    def from_pygeoapi_config(cls, provider_config: dict) -> "ProviderConfig":
+    def from_potto_db(cls, provider_config: dict) -> "ProviderConfig":
         return cls(
             type_=provider_config["type"],
             name=provider_config["name"],
@@ -204,6 +245,10 @@ class ProviderConfig(pydantic.BaseModel):
             storage_crs_coordinate_epoch=provider_config.get("storage_crs_coordinate_epoch"),
             include_extra_query_parameters=provider_config.get("include_extra_query_parameters", True),
         )
+
+    @classmethod
+    def from_pygeoapi_config(cls, provider_config: dict) -> "ProviderConfig":
+        return cls.from_potto_db(provider_config)
 
 
 class ItemCollectionConfig(pydantic.BaseModel):
@@ -275,4 +320,28 @@ class ItemCollectionConfig(pydantic.BaseModel):
                 LinkConfig.from_pygeoapi_config(raw_link) for raw_link in raw_links
             ] if (raw_links:=collection_config.get("links")) else None,
             limits=LimitsConfig.from_pygeoapi_config(raw_limits) if (raw_limits:=collection_config.get("limits")) else None,
+        )
+
+    @classmethod
+    def from_potto_db(cls, collection_config: CollectionResource) -> "ItemCollectionConfig":
+        return cls(
+            identifier=collection_config.resource_identifier,
+            type_="collection",
+            title=LocalizableConfigString.from_potto_db(collection_config.title),
+            description=LocalizableConfigString.from_potto_db(collection_config.description or ""),
+            keywords=LocalizableConfigStringList.from_potto_db(collection_config.keywords or {}),
+            extents=ExtentConfig.from_potto_db(
+                collection_config.spatial_extent,
+                (
+                    collection_config.temporal_extent_begin,
+                    collection_config.temporal_extent_end
+                )
+            ),
+            providers=[
+                ProviderConfig.from_potto_db(provider) for provider in collection_config.providers
+            ],
+            visibility="default",
+            linked_data=None,
+            links=[LinkConfig.from_potto_db(link) for link in collection_config.additional_links],
+            limits=None,
         )

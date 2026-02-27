@@ -20,6 +20,7 @@ from ....schemas.web.collections import (
     JsonCollection,
 )
 from ....wrapper import Potto
+from ..dependencies import PottoDependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -29,9 +30,8 @@ router = APIRouter()
     "/collections",
     name="list-collections",
 )
-async def list_collections(request: Request) -> JsonCollectionList:
+async def list_collections(request: Request, potto: PottoDependency) -> JsonCollectionList:
     current_locale = babel.Locale.parse(request.state.language)
-    potto: Potto = request.state.potto
     result = await potto.api_list_collections(
         locale=current_locale,
         output_format=constants.PYGEOAPI_F_JSON,
@@ -45,10 +45,10 @@ async def list_collections(request: Request) -> JsonCollectionList:
 )
 async def get_collection_details(
         request: Request,
-        collection_id: str
+        potto: PottoDependency,
+        collection_id: str,
 ) -> JsonCollection:
     current_locale = babel.Locale.parse(request.state.language)
-    potto: Potto = request.state.potto
     result = await potto.api_get_collection(
         collection_id=collection_id,
         locale=current_locale,
@@ -66,13 +66,13 @@ async def get_collection_details(
 )
 async def list_collection_items(
         request: Request,
+        potto: PottoDependency,
         collection_id: str,
-        filter_: Annotated[ItemFilter, Query()]
+        filter_: Annotated[ItemFilter, Query()],
 ) -> GeoJsonItemCollection:
     current_locale = babel.Locale.parse(request.state.language)
-    potto: Potto = request.state.potto
     result = await potto.api_list_collection_items(
-        collection_id=collection_id,
+        collection_id,
         locale=current_locale,
         filter_=collections_schemas.FeatureFilter(**filter_.model_dump()),
     )
@@ -85,11 +85,11 @@ async def list_collection_items(
 )
 async def get_item_details(
         request: Request,
+        potto: PottoDependency,
         collection_id: str,
         item_id: str,
 ) -> GeoJsonItem:
     current_locale = babel.Locale.parse(request.state.language)
-    potto: Potto = request.state.potto
     result = await potto.api_get_item(
         collection_id=collection_id,
         item_id=item_id,

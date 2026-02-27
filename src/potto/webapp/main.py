@@ -1,12 +1,7 @@
 import contextlib
 import logging
-from typing import (
-    AsyncIterator,
-    TypedDict,
-)
+from typing import AsyncIterator
 
-import jinja2
-from pygeoapi import __version__ as pygeoapi_version
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -16,22 +11,18 @@ from starlette.routing import (
     Route,
 )
 from starlette.staticfiles import StaticFiles
-from starlette_babel.contrib.jinja import configure_jinja_env
 from starlette.templating import Jinja2Templates
-from starlette_babel import (
-    get_translator,
-    LocaleMiddleware,
-)
+from starlette_babel import LocaleMiddleware
 
 from .. import config
 from ..wrapper import Potto
-from . import jinjafilters
 from .routes import (
     ogcapi_common as ogc_api_common_routes,
     ogcapi_features as ogc_api_features_routes,
 )
 from .state import AppState
 from .api.main import create_api_app_from_settings
+from .admin.main import create_admin_app_from_settings
 
 logger = logging.getLogger(__name__)
 
@@ -42,43 +33,11 @@ _default_app_state: AppState | None = None
 @contextlib.asynccontextmanager
 async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
     settings = config.get_settings()
-    if settings.translations_dir:
-        shared_translator = get_translator()
-        shared_translator.load_from_directory(settings.translations_dir)
-    template_loaders: list[jinja2.BaseLoader] = [
-        jinja2.PackageLoader("potto.webapp", "templates"),
-        jinja2.PackageLoader("pygeoapi", "templates"),
-    ]
-    if settings.templates_dir:
-        template_loaders.append(
-            jinja2.FileSystemLoader(settings["templates_dir"]),
-        )
-    jinja_env = jinja2.Environment(
-        loader=jinja2.ChoiceLoader(template_loaders),
-        autoescape=True,
-        extensions=[
-            "jinja2.ext.i18n",
-        ]
-    )
-    jinja_env.filters.update({
-        "to_json": jinjafilters.to_json,
-        "format_datetime": jinjafilters.format_datetime,
-        "format_duration": jinjafilters.format_duration,
-        "human_size": jinjafilters.human_size,
-        "get_path_basename": jinjafilters.get_path_basename,
-        "get_breadcrumbs": jinjafilters.get_breadcrumbs,
-        "filter_dict_by_key_value": jinjafilters.filter_dict_by_key_value,
-    })
-    jinja_env.globals.update({
-        "settings": settings,
-        "pygeoapi_version": pygeoapi_version,
-    })
-    configure_jinja_env(jinja_env)
     global _default_app_state
     _default_app_state = AppState(
         settings = settings,
-        templates=Jinja2Templates(env=jinja_env),
-        potto=Potto.from_settings(settings),
+        templates=Jinja2Templates(env=settings.get_jinja_env()),
+        potto=Potto(settings),
     )
     yield _default_app_state
     _default_app_state = None
@@ -115,6 +74,8 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
         ],
         lifespan=lifespan,
     )
+    admin_app = create_admin_app_from_settings(settings)
+    admin_app.mount_to(app)
     return app
 
 
