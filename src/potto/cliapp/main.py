@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 from pathlib import Path
@@ -6,6 +7,7 @@ from typing import Annotated
 import cyclopts
 from cyclopts import App
 from rich.console import Console
+from rich.logging import RichHandler
 from rich.table import Table
 from rich.traceback import install as rich_install_traceback
 
@@ -14,25 +16,21 @@ from ..config import (
     PottoSettings,
 )
 from .db import db_app
-
+from .admin import admin_app
 
 _console = Console()
 _error_console = Console(stderr=True)
-
-
 potto_app = App(
     console=_console,
     error_console=_error_console,
 )
 rich_install_traceback(console=_error_console)
-
+admin_app.console = _console
+admin_app.error_console = _error_console
 db_app.console = _console
 db_app.error_console = _error_console
-
-potto_app.command(
-    db_app.meta,
-    name="db"
-)
+potto_app.command(admin_app.meta, name="admin")
+potto_app.command(db_app.meta, name="db")
 
 
 @potto_app.meta.default
@@ -52,11 +50,17 @@ def launcher(
     Note that this strategy is used because we do not use cyclopts builtin
     configuration facilities, but rather pydantic-settings.
     """
+    settings = get_settings()
+    rich_log_handler = RichHandler(console=potto_app.error_console)
+    logging.basicConfig(
+        level=logging.DEBUG if settings.debug else logging.INFO,
+        handlers=[rich_log_handler]
+    )
     command, bound, ignored = potto_app.parse_args(tokens)
     additional_kwargs = {}
     if "settings" in ignored:
         additional_kwargs = {
-            "settings": get_settings(),
+            "settings": settings,
         }
     return command(*bound.args, **bound.kwargs, **additional_kwargs)
 

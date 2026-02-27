@@ -4,7 +4,6 @@ import alembic.command
 import alembic.config
 import alembic.util.exc
 import cyclopts
-from rich.table import Table
 
 db_app = cyclopts.App(name="db")
 

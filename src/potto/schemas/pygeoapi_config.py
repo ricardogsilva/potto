@@ -104,7 +104,7 @@ class LinkConfig(pydantic.BaseModel):
     type_: str
     rel: str
     href: str
-    title: str | None = None
+    title: str | dict[str, str] | None = None
     href_lang: str | None = None
     length: int | None = None
 
