@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 async def list_collections(request: Request) -> Response:
     current_locale = babel.Locale.parse(request.state.language)
     settings: PottoSettings = request.state.settings
-    potto = await Potto.from_settings(settings)
+    potto = Potto(settings)
     result = await potto.api_list_collections(
         locale=current_locale,
         output_format=constants.PYGEOAPI_F_JSON,
@@ -43,7 +43,7 @@ async def list_collections(request: Request) -> Response:
         "collections/list.html",
         context={
             "data": content,
-            "pygeoapi_config": potto.get_localized_config(current_locale),
+            "pygeoapi_config": await potto.get_localized_config(current_locale),
             "jsonld_content": json.dumps(json_ld_result.content),
         }
     )
@@ -70,7 +70,7 @@ async def get_collection_details(request: Request) -> Response:
         "collections/detail.html",
         context={
             "data": content,
-            "pygeoapi_config": potto.get_localized_config(current_locale),
+            "pygeoapi_config": await potto.get_localized_config(current_locale),
             "jsonld_content": json.dumps(json_ld_result.content),
         }
     )
@@ -103,7 +103,7 @@ async def list_collection_items(request: Request) -> Response:
         template_path,
         context={
             "data": response_content,
-            "pygeoapi_config": potto.get_localized_config(current_locale),
+            "pygeoapi_config": await potto.get_localized_config(current_locale),
             "jsonld_content": json_ld_response_content.model_dump_json(by_alias=True),
         },
         headers={
@@ -140,7 +140,7 @@ async def get_item_details(request: Request) -> Response:
         template_path,
         context={
             "data": response_content,
-            "pygeoapi_config": potto.get_localized_config(current_locale),
+            "pygeoapi_config": await potto.get_localized_config(current_locale),
         },
         headers={
             **result.metadata,
