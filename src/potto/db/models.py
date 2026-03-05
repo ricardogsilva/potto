@@ -1,4 +1,5 @@
 import datetime as dt
+import enum
 import logging
 from typing import (
     Annotated,
@@ -13,24 +14,28 @@ from geoalchemy2 import (
 )
 from geoalchemy2.shape import to_shape
 from pydantic import (
+    BaseModel,
     BeforeValidator,
     ConfigDict,
-    field_serializer,
     PlainSerializer,
 )
 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import (
-    Column,
     Field,
-    Relationship,
     SQLModel,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def serialize_localizable_field(value: dict[str, str], _info):
+class CollectionType(str, enum.Enum):
+    COVERAGE = "coverage"
+    FEATURE_COLLECTION = "feature_collection"
+    RECORD_COLLECTION = "record_collection"
+
+
+def serialize_localizable_field(value: dict[str, str] | str, _info):
     """Serialize a localizable field.
 
     Localizable fields use a JSONB type, which is not serialized by default, hence
@@ -39,7 +44,7 @@ def serialize_localizable_field(value: dict[str, str], _info):
     return value
 
 
-def serialize_localizable_list_field(value: dict[str, list[str]], _info):
+def serialize_localizable_list_field(value: dict[str, list[str]] | list[str], _info):
     """Serialize a localizable list field.
 
     Localizable fields use a JSONB type, which is not serialized by default, hence
@@ -90,7 +95,7 @@ def to_shapely(
         return to_shape(value)
 
 
-ShapelyGeometry = Annotated[
+MaybeShapelyGeometry = Annotated[
     shapely.Geometry | None,
     BeforeValidator(to_shapely),
     PlainSerializer(
@@ -99,11 +104,24 @@ ShapelyGeometry = Annotated[
     ),
 ]
 
+Title = Annotated[
+    dict[str, str] | str,
+    PlainSerializer(serialize_localizable_field)
+]
+Description = Annotated[
+    dict[str, str] | str | None,
+    PlainSerializer(serialize_localizable_field)
+]
+Keywords = Annotated[
+    dict[str, list[str]] | list[str] | None,
+    PlainSerializer(serialize_localizable_list_field)
+]
 
-class CollectionResource(SQLModel, table=True):
+
+class CollectionItem(SQLModel, table=True):
     __table_args__ = (
         sqlalchemy.Index(
-            "idx_collectionresource_name_gin",
+            "idx_collection_title_gin",
             "title",
             postgresql_using="gin"
         ),
@@ -119,33 +137,32 @@ class CollectionResource(SQLModel, table=True):
         min_length=3,
         max_length=100,
         index=True,
+        unique=True,
     )
-    title: dict[str, str] | str = Field(sa_column=Column(JSONB))
-    description: dict[str, str] | str | None = Field(
-        default=None, sa_column=Column(JSONB, nullable=True))
-    keywords: dict[str, list[str]] | list[str] | None = Field(
-        default=None, sa_column=Column(JSONB, nullable=True))
-    spatial_extent: ShapelyGeometry = Field(
+    collection_type: CollectionType
+    title: Title = Field(sa_type=JSONB())
+    description: Description = Field(default=None, sa_type=JSONB(), nullable=True)
+    keywords: Keywords = Field(default=None, sa_type=JSONB(), nullable=True)
+    spatial_extent: MaybeShapelyGeometry = Field(
         default=None,
-        sa_column=Column(
-            ShapelyGeometryAdapter(),
-            nullable=True
-        )
+        sa_type=ShapelyGeometryAdapter(),
+        nullable=True,
     )
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
-    providers: list[dict[str, Any]] = Field(sa_column=Column(JSONB, nullable=True))
     additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
-        default=None, sa_column=Column(JSONB, nullable=True))
+        default=None, sa_type=JSONB(), nullable=True)
+    providers: dict[str, dict[str, Any]] | None = Field(default=None, sa_type=JSONB(), nullable=True)
 
 
-    @field_serializer("title", "description")
-    def _serialize_localizable(self, value: dict[str, str] | None, info) -> dict[str, str] | None:
-        return serialize_localizable_field(value, info) if value is not None else None
-
-    @field_serializer("keywords")
-    def _serialize_localizable_list(
-        self, value: dict[str, list[str]], info
-    ) -> dict[str, list[str]]:
-        return serialize_localizable_list_field(value, info) if value is not None else None
-
+class PottoMetadata(SQLModel, table=True):
+    id: int | None = Field(
+        default=None,
+        primary_key=True,
+    )
+    title: Title = Field(sa_type=JSONB())
+    description: Description = Field(default=None, sa_type=JSONB(), nullable=True)
+    keywords: Keywords = Field(default=None, sa_type=JSONB(), nullable=True)
+    license: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
+    data_provider: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
+    point_of_contact: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)

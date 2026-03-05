@@ -1,5 +1,4 @@
 import asyncio
-import copy
 import json
 import logging
 import os
@@ -29,8 +28,7 @@ from pygeoapi.util import yaml_load
 
 from . import constants
 from .config import PottoSettings
-from .db.models import CollectionResource
-from .db.queries.collections import collect_all_collections
+from .operations.config import get_pygeoapi_config
 from .schemas import (
     collections as collections_schemas,
     potto as potto_schemas,
@@ -44,177 +42,6 @@ from .webapp.requests import PottoRequest
 logger = logging.getLogger(__name__)
 
 ResourceTypes: TypeAlias = Sequence[Literal["collection", "stac-collection", "process"]]
-
-
-async def get_pygeoapi_config(
-        settings: PottoSettings,
-        *,
-        resource_types: ResourceTypes | Literal["all"] = "all",
-        resource_page: int = 1,
-        resource_page_size: int | None = None,
-) -> dict:
-    read_conf = yaml_load(settings.pygeoapi_config_file.read_text())
-    server_conf = read_conf.get("server", {})
-    server_map = server_conf.get("map", {})
-    server_limits_conf = server_conf.get("limits", {})
-    metadata_conf = read_conf.get("metadata", {})
-    identification_conf = metadata_conf.get("identification", {})
-    license_conf = metadata_conf.get("license", {})
-    provider_conf = metadata_conf.get("provider", {})
-    contact_conf = metadata_conf.get("contact", {})
-    pygeoapi_config = {
-        "server": {
-            "admin": server_conf.get("admin", False),
-            "languages": settings.locales,
-            "limits": {
-                "default_items": server_limits_conf.get("default_items", 20),
-                "max_items": server_limits_conf.get("max_items", 50),
-            },
-            "map": {
-                "url": server_map.get(
-                    "map", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
-                "attribution": server_map.get(
-                    "attribution",
-                    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-                ),
-            },
-            "locale_dir": server_conf.get("locale_dir"),
-            "url": settings.public_url,
-        },
-        "logging": {
-            "level": "DEBUG" if settings.debug else "WARNING"
-        },
-        "metadata": {
-            "identification": {
-                "title": identification_conf.get(
-                    "title", {"en": "Potto"}
-                ),
-                "description": identification_conf.get(
-                    "description", {"en": "The pygeoapi primate"}
-                ),
-                "keywords": identification_conf.get(
-                    "keywords", {"en": ["geospatial", "data", "api"]}
-                ),
-                "keywords_type": identification_conf.get("keywords_type", "theme"),
-                "terms_of_service": identification_conf.get(
-                    "terms_of_service", "https://creativecommons.org/licenses/by/4.0/"),
-                "url": identification_conf.get("url", "https://example.org"),
-            },
-            "license": {
-                "name": license_conf.get("name", "CC-BY 4.0 license"),
-                "url": license_conf.get("url", "https://creativecommons.org/licenses/by/4.0/"),
-            },
-            "provider": {
-                "name": provider_conf.get("name", "Organization Name"),
-                "url": provider_conf.get("url", "https://pygeoapi.io"),
-            },
-            "contact": {
-                "name": contact_conf.get("name", "Lastname, Firstname"),
-                "position": contact_conf.get("position", "Position Title"),
-                "address": contact_conf.get("address", "Mailing Address"),
-                "city": contact_conf.get("city", "City"),
-                "stateorprovince": contact_conf.get("stateorprovince", "Administrative Area"),
-                "postalcode": contact_conf.get("postalcode", "Zip or Postal Code"),
-                "country": contact_conf.get("country", "Country"),
-                "phone": contact_conf.get("phone", "+xx-xxx-xxx-xxxx"),
-                "fax": contact_conf.get("fax", "+xx-xxx-xxx-xxxx"),
-                "email": contact_conf.get("email", "you@example.org"),
-                "url": contact_conf.get("url", "Contact URL"),
-                "hours": contact_conf.get("hours", "Mo-Fr 08:00-17:00"),
-                "instructions": contact_conf.get("instructions", "During hours of service. Off on weekends."),
-                "role": contact_conf.get("role", "pointOfContact"),
-            },
-        },
-        "resources": read_conf.get("resources", {}),
-    }
-
-    session_maker = settings.get_db_session_maker()
-    async with session_maker() as db_session:
-        all_collections = await collect_all_collections(db_session)
-        for db_collection in all_collections:
-            pygeoapi_config["resources"][db_collection.resource_identifier] = (
-                _convert_collection_to_pygeoapi_resource(db_collection)
-            )
-
-    # filter and paginate the resources - in a future iteration, when we stop
-    # reading the config both from a file and from the db (and just read it all
-    # from the db), we can perform these on the db side, which will be more
-    # efficient
-    resource_filter = (
-        ("collection", "stac-collection", "process")
-        if resource_types == "all" else resource_types
-    )
-    resources_as_list = [
-        (id_, res)
-        for id_, res in pygeoapi_config["resources"].items()
-        if res.get("type") in resource_filter
-    ]
-    if resource_page_size is None:
-        relevant_resources = resources_as_list
-    else:
-        offset = (max(resource_page - 1, 0)) * resource_page_size
-        relevant_indexes = slice(
-            offset,
-            min(offset + resource_page_size, len(resources_as_list))
-        )
-        relevant_resources = resources_as_list[relevant_indexes]
-    pygeoapi_config["resources"] = {id_: res for id_, res in relevant_resources}
-    # TODO: validate the config
-    return pygeoapi_config
-
-
-def _convert_collection_to_pygeoapi_resource(
-        collection: CollectionResource) -> dict:
-    links = []
-    for collection_link in collection.additional_links or []:
-        link_ = dict(collection_link)
-        type_ = link_.pop("media_type", "")
-        links.append(
-            {
-                "type": type_,
-                **link_
-            }
-        )
-    providers = []
-    for provider in collection.providers or []:
-        raw_data_value = provider.pop("data", "")
-        interpolated_data_value = re.sub(
-            r"\${?(\w+)}?",
-            lambda re_match: os.getenv(re_match.group(1), "ENV_VAR_NOT_FOUND"),
-            raw_data_value,
-        )
-        provider["data"] = interpolated_data_value
-        providers.append(provider)
-
-    return {
-        "type": "collection",
-        "title": collection.title,
-        "description": collection.description or "",
-        "keywords": collection.keywords or [],
-        "linked-data": None,
-        "links": links,
-        "extents": {
-            "spatial": {
-                "bbox": (
-                    collection.spatial_extent.bounds
-                    if collection.spatial_extent
-                    else shapely.box(-180, -90, 180, 90).bounds
-                ),
-                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-            },
-            "temporal": {
-                "begin": (
-                    collection.temporal_extent_begin.isoformat()
-                    if collection.temporal_extent_begin else None
-                ),
-                "end": (
-                    collection.temporal_extent_end.isoformat()
-                    if collection.temporal_extent_end else None
-                ),
-            }
-        },
-        "providers": providers,
-    }
 
 
 class Potto:
@@ -252,12 +79,14 @@ class Potto:
             resource_page: int = 1,
             resource_page_size: int | None = None,
     ) -> _API:
-        pygeoapi_config = await get_pygeoapi_config(
-            self._settings,
-            resource_types=resource_types,
-            resource_page=resource_page,
-            resource_page_size=resource_page_size
-        )
+        async with self._settings.get_db_session_maker()() as session:
+            pygeoapi_config = await get_pygeoapi_config(
+                session,
+                self._settings.locales,
+                self._settings.public_url,
+                resource_page=resource_page,
+                resource_page_size=resource_page_size
+            )
         openapi_document = get_oas_30(pygeoapi_config, fail_on_invalid_collection=True)
         return _API(config=pygeoapi_config, openapi=openapi_document)
 

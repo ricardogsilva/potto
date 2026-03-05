@@ -30,7 +30,7 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
         title="Potto admin",
     )
     app.add_view(
-        views.CollectionResourceView(
-            models.CollectionResource, identity="collection-resource")
+        views.CollectionItemView(
+            models.CollectionItem, identity="collection_item",)
     )
     return app

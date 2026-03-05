@@ -1,37 +1,41 @@
 import asyncio
 import inspect
+import logging
+from pathlib import Path
 from typing import (
     Annotated,
     Literal,
 )
 
 import pydantic
+import yaml
 from rich.table import Table
 
 from ..config import (
     get_settings,
     PottoSettings,
 )
+from ..exceptions import PottoException
+from ..operations.collections import import_pygeoapi_collection
 from ..schemas import cli as cli_schemas
 from ..wrapper import Potto
+from ..db.queries import collect_all_collections
 
 import cyclopts
 
-admin_app = cyclopts.App(name="admin")
-collections_sub_app = cyclopts.App(name="collections")
-
-admin_app.command(collections_sub_app, name="collection-resources")
+collections_app = cyclopts.App()
+logger = logging.getLogger(__name__)
 
 
-@admin_app.meta.default
+@collections_app.meta.default
 def launcher(
         *tokens: Annotated[
             str,
             cyclopts.Parameter(show=False, allow_leading_hyphen=True)
         ],
 ):
-    """Admin-related functionality."""
-    command, bound, ignored = admin_app.parse_args(tokens)
+    """Collection-related functionality."""
+    command, bound, ignored = collections_app.parse_args(tokens)
     additional_kwargs = {}
     if "settings" in ignored:
         additional_kwargs = {
@@ -46,8 +50,42 @@ def launcher(
             return asyncio.run(command(*bound.args, **bound.kwargs, **additional_kwargs))
 
 
-@collections_sub_app.command(name="list")
-async def list_collection_resources(
+@collections_app.command(name="import-from-pygeoapi")
+async def import_collections_from_pygeoapi(
+        pygeoapi_configuration: Path,
+        resources: list[str] | None = None,
+        overwrite: bool = False,
+        *,
+        settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
+):
+    """Import collections from pygeoapi."""
+    if not pygeoapi_configuration.is_file():
+        raise SystemExit(f"Error: pygeoapi configuration file not found.")
+
+    raw_config = await asyncio.to_thread(Path(pygeoapi_configuration).read_text)
+    pygeoapi_config = await asyncio.to_thread(yaml.safe_load, raw_config)
+
+    num_imported = 0
+    async with settings.get_db_session_maker()() as session:
+        existing_collections = await collect_all_collections(session)
+        relevant_resources = {
+            id_: res for id_, res in pygeoapi_config.get("resources", {}).items()
+            if res.get("type") == "collection"
+               and (resources is None or id in resources)
+               and (overwrite or id_ not in [c.resource_identifier for c in existing_collections])
+        }
+        for idx, (identifier, resource) in enumerate(relevant_resources.items()):
+            logger.debug(f"[{idx+1}/{len(relevant_resources)}]Processing collection {identifier!r}...")
+            try:
+                await import_pygeoapi_collection(session, identifier, resource, overwrite=overwrite)
+                num_imported += 1
+            except PottoException as err:
+                collections_app.error_console.print(f"Could not import collection {identifier!r} - {err}")
+    collections_app.console.print(f"Done! Imported [{num_imported}/{len(relevant_resources)}] collections")
+
+
+@collections_app.command(name="list")
+async def list_collections(
         page: int = 1,
         page_size: int = 20,
         output_format: Literal["json", "table"] = "table",
@@ -56,32 +94,32 @@ async def list_collection_resources(
 ) -> None:
     """List collections."""
     potto = Potto(settings)
-    item_collections = await potto.list_item_collection_configs(page=page, page_size=page_size)
+    collections = await potto.list_item_collection_configs(page=page, page_size=page_size)
     if output_format == "json":
         result_adapter = pydantic.TypeAdapter(
             list[cli_schemas.ItemCollectionConfigReadListItem])
         serialized = result_adapter.dump_json(
             [
                 cli_schemas.ItemCollectionConfigReadListItem(**i.model_dump())
-                for i in item_collections
+                for i in collections
             ],
             indent=2,
         ).decode()
-        admin_app.console.print_json(serialized)
+        collections_app.console.print_json(serialized)
     else:
         collection_table = Table(title="Item Collections")
         for field_name in cli_schemas.ItemCollectionConfigReadListItem.model_fields.keys():
             collection_table.add_column(field_name)
-        for item_collection in item_collections:
+        for item_collection in collections:
             table_row = []
             for field_name in cli_schemas.ItemCollectionConfigReadListItem.model_fields.keys():
                 table_row.append(str(getattr(item_collection, field_name)))
             collection_table.add_row(*table_row)
         serialized = collection_table
-        admin_app.console.print(serialized)
+        collections_app.console.print(serialized)
 
 
-@collections_sub_app.command(name="detail")
+@collections_app.command(name="detail")
 async def get_collection_resource(
         collection_identifier: str,
         output_format: Literal["json", "table"] = "table",
@@ -106,7 +144,7 @@ async def get_collection_resource(
             detail_table.add_row(field_name, str(getattr(collection_detail, field_name)))
         admin_app.console.print(detail_table)
 
-@collections_sub_app.command(name="create")
+@collections_app.command(name="create")
 async def create_collection_resource(
         # collection_configuration: Annotated[cli_schemas.ItemCollectionConfigCreate, cyclopts.Parameter(name="*")],
         collection_configuration: cli_schemas.ItemCollectionConfigCreate,

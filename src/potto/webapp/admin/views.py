@@ -1,5 +1,6 @@
 import logging
 
+from starlette.requests import Request
 from starlette_admin.contrib.sqlmodel import ModelView
 from starlette_admin.fields import (
     CollectionField,
@@ -15,18 +16,24 @@ from .fields import SpatialExtentField
 logger = logging.getLogger(__name__)
 
 
-class CollectionResourceView(ModelView):
+class _PottoAdminModelView(ModelView):
+
+    def handle_exception(self, exc: Exception) -> None:
+        logger.exception("An error occurred", exc)
+        return super().handle_exception(exc)
+
+
+class CollectionItemView(_PottoAdminModelView):
     fields = (
-        models.CollectionResource.resource_identifier,
-        models.CollectionResource.title,
-        models.CollectionResource.description,
+        models.CollectionItem.resource_identifier,
+        models.CollectionItem.collection_type,
+        models.CollectionItem.title,
+        models.CollectionItem.description,
         SpatialExtentField(name="spatial_extent"),
-        models.CollectionResource.temporal_extent_begin,
-        models.CollectionResource.temporal_extent_end,
-        models.CollectionResource.keywords,
-        ListField(
-            JSONField(name="providers"),
-        ),
+        models.CollectionItem.temporal_extent_begin,
+        models.CollectionItem.temporal_extent_end,
+        models.CollectionItem.keywords,
+        JSONField(name="providers"),
         ListField(
             CollectionField(
                 name="additional_links",
@@ -48,4 +55,5 @@ class CollectionResourceView(ModelView):
         "spatial_extent",
         "temporal_extent_begin",
         "temporal_extent_end",
+        "providers",
     )

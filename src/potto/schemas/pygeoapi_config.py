@@ -4,7 +4,7 @@ from typing import Literal
 import pydantic
 import shapely
 
-from ..db.models import CollectionResource
+from ..db.models import CollectionItem
 
 
 class LocalizableConfigString(pydantic.RootModel):
@@ -323,7 +323,7 @@ class ItemCollectionConfig(pydantic.BaseModel):
         )
 
     @classmethod
-    def from_potto_db(cls, collection_config: CollectionResource) -> "ItemCollectionConfig":
+    def from_potto_db(cls, collection_config: CollectionItem) -> "ItemCollectionConfig":
         return cls(
             identifier=collection_config.resource_identifier,
             type_="collection",
