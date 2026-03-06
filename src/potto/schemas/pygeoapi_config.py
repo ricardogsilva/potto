@@ -4,7 +4,12 @@ from typing import Literal
 import pydantic
 import shapely
 
-from ..db.models import CollectionItem
+from ..db.models import Collection
+from .base import (
+    Title,
+    Description,
+    Keywords,
+)
 
 
 class LocalizableConfigString(pydantic.RootModel):
@@ -45,9 +50,9 @@ class LocalizableConfigStringList(pydantic.RootModel):
 
 
 class ServerMetadataIdentificationConfig(pydantic.BaseModel):
-    title: LocalizableConfigString
-    description: LocalizableConfigString
-    keywords: LocalizableConfigStringList
+    title: Title
+    description: Description
+    keywords: Keywords
     keywords_type: str
     terms_of_service: str
     url: str
@@ -323,7 +328,7 @@ class ItemCollectionConfig(pydantic.BaseModel):
         )
 
     @classmethod
-    def from_potto_db(cls, collection_config: CollectionItem) -> "ItemCollectionConfig":
+    def from_potto_db(cls, collection_config: Collection) -> "ItemCollectionConfig":
         return cls(
             identifier=collection_config.resource_identifier,
             type_="collection",

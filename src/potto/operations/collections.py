@@ -1,40 +1,72 @@
 import logging
-import datetime as dt
 import shapely
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..db.models import (
-    CollectionItem,
+from ..db.models import Collection
+from ..db.commands import collections as collection_commands
+from ..db.queries import get_collection_by_resource_identifier
+from ..db.queries import collections as collection_queries
+from ..exceptions import PottoException
+from ..schemas.base import (
+    CollectionProvider,
+    CollectionProviderConfiguration,
     CollectionType,
 )
-from ..db.commands import (
-    create_collection,
-    update_collection,
-)
-from ..db.queries import get_collection_by_resource_identifier
-from ..exceptions import PottoException
 from ..schemas.collections import (
-    CollectionItemCreate,
-    CollectionItemUpdate,
+    CollectionCreate,
+    CollectionUpdate,
 )
 
 logger = logging.getLogger(__name__)
 
 
+async def paginated_list_collections(
+        session: AsyncSession,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        include_total: bool = False,
+        identifier_filter: str | None = None,
+        collection_type_filter: list[CollectionType] | None = None,
+        spatial_intersect: shapely.Polygon | None = None,
+) -> tuple[list[Collection], int | None]:
+    return await collection_queries.paginated_list_collections(
+        session,
+        page=page,
+        page_size=page_size,
+        include_total=include_total,
+        identifier_filter=identifier_filter,
+        collection_type_filter=collection_type_filter,
+        spatial_intersect=spatial_intersect
+    )
+
+
+async def get_collection(
+        session: AsyncSession,
+        collection_id: int,
+) -> Collection | None:
+    return await collection_queries.get_collection(session, collection_id)
+
+
+async def create_collection(
+        session: AsyncSession,
+        to_create: CollectionCreate,
+) -> Collection:
+    return await collection_commands.create_collection(session, to_create)
+
+
 async def import_pygeoapi_collection(
         session: AsyncSession,
         identifier: str,
-        resource: list[dict],
+        pygeoapi_collection: dict,
         *,
         overwrite: bool = False,
-) -> CollectionItem:
-    existing_db_collection = await get_collection_by_resource_identifier(session, identifier)
+) -> Collection:
+    existing_db_collection = await get_collection_by_resource_identifier(
+        session, identifier)
     if existing_db_collection and not overwrite:
         raise PottoException(f"Collection {identifier!r} already exists!")
-    logger.debug(f"About to import resource {resource=}")
-    if resource.get("type") != "collection":
-        raise PottoException("pygeoapi resource is not a collection type")
-    provider_types = set([p.get("type") for p in resource.get("providers", [])])
+    provider_types = set([p.get("type") for p in pygeoapi_collection.get("providers", [])])
     collection_type_mapping = {
         "feature": CollectionType.FEATURE_COLLECTION,
         "record": CollectionType.RECORD_COLLECTION,
@@ -50,45 +82,50 @@ async def import_pygeoapi_collection(
     except (TypeError, KeyError) as err:
         raise PottoException(f"Unsupported collection type: {provider_types=}") from err
 
-    resource_spatial_extents = resource.get("extents", {}).get("spatial", {})
+    resource_spatial_extents = pygeoapi_collection.get(
+        "extents", {}).get("spatial", {})
     try:
         # TODO: support inspecting the CRS
         spatial_extent = shapely.box(*resource_spatial_extents.get("bbox"))
     except TypeError:
         spatial_extent = None
     providers = {}
-    for prov in resource.get("providers", []):
-        type_ = prov.get("type")
-        if providers.get(type_) is None:
-            providers[type_] = prov
-        else:
+    for prov in pygeoapi_collection.get("providers", []):
+        if (type_ := prov.pop("type")) in providers.keys():
             continue
+        providers[type_] = CollectionProvider(
+            python_callable=prov.pop("name"),
+            config=CollectionProviderConfiguration(
+                data=prov.pop("data"),
+                options=prov
+            )
+        )
 
     if existing_db_collection and overwrite:
         logger.debug(f"Updating existing collection {identifier!r}...")
-        to_update = CollectionItemUpdate(
+        to_update = CollectionUpdate(
             collection_type=collection_type,
-            title=resource.get("title", ""),
-            description=resource.get("description"),
-            keywords=resource.get("keywords"),
+            title=pygeoapi_collection.get("title", ""),
+            description=pygeoapi_collection.get("description"),
+            keywords=pygeoapi_collection.get("keywords"),
             spatial_extent=spatial_extent,
-            temporal_extent_begin=resource.get("extents", {}).get("temporal", {}).get("begin"),
-            temporal_extent_end=resource.get("extents", {}).get("temporal", {}).get("end"),
-            additional_links=resource.get("links"),
+            temporal_extent_begin=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("begin"),
+            temporal_extent_end=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("end"),
+            additional_links=pygeoapi_collection.get("links"),
             providers=providers
         )
-        return await update_collection(session, existing_db_collection, to_update)
+        return await collection_commands.update_collection(session, existing_db_collection, to_update)
     else:
-        to_create = CollectionItemCreate(
+        to_create = CollectionCreate(
             resource_identifier=identifier,
             collection_type=collection_type,
-            title=resource.get("title", ""),
-            description=resource.get("description"),
-            keywords=resource.get("keywords"),
+            title=pygeoapi_collection.get("title", ""),
+            description=pygeoapi_collection.get("description"),
+            keywords=pygeoapi_collection.get("keywords"),
             spatial_extent=spatial_extent,
-            temporal_extent_begin=resource.get("extents", {}).get("temporal", {}).get("begin"),
-            temporal_extent_end=resource.get("extents", {}).get("temporal", {}).get("end"),
-            additional_links=resource.get("links"),
+            temporal_extent_begin=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("begin"),
+            temporal_extent_end=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("end"),
+            additional_links=pygeoapi_collection.get("links"),
             providers=providers
         )
         return await create_collection(session, to_create)

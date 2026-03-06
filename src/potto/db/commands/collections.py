@@ -4,22 +4,19 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...exceptions import PottoException
 from ...schemas.collections import (
-    CollectionItemCreate,
-    CollectionItemUpdate
+    CollectionCreate,
+    CollectionUpdate
 )
-from ..models import CollectionItem
-from ..queries import (
-    get_collection,
-    get_collection_by_resource_identifier
-)
+from ..models import Collection
+from ..queries import get_collection
 
 logger = logging.getLogger(__name__)
 
 
 async def create_collection(
-        session: AsyncSession, to_create: CollectionItemCreate
-) -> CollectionItem:
-    instance = CollectionItem(**to_create.model_dump())
+        session: AsyncSession, to_create: CollectionCreate
+) -> Collection:
+    instance = Collection(**to_create.model_dump())
     session.add(instance)
     await session.commit()
     await session.refresh(instance)
@@ -28,9 +25,9 @@ async def create_collection(
 
 async def update_collection(
         session: AsyncSession,
-        db_collection: CollectionItem,
-        to_update: CollectionItemUpdate,
-) -> CollectionItem:
+        db_collection: Collection,
+        to_update: CollectionUpdate,
+) -> Collection:
     for key, value in to_update.model_dump(exclude_unset=True).items():
         setattr(db_collection, key, value)
     session.add(db_collection)

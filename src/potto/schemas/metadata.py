@@ -55,7 +55,7 @@ class DataProviderInformation(pydantic.BaseModel):
     url: str | None = None
 
 
-class PottoMetadataCreate(pydantic.BaseModel):
+class ServerMetadataCreate(pydantic.BaseModel):
     title: Title
     description: Description = None
     keywords: Keywords = None
@@ -64,10 +64,36 @@ class PottoMetadataCreate(pydantic.BaseModel):
     point_of_contact: PointOfContact | None = None
 
 
-class PottoMetadataUpdate(pydantic.BaseModel):
+class ServerMetadataUpdate(pydantic.BaseModel):
     title: Title | None = None
     description: Description = None
     keywords: Keywords = None
     license: LicenseInformation | None = None
     data_provider: DataProviderInformation | None = None
     point_of_contact: PointOfContact | None = None
+
+
+class ServerMetadataFlattenedUpdate(pydantic.BaseModel):
+    title: str | None = None
+    description: str = None
+    keywords: Keywords = None
+    keywords_type: str | None = None
+    terms_of_service: Description = None
+    url: str | None = None
+    license_name: str | None = None
+    license_url: str | None = None
+    data_provider_name: str | None = None
+    data_provider_url: str | None = None
+    point_of_contact_name: str | None = None
+    point_of_contact_position: str | None = None
+    point_of_contact_address: str | None = None
+    point_of_contact_city: str | None = None
+    point_of_contact_state_or_province: str | None = None
+    point_of_contact_postal_code: str | None = None
+    point_of_contact_country: str | None = None
+    point_of_contact_phone: str | None = None
+    point_of_contact_fax: str | None = None
+    point_of_contact_email: str | None = None
+    point_of_contact_url: str | None = None
+    point_of_contact_contact_hours: str | None = None
+    point_of_contact_contact_instructions: str | None = None

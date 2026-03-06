@@ -1,13 +1,14 @@
 import asyncio
 import inspect
 import logging
+import sys
+from math import ceil
 from pathlib import Path
 from typing import (
     Annotated,
     Literal,
 )
 
-import pydantic
 import yaml
 from rich.table import Table
 
@@ -17,9 +18,13 @@ from ..config import (
 )
 from ..exceptions import PottoException
 from ..operations.collections import import_pygeoapi_collection
+from ..db.commands import collections as collection_commands
+from ..db.queries import (
+    collect_all_collections,
+    get_collection_by_resource_identifier,
+    paginated_list_collections,
+)
 from ..schemas import cli as cli_schemas
-from ..wrapper import Potto
-from ..db.queries import collect_all_collections
 
 import cyclopts
 
@@ -57,7 +62,7 @@ async def import_collections_from_pygeoapi(
         overwrite: bool = False,
         *,
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
-):
+) -> None:
     """Import collections from pygeoapi."""
     if not pygeoapi_configuration.is_file():
         raise SystemExit(f"Error: pygeoapi configuration file not found.")
@@ -88,31 +93,39 @@ async def import_collections_from_pygeoapi(
 async def list_collections(
         page: int = 1,
         page_size: int = 20,
-        output_format: Literal["json", "table"] = "table",
+        format: Literal["json", "table"] = "table",
         *,
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """List collections."""
-    potto = Potto(settings)
-    collections = await potto.list_item_collection_configs(page=page, page_size=page_size)
-    if output_format == "json":
-        result_adapter = pydantic.TypeAdapter(
-            list[cli_schemas.ItemCollectionConfigReadListItem])
-        serialized = result_adapter.dump_json(
-            [
-                cli_schemas.ItemCollectionConfigReadListItem(**i.model_dump())
-                for i in collections
-            ],
-            indent=2,
-        ).decode()
-        collections_app.console.print_json(serialized)
+    async with settings.get_db_session_maker()() as session:
+        collections, total = await paginated_list_collections(
+            session,
+            page=page,
+            page_size=page_size,
+            include_total=True,
+        )
+    result = cli_schemas.CollectionList(
+        items=[cli_schemas.CollectionListItem.from_db_item(i) for i in collections],
+        meta=cli_schemas.CollectionListMeta(
+            page=page,
+            page_size=len(collections),
+            total_items=total,
+            total_pages=ceil(total / page_size),
+        )
+    )
+    if format == "json":
+        collections_app.console.print_json(result.model_dump_json(indent=2))
     else:
-        collection_table = Table(title="Item Collections")
-        for field_name in cli_schemas.ItemCollectionConfigReadListItem.model_fields.keys():
+        collection_table = Table(
+            title="Collections",
+            caption=f"Showing {result.meta.page_size} of {result.meta.total_items} items"
+        )
+        for field_name in cli_schemas.CollectionListItem.model_fields.keys():
             collection_table.add_column(field_name)
-        for item_collection in collections:
+        for item_collection in result.items:
             table_row = []
-            for field_name in cli_schemas.ItemCollectionConfigReadListItem.model_fields.keys():
+            for field_name in cli_schemas.CollectionListItem.model_fields.keys():
                 table_row.append(str(getattr(item_collection, field_name)))
             collection_table.add_row(*table_row)
         serialized = collection_table
@@ -120,35 +133,48 @@ async def list_collections(
 
 
 @collections_app.command(name="detail")
-async def get_collection_resource(
+async def get_collection(
         collection_identifier: str,
-        output_format: Literal["json", "table"] = "table",
+        format: Literal["json", "table"] = "table",
         *,
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
-    """Get details about a collection configuration."""
-    potto = Potto(settings)
-    if not (collection_detail := await potto.get_item_collection_config(collection_identifier)):
-        raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
-    if output_format == "json":
-        admin_app.console.print_json(
-            cli_schemas.ItemCollectionConfigRead(
-                **collection_detail.model_dump()
-            ).model_dump_json(indent=2)
-        )
+    """Get details about a collection."""
+    async with settings.get_db_session_maker()() as session:
+        if not (collection := await get_collection_by_resource_identifier(session, collection_identifier)):
+            raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
+    result = cli_schemas.CollectionDetail.from_db_item(collection)
+    if format == "json":
+        collections_app.console.print_json(result.model_dump_json(indent=2))
     else:
-        detail_table = Table(title="Item Collection Details")
+        detail_table = Table(title="Collection Details")
         detail_table.add_column("property")
         detail_table.add_column("value")
-        for field_name in cli_schemas.ItemCollectionConfigRead.model_fields.keys():
-            detail_table.add_row(field_name, str(getattr(collection_detail, field_name)))
-        admin_app.console.print(detail_table)
+        for field_name in cli_schemas.CollectionDetail.model_fields.keys():
+            detail_table.add_row(field_name, str(getattr(result, field_name)))
+        collections_app.console.print(detail_table)
 
-@collections_app.command(name="create")
-async def create_collection_resource(
-        # collection_configuration: Annotated[cli_schemas.ItemCollectionConfigCreate, cyclopts.Parameter(name="*")],
-        collection_configuration: cli_schemas.ItemCollectionConfigCreate,
-        *,
+
+@collections_app.command(name="delete")
+async def delete_collections(
+        *collection_identifier: str,
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
-    admin_app.console.print(f"{collection_configuration=}")
+    """Delete collections."""
+    found_error = False
+    async with settings.get_db_session_maker()() as session:
+        for id_ in collection_identifier:
+            if not (
+                    db_collection := await get_collection_by_resource_identifier(session, id_)
+            ):
+                collections_app.error_console.print(f"Collection {id_!r} not found.")
+                found_error = True
+                continue
+            try:
+                await collection_commands.delete_collection(session, db_collection.id)
+                collections_app.console.print(f"Collection {id_!r} deleted")
+            except PottoException as err:
+                collections_app.error_console.print(f"Could not delete {collection_identifier!r} - {err}")
+                found_error = True
+                continue
+    sys.exit(0 if not found_error else 1)

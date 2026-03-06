@@ -9,6 +9,7 @@ from fastapi import (
 )
 
 from .... import constants
+from ....operations import collections as collection_operations
 from ....schemas import (
     collections as collections_schemas,
 )
@@ -19,29 +20,55 @@ from ....schemas.web.collections import (
     JsonCollectionList,
     JsonCollection,
 )
-from ....wrapper import Potto
-from ..dependencies import PottoDependency
+from ..dependencies import (
+    PottoDependency,
+    SettingsDependency,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.post(
+    "/collections",
+    name="create-collection",
+    response_model=JsonCollection
+)
+async def create_collection(
+        request: Request,
+        to_create: collections_schemas.CollectionCreate,
+        settings: SettingsDependency,
+):
+    async with settings.get_db_session_maker()() as session:
+        db_collection = await collection_operations.create_collection(session, to_create)
+    return JsonCollection.from_db_item(db_collection, request.url_for)
 
 
 @router.get(
     "/collections",
     name="list-collections",
 )
-async def list_collections(request: Request, potto: PottoDependency) -> JsonCollectionList:
+async def list_collections(request: Request, settings: SettingsDependency) -> JsonCollectionList:
+    async with settings.get_db_session_maker()() as session:
+        db_collections, total = await collection_operations.paginated_list_collections(
+            session,
+            page=1,
+            page_size=20,
+            include_total=True
+        )
+    return JsonCollectionList.from_db_instances()
     current_locale = babel.Locale.parse(request.state.language)
     result = await potto.api_list_collections(
         locale=current_locale,
-        output_format=constants.PYGEOAPI_F_JSON,
+        output_format="json",
     )
     return JsonCollectionList.from_potto(result, request.url_for)
 
 
 @router.get(
     "/collections/{collection_id}",
-    name="get-collection"
+    name="get-collection",
+    response_model=JsonCollection,
 )
 async def get_collection_details(
         request: Request,

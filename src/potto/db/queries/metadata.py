@@ -1,11 +1,11 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..models import PottoMetadata
+from ..models import ServerMetadata
 
 
 async def get_metadata(
         session: AsyncSession,
-) -> PottoMetadata | None:
-    statement = select(PottoMetadata)
+) -> ServerMetadata | None:
+    statement = select(ServerMetadata)
     return (await session.exec(statement)).first()

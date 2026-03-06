@@ -1,24 +1,12 @@
 import datetime as dt
-import enum
 import logging
-from typing import (
-    Annotated,
-    Any,
-)
+from typing import Any
 
+import pydantic
 import shapely
 import sqlalchemy
-from geoalchemy2 import (
-    Geometry,
-    WKBElement,
-)
+import geoalchemy2
 from geoalchemy2.shape import to_shape
-from pydantic import (
-    BaseModel,
-    BeforeValidator,
-    ConfigDict,
-    PlainSerializer,
-)
 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import (
@@ -26,34 +14,19 @@ from sqlmodel import (
     SQLModel,
 )
 
+from ..schemas.base import (
+    CollectionProvider,
+    CollectionType,
+    Title,
+    Description,
+    Keywords,
+    MaybeShapelyGeometry,
+)
+
 logger = logging.getLogger(__name__)
 
 
-class CollectionType(str, enum.Enum):
-    COVERAGE = "coverage"
-    FEATURE_COLLECTION = "feature_collection"
-    RECORD_COLLECTION = "record_collection"
-
-
-def serialize_localizable_field(value: dict[str, str] | str, _info):
-    """Serialize a localizable field.
-
-    Localizable fields use a JSONB type, which is not serialized by default, hence
-    the need for this function.
-    """
-    return value
-
-
-def serialize_localizable_list_field(value: dict[str, list[str]] | list[str], _info):
-    """Serialize a localizable list field.
-
-    Localizable fields use a JSONB type, which is not serialized by default, hence
-    the need for this function.
-    """
-    return value
-
-
-class ShapelyGeometryAdapter(Geometry):
+class ShapelyGeometryAdapter(geoalchemy2.Geometry):
     """Geometry column type that converts to/from shapely objects transparently.
 
     geoalchemy2's bind_processor passes unrecognised types through as-is,
@@ -82,43 +55,7 @@ class ShapelyGeometryAdapter(Geometry):
         return process
 
 
-def to_shapely(
-        value: str | WKBElement | shapely.Geometry | None
-) -> shapely.Geometry | None:
-    if not value:
-        return None
-    elif isinstance(value, shapely.Geometry):
-        return value
-    elif isinstance(value, str):
-        return shapely.from_wkt(value)
-    else:
-        return to_shape(value)
-
-
-MaybeShapelyGeometry = Annotated[
-    shapely.Geometry | None,
-    BeforeValidator(to_shapely),
-    PlainSerializer(
-        lambda geom: shapely.to_geojson(geom) if geom else None,
-        return_type=str
-    ),
-]
-
-Title = Annotated[
-    dict[str, str] | str,
-    PlainSerializer(serialize_localizable_field)
-]
-Description = Annotated[
-    dict[str, str] | str | None,
-    PlainSerializer(serialize_localizable_field)
-]
-Keywords = Annotated[
-    dict[str, list[str]] | list[str] | None,
-    PlainSerializer(serialize_localizable_list_field)
-]
-
-
-class CollectionItem(SQLModel, table=True):
+class Collection(SQLModel, table=True):
     __table_args__ = (
         sqlalchemy.Index(
             "idx_collection_title_gin",
@@ -127,7 +64,7 @@ class CollectionItem(SQLModel, table=True):
         ),
     )
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
 
     id: int | None = Field(
         default=None,
@@ -152,10 +89,14 @@ class CollectionItem(SQLModel, table=True):
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
         default=None, sa_type=JSONB(), nullable=True)
-    providers: dict[str, dict[str, Any]] | None = Field(default=None, sa_type=JSONB(), nullable=True)
+    providers: dict[str, CollectionProvider] | None = Field(
+        default=None,
+        sa_type=JSONB(),
+        nullable=True
+    )
 
 
-class PottoMetadata(SQLModel, table=True):
+class ServerMetadata(SQLModel, table=True):
     id: int | None = Field(
         default=None,
         primary_key=True,
@@ -163,6 +104,9 @@ class PottoMetadata(SQLModel, table=True):
     title: Title = Field(sa_type=JSONB())
     description: Description = Field(default=None, sa_type=JSONB(), nullable=True)
     keywords: Keywords = Field(default=None, sa_type=JSONB(), nullable=True)
+    keywords_type: str | None = Field(default=None, min_length=3, max_length=50, nullable=True)
+    terms_of_service: Description = Field(default=None, sa_type=JSONB(), nullable=True)
+    url: str | None = Field(default=None, min_length=3, max_length=100, nullable=True)
     license: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
     data_provider: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
     point_of_contact: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)

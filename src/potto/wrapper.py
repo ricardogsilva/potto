@@ -1,8 +1,6 @@
 import asyncio
 import json
 import logging
-import os
-import re
 from typing import (
     Literal,
     Sequence,
@@ -10,7 +8,6 @@ from typing import (
 )
 
 import babel
-import shapely
 from pygeoapi.api import (
     API as _API,
     describe_collections as _describe_collections,
@@ -24,10 +21,11 @@ from pygeoapi.api.itemtypes import (
 )
 from pygeoapi.openapi import get_oas_30
 from pygeoapi.l10n import translate_struct
-from pygeoapi.util import yaml_load
 
 from . import constants
 from .config import PottoSettings
+from .db.queries.metadata import get_metadata
+from .db.queries.collections import paginated_list_collections
 from .operations.config import get_pygeoapi_config
 from .schemas import (
     collections as collections_schemas,
@@ -123,7 +121,7 @@ class Potto:
         )
         return list(pygeoapi_api.config["resources"].items())
 
-    async def list_item_collection_configs(
+    async def list_collections(
             self, page: int = 1, page_size: int | None = 20
     ) -> list[ItemCollectionConfig]:
         pygeoapi_api = await self._get_core_api(
@@ -165,11 +163,6 @@ class Potto:
 
         return ItemCollectionConfig.from_pygeoapi_config(collection_id, raw_resource)
 
-    async def get_server_identification_config(self) -> ServerMetadataIdentificationConfig:
-        pygeoapi_api = await self._get_core_api(resource_page_size=0)
-        return ServerMetadataIdentificationConfig.from_pygeoapi_config(
-            pygeoapi_api.config["metadata"]["identification"])
-
     async def get_localized_config(self, locale: babel.Locale) -> dict:
         pygeoapi_api = await self._get_core_api()
         return translate_struct(
@@ -180,16 +173,21 @@ class Potto:
 
     async def api_get_landing_page(
             self, *, language: str | None = None) -> potto_schemas.LandingPage:
-        identification_config = await self.get_server_identification_config()
+        """Return overview information.
+
+        The response contains useful info for generating a landing page for the API.
+
+        Note: This method bypasses pygeoapi.
+        """
+        async with self._settings.get_db_session_maker()() as session:
+            db_metadata = await get_metadata(session)
+            db_collections, total = await paginated_list_collections(session, include_total=True)
         return potto_schemas.LandingPage(
-            title=identification_config.title.get_value(language),
-            description=identification_config.description.get_value(language),
+            metadata=db_metadata,
             attribution=None,
             # TODO: add processes and stac collections too
-            collections=[
-                collections_schemas.Collection.from_config(coll_conf, language)
-                for coll_conf in await self.list_item_collection_configs(page_size=20)
-            ]
+            collections=db_collections,
+            num_collections=total,
         )
 
     async def api_get_conformance_details(self) -> potto_schemas.ConformanceDetail:
