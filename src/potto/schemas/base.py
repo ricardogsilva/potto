@@ -1,10 +1,86 @@
+import enum
 import typing
 import pydantic
+
+import shapely
+from geoalchemy2 import WKBElement
+from geoalchemy2.shape import to_shape
 
 from .. import constants
 
 if typing.TYPE_CHECKING:
     from .pygeoapi_config import ExtentConfig
+
+
+def _serialize_localizable_field(value: dict[str, str] | str, _info):
+    """Serialize a localizable field.
+
+    Localizable fields use a JSONB type, which is not serialized by default, hence
+    the need for this function.
+    """
+    return value
+
+
+def _serialize_localizable_list_field(value: dict[str, list[str]] | list[str], _info):
+    """Serialize a localizable list field.
+
+    Localizable fields use a JSONB type, which is not serialized by default, hence
+    the need for this function.
+    """
+    return value
+
+
+def to_shapely(
+        value: str | WKBElement | shapely.Geometry | None
+) -> shapely.Geometry | None:
+    if not value:
+        return None
+    elif isinstance(value, shapely.Geometry):
+        return value
+    elif isinstance(value, str):
+        return shapely.from_wkt(value)
+    else:
+        return to_shape(value)
+
+
+MaybeShapelyGeometry = typing.Annotated[
+    shapely.Geometry | None,
+    pydantic.BeforeValidator(to_shapely),
+    pydantic.PlainSerializer(
+        lambda geom: shapely.to_geojson(geom) if geom else None,
+        return_type=str
+    ),
+]
+
+
+class CollectionType(str, enum.Enum):
+    COVERAGE = "coverage"
+    FEATURE_COLLECTION = "feature_collection"
+    RECORD_COLLECTION = "record_collection"
+
+
+class PygeoapiProviderType(str, enum.Enum):
+    COVERAGE = "coverage"
+    EDR = "edr"
+    FEATURE = "feature"
+    MAP = "map"
+    RECORD = "record"
+    STAC = "stac"
+    TILE = "tile"
+
+
+Title = typing.Annotated[
+    dict[str, str] | str,
+    pydantic.PlainSerializer(_serialize_localizable_field)
+]
+Description = typing.Annotated[
+    dict[str, str] | str | None,
+    pydantic.PlainSerializer(_serialize_localizable_field)
+]
+Keywords = typing.Annotated[
+    dict[str, list[str]] | list[str] | None,
+    pydantic.PlainSerializer(_serialize_localizable_list_field)
+]
 
 
 class Link(pydantic.BaseModel):
@@ -57,3 +133,13 @@ class Extent(pydantic.BaseModel):
             },
             temporal=temporal_conf
         )
+
+
+class CollectionProviderConfiguration(pydantic.BaseModel):
+    data: str | dict
+    options: dict[str, typing.Any]
+
+
+class CollectionProvider(pydantic.BaseModel):
+    python_callable: str
+    config: CollectionProviderConfiguration | None = None

@@ -4,12 +4,16 @@ An opinionated starlette+fastapi application that wraps pygeoapi.
 Quickstart for development:
 
 ```shell
+# start the docker compose stack
+docker compose -f docker/compose.dev.yaml up -d --force-recreate
+
 # set some env variables
 export PYGEOAPI_ROOT="wherever-you-cloned-pygeoapi-repo"
-export POTTO__PYGEOAPI_CONFIG_FILE=pygeoapi-config-example.yml
-export POTTO__UVICORN_LOG_CONFIG_FILE=uvicorn-log-config-example.yml
+POTTO__DATABASE_DSN="postgresql+psycopg://potto:pottopass@localhost:55432/potto"
 export POTTO__DEBUG=true
+export POTTO__PYGEOAPI_CONFIG_FILE=pygeoapi-config-example.yml
 export POTTO__RELOAD_DIRS=$(pwd -P)
+export POTTO__UVICORN_LOG_CONFIG_FILE=uvicorn-log-config-example.yml
 
 # start the server
 uv run potto run-server

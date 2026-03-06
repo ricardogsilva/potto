@@ -65,15 +65,14 @@ class PottoSettings(pydantic_settings.BaseSettings):
     def get_db_engine(self) -> AsyncEngine:
         if self._db_engine is None:
             self._db_engine = create_async_engine(
-                self.database_dsn.unicode_string(), echo=self.debug
+                self.database_dsn.unicode_string()
             )
         return self._db_engine
 
     def get_sync_db_engine(self) -> Engine:
         if self._sync_db_engine is None:
             self._sync_db_engine = sqlmodel.create_engine(
-                self.database_dsn.unicode_string(),
-                echo=self.debug
+                self.database_dsn.unicode_string()
             )
         return self._sync_db_engine
 

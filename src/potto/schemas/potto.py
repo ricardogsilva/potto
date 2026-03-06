@@ -1,9 +1,10 @@
-"""Internal schemas used for potto responses."""
+"""Internal schemas used for responses of the Potto wrapper."""
 
 import dataclasses
 
 from . import collections as collections_schemas
 from . import pygeoapi_config
+from ..db.models import ServerMetadata
 
 
 @dataclasses.dataclass(frozen=True)
@@ -15,8 +16,8 @@ class PottoResponse:
 
 @dataclasses.dataclass(frozen=True)
 class LandingPage:
-    title: str | None = None
-    description: str | None = None
+    metadata: ServerMetadata
+    num_collections: int
     attribution: str | None = None
     collections: list[collections_schemas.Collection] | None = None
 

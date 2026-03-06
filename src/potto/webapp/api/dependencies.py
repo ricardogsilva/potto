@@ -18,4 +18,6 @@ def get_potto(
 ) -> Iterator[Potto]:
     yield Potto(settings)
 
+
+SettingsDependency = Annotated[config.PottoSettings, Depends(get_settings)]
 PottoDependency = Annotated[Potto, Depends(get_potto)]

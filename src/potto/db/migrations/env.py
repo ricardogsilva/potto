@@ -5,10 +5,14 @@ import alembic_postgresql_enum  # noqa
 
 from sqlalchemy import create_engine
 from alembic import context
-from geoalchemy2 import alembic_helpers
+from geoalchemy2 import (
+    alembic_helpers,
+    Geometry,
+)
 from sqlmodel import SQLModel
 
 from potto import config as potto_config
+from potto.db.models import ShapelyGeometryAdapter
 
 # this import is crucial for SQLModel.metadata to be populated
 # with our models, do not remove!
@@ -35,6 +39,14 @@ target_metadata = SQLModel.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def potto_render_item(type_, obj, autogen_context):
+    """Render ShapelyGeometryAdapter as a plain Geometry, for migrations"""
+    if type_ == "type" and isinstance(obj, ShapelyGeometryAdapter):
+        geom = Geometry(geometry_type=obj.geometry_type, srid=obj.srid, spatial_index=False)
+        return alembic_helpers.render_item(type_, geom, autogen_context)
+    return alembic_helpers.render_item(type_, obj, autogen_context)
 
 
 def include_name(name, type_, parent_names) -> bool:
@@ -72,7 +84,7 @@ def run_migrations_offline() -> None:
         include_name=include_name,
         include_object=alembic_helpers.include_object,
         process_revision_directives=alembic_helpers.writer,
-        render_item=alembic_helpers.render_item,
+        render_item=potto_render_item,
     )
 
     with context.begin_transaction():
@@ -94,7 +106,7 @@ def run_migrations_online() -> None:
             include_object=alembic_helpers.include_object,
             include_name=include_name,
             process_revision_directives=alembic_helpers.writer,
-            render_item=alembic_helpers.render_item,
+            render_item=potto_render_item,
         )
         with context.begin_transaction():
             context.run_migrations()
