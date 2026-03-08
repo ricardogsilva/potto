@@ -14,6 +14,9 @@ from starlette.responses import (
 )
 from starlette_babel import gettext_lazy as _
 
+from ...config import PottoSettings
+from ...operations.metadata import get_server_metadata
+from ...operations import collections as collection_operations
 from ...schemas.web.base import HtmlLanding
 from ...schemas.pygeoapi_config import ItemCollectionConfig
 from ...wrapper import Potto
@@ -23,40 +26,25 @@ logger = logging.getLogger(__name__)
 
 
 async def get_landing_page(request: Request) -> Response:
-    potto: Potto = request.state.potto
-    current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.api_get_landing_page(
-        language=current_locale.language,
-    )
-    all_resources = await potto.list_resource_configs(page_size=None)
-    item_collections = [
-        res for res in all_resources if isinstance(res, ItemCollectionConfig)]
-    has_tiles = False
-    for item_collection in item_collections:
-        for provider in item_collection.providers:
-            if provider.type_ == "tile":
-                has_tiles = True
-                break
-        if has_tiles:
-            break
-
+    settings: PottoSettings = request.state.settings
+    async with settings.get_db_session_maker()() as session:
+        server_metadata = await get_server_metadata(session)
+        db_collections, total_collections = await collection_operations.paginated_list_collections(
+            session, include_total=True)
+    # current_locale = babel.Locale.parse(request.state.language)
     return request.state.templates.TemplateResponse(
         request,
         "landing_page.html",
         context={
             "show_description": False,
-            "data": HtmlLanding.from_potto(result, request.url_for),
-            "has_item_collections": len(item_collections) > 0,
-            "has_stac_collections": any(
-                res[1].get("type") == "stac-collection"
-                for res in all_resources if isinstance(res, tuple)
-            ),
-            "has_processes": any(
-                res[1].get("type") == "process"
-                for res in all_resources if isinstance(res, tuple)
-            ),
-            "has_tiles": has_tiles,
-            "pygeoapi_config": await potto.get_localized_config(current_locale),
+            "data": {
+                "collections": db_collections,
+            },
+            "has_item_collections": total_collections > 0,
+            "has_stac_collections": False,
+            "has_processes": False,
+            "has_tiles": False,
+            "pygeoapi_config": server_metadata
         }
     )
 

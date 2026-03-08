@@ -2,9 +2,16 @@
 
 import dataclasses
 
-from . import collections as collections_schemas
+from . import (
+    base,
+    items,
+)
 from . import pygeoapi_config
-from ..db.models import ServerMetadata
+from .web.items import (
+    FeatureFilter,
+    ItemFilter,
+)
+from ..db import models
 
 
 @dataclasses.dataclass(frozen=True)
@@ -16,10 +23,10 @@ class PottoResponse:
 
 @dataclasses.dataclass(frozen=True)
 class LandingPage:
-    metadata: ServerMetadata
+    metadata: models.ServerMetadata
     num_collections: int
     attribution: str | None = None
-    collections: list[collections_schemas.Collection] | None = None
+    collections: list[models.Collection] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -28,33 +35,16 @@ class ConformanceDetail:
 
 
 @dataclasses.dataclass(frozen=True)
-class CollectionList:
-    collections: list[collections_schemas.Collection]
-    pagination: collections_schemas.CollectionItemsPaginationContext
-    filter_: collections_schemas.ItemFilter | None = None
-    metadata: dict [str, str] | None = None
-
-
-@dataclasses.dataclass(frozen=True)
-class CollectionDetail:
-    collection: collections_schemas.Collection
-    resource: pygeoapi_config.ItemCollectionConfig
-    metadata: dict [str, str] | None = None
-
-
-@dataclasses.dataclass(frozen=True)
-class CollectionFeatureListResponse:
-    resource: pygeoapi_config.ItemCollectionConfig
-    provider: pygeoapi_config.ProviderConfig
-    features: list[collections_schemas.Feature]
-    pagination: collections_schemas.CollectionItemsPaginationContext
-    filter_: collections_schemas.FeatureFilter | None = None
+class FeatureListResponse:
+    collection: models.Collection
+    features: list[items.Feature]
+    pagination: base.PaginationContext
+    filter_: FeatureFilter | None = None
     metadata: dict [str, str] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
 class FeatureResponse:
-    resource: pygeoapi_config.ItemCollectionConfig
-    provider: pygeoapi_config.ProviderConfig
-    feature: collections_schemas.Feature
+    collection: models.Collection
+    feature: items.Feature
     metadata: dict [str, str] | None = None

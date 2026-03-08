@@ -47,30 +47,29 @@ class LocalizableConfigStringList(pydantic.RootModel):
             cls, value: list[str] | dict[str, list[str]]
     ) -> "LocalizableConfigStringList":
         return cls.from_potto_db(value)
-
-
-class ServerMetadataIdentificationConfig(pydantic.BaseModel):
-    title: Title
-    description: Description
-    keywords: Keywords
-    keywords_type: str
-    terms_of_service: str
-    url: str
-
-    @classmethod
-    def from_pygeoapi_config(
-            cls,
-            identification_config: dict
-    ) -> "ServerMetadataIdentificationConfig":
-        return cls(
-            title=identification_config["title"],
-            description=identification_config["description"],
-            keywords=identification_config["keywords"],
-            keywords_type=identification_config["keywords_type"],
-            terms_of_service=identification_config["terms_of_service"],
-            url=identification_config["url"],
-        )
-
+#
+#
+# class ServerMetadataIdentificationConfig(pydantic.BaseModel):
+#     title: Title
+#     description: Description
+#     keywords: Keywords
+#     keywords_type: str
+#     terms_of_service: str
+#     url: str
+#
+#     @classmethod
+#     def from_pygeoapi_config(
+#             cls,
+#             identification_config: dict
+#     ) -> "ServerMetadataIdentificationConfig":
+#         return cls(
+#             title=identification_config["title"],
+#             description=identification_config["description"],
+#             keywords=identification_config["keywords"],
+#             keywords_type=identification_config["keywords_type"],
+#             terms_of_service=identification_config["terms_of_service"],
+#             url=identification_config["url"],
+#         )
 
 
 class LimitsConfig(pydantic.BaseModel):

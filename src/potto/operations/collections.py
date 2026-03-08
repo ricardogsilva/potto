@@ -4,7 +4,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.models import Collection
 from ..db.commands import collections as collection_commands
-from ..db.queries import get_collection_by_resource_identifier
 from ..db.queries import collections as collection_queries
 from ..exceptions import PottoException
 from ..schemas.base import (
@@ -48,11 +47,22 @@ async def get_collection(
     return await collection_queries.get_collection(session, collection_id)
 
 
+async def get_collection_by_resource_identifier(
+        session: AsyncSession,
+        identifier: str,
+) -> Collection | None:
+    return await collection_queries.get_collection_by_resource_identifier(session, identifier)
+
+
 async def create_collection(
         session: AsyncSession,
         to_create: CollectionCreate,
 ) -> Collection:
     return await collection_commands.create_collection(session, to_create)
+
+
+async def delete_collection(session: AsyncSession, collection_id: int) -> None:
+    return await collection_commands.delete_collection(session, collection_id)
 
 
 async def import_pygeoapi_collection(
@@ -62,7 +72,7 @@ async def import_pygeoapi_collection(
         *,
         overwrite: bool = False,
 ) -> Collection:
-    existing_db_collection = await get_collection_by_resource_identifier(
+    existing_db_collection = await collection_queries.get_collection_by_resource_identifier(
         session, identifier)
     if existing_db_collection and not overwrite:
         raise PottoException(f"Collection {identifier!r} already exists!")

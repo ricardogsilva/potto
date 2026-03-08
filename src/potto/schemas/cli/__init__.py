@@ -4,7 +4,7 @@ from .collections import (
     CollectionListItem,
     CollectionListMeta,
 )
-from metadata import ServerMetadataDetail
+from .metadata import ServerMetadataDetail
 
 __all__ = [
     "CollectionDetail",

@@ -1,25 +1,22 @@
 import logging
-from typing import Annotated
 
 import babel
 from fastapi import (
     APIRouter,
-    Query,
+    HTTPException,
     Request,
 )
 
-from .... import constants
 from ....operations import collections as collection_operations
 from ....schemas import (
     collections as collections_schemas,
 )
 from ....schemas.web.collections import (
-    GeoJsonItem,
-    GeoJsonItemCollection,
-    ItemFilter,
     JsonCollectionList,
     JsonCollection,
 )
+from ....schemas.web import GeoJsonItem, GeoJsonItemCollection
+from ....schemas.web.items import ItemFilter
 from ..dependencies import (
     PottoDependency,
     SettingsDependency,
@@ -44,6 +41,18 @@ async def create_collection(
     return JsonCollection.from_db_item(db_collection, request.url_for)
 
 
+@router.delete(
+    "/collections/{collection_id}",
+    name="delete-collection",
+)
+async def delete_collection(
+        collection_id: str,
+        settings: SettingsDependency,
+):
+    async with settings.get_db_session_maker()() as session:
+        await collection_operations.delete_collection(session, collection_id)
+
+
 @router.get(
     "/collections",
     name="list-collections",
@@ -56,13 +65,7 @@ async def list_collections(request: Request, settings: SettingsDependency) -> Js
             page_size=20,
             include_total=True
         )
-    return JsonCollectionList.from_db_instances()
-    current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.api_list_collections(
-        locale=current_locale,
-        output_format="json",
-    )
-    return JsonCollectionList.from_potto(result, request.url_for)
+    return JsonCollectionList.from_db_items(db_collections, request.url_for)
 
 
 @router.get(
@@ -71,55 +74,13 @@ async def list_collections(request: Request, settings: SettingsDependency) -> Js
     response_model=JsonCollection,
 )
 async def get_collection_details(
-        request: Request,
-        potto: PottoDependency,
         collection_id: str,
+        request: Request,
+        settings: SettingsDependency,
 ) -> JsonCollection:
-    current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.api_get_collection(
-        collection_id=collection_id,
-        locale=current_locale,
-        output_format=constants.PYGEOAPI_F_JSON,
-    )
-    return JsonCollection(
-        **result.collection.model_dump(by_alias=True),
-        links=[]
-    )
-
-
-@router.get(
-    "/collections/{collection_id}/items",
-    name="list-collection-items"
-)
-async def list_collection_items(
-        request: Request,
-        potto: PottoDependency,
-        collection_id: str,
-        filter_: Annotated[ItemFilter, Query()],
-) -> GeoJsonItemCollection:
-    current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.api_list_collection_items(
-        collection_id,
-        locale=current_locale,
-        filter_=collections_schemas.FeatureFilter(**filter_.model_dump()),
-    )
-    return GeoJsonItemCollection.from_potto(result, request.url_for)
-
-
-@router.get(
-    "/collections/{collection_id}/items/{item_id}",
-    name="get-item"
-)
-async def get_item_details(
-        request: Request,
-        potto: PottoDependency,
-        collection_id: str,
-        item_id: str,
-) -> GeoJsonItem:
-    current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.api_get_item(
-        collection_id=collection_id,
-        item_id=item_id,
-        locale=current_locale,
-    )
-    return GeoJsonItem.from_potto(result.feature, result.resource, request.url_for)
+    async with settings.get_db_session_maker()() as session:
+        db_collection = await collection_operations.get_collection_by_resource_identifier(
+            session, collection_id)
+        if not db_collection:
+            raise HTTPException(status_code=404, detail="Collection not found")
+    return JsonCollection.from_db_item(db_collection, request.url_for)

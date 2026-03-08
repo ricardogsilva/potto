@@ -1,77 +1,46 @@
-import json
 import logging
 
 import babel
 from jinja2 import TemplateNotFound
-from pygeoapi.api import (
-    F_JSONLD,
-)
 from starlette.requests import Request
 from starlette.responses import Response
 
-from ... import constants
-from ...schemas.web.collections import (
-    HtmlItemCollection,
-    HtmlItemFeature,
-    JsonLdItemCollection,
-)
+from ...operations import collections as collection_operations
+from ...schemas.web import items
 
 from ...config import PottoSettings
 from ...wrapper import Potto
-from ...schemas.collections import FeatureFilter
-from .. import util
 
 logger = logging.getLogger(__name__)
 
 
 async def list_collections(request: Request) -> Response:
-    current_locale = babel.Locale.parse(request.state.language)
+    # current_locale = babel.Locale.parse(request.state.language)
     settings: PottoSettings = request.state.settings
-    potto = Potto(settings)
-    result = await potto.api_list_collections(
-        locale=current_locale,
-        output_format=constants.PYGEOAPI_F_JSON,
-    )
-    content = result.content
-    content["links"] = util.set_html_link_self_relation(content["links"])
-    json_ld_result = await potto.api_list_collections(
-        locale=current_locale,
-        output_format=F_JSONLD,
-    )
+    async with settings.get_db_session_maker()() as session:
+        db_collections, total = await collection_operations.paginated_list_collections(
+            session, include_total=True)
     return request.state.templates.TemplateResponse(
         request,
         "collections/list.html",
         context={
-            "data": content,
-            "pygeoapi_config": await potto.get_localized_config(current_locale),
-            "jsonld_content": json.dumps(json_ld_result.content),
+            "items": db_collections,
         }
     )
 
 
 async def get_collection_details(request: Request) -> Response:
-    current_locale = babel.Locale.parse(request.state.language)
-    potto: Potto = request.state.potto
+    # current_locale = babel.Locale.parse(request.state.language)
+    settings: PottoSettings = request.state.settings
     collection_id = request.path_params["collection_id"]
-    result = await potto.api_get_collection(
-        collection_id=collection_id,
-        locale=current_locale,
-        output_format=constants.PYGEOAPI_F_JSON,
-    )
-    json_ld_result = await potto.api_get_collection(
-        collection_id=collection_id,
-        locale=current_locale,
-        output_format=F_JSONLD,
-    )
-    content = result.content
-    content["links"] = util.set_html_link_self_relation(content["links"])
+    async with settings.get_db_session_maker()() as session:
+        db_collection = await collection_operations.get_collection_by_resource_identifier(
+            session, collection_id)
     return request.state.templates.TemplateResponse(
         request,
         "collections/detail.html",
         context={
-            "data": content,
-            "pygeoapi_config": await potto.get_localized_config(current_locale),
-            "jsonld_content": json.dumps(json_ld_result.content),
+            "item": db_collection,
         }
     )
 
@@ -82,7 +51,7 @@ async def list_collection_items(request: Request) -> Response:
     result = await potto.api_list_collection_items(
         collection_id=request.path_params["collection_id"],
         locale=current_locale,
-        filter_=FeatureFilter.from_query_parameters(request.query_params)
+        filter_=items.FeatureFilter.from_query_parameters(request.query_params)
     )
     # pygeoapi supports looking for templates also in the configuration
     # of the underlying resource being acted upon by looking for
@@ -95,16 +64,13 @@ async def list_collection_items(request: Request) -> Response:
         request.state.templates.get_template(template_path)
     except TemplateNotFound:
         template_path = f"items/list.html"
-    json_ld_response_content = JsonLdItemCollection.from_potto(
-        result, request.url_for)
-    response_content = HtmlItemCollection.from_potto(result, request.url_for)
+    response_content = items.HtmlItemCollection.from_potto(result, request.url_for)
     return request.state.templates.TemplateResponse(
         request,
         template_path,
         context={
             "data": response_content,
             "pygeoapi_config": await potto.get_localized_config(current_locale),
-            "jsonld_content": json_ld_response_content.model_dump_json(by_alias=True),
         },
         headers={
             **result.metadata,
@@ -134,7 +100,7 @@ async def get_item_details(request: Request) -> Response:
     except TemplateNotFound:
         template_path = f"items/item-feature.html"
 
-    response_content = HtmlItemFeature.from_potto(result, request.url_for)
+    response_content = items.HtmlItemFeature.from_potto(result, request.url_for)
     return request.state.templates.TemplateResponse(
         request,
         template_path,
