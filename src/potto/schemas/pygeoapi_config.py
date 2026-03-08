@@ -7,8 +7,8 @@ import shapely
 from ..db.models import Collection
 from .base import (
     Title,
-    Description,
-    Keywords,
+    MaybeDescription,
+    MaybeKeywords,
 )
 
 

@@ -2,12 +2,15 @@ import asyncio
 import json
 import logging
 from typing import (
+    Protocol,
     Literal,
     Sequence,
     TypeAlias,
 )
 
 import babel
+import shapely
+from starlette.authentication import BaseUser
 from pygeoapi.api import (
     API as _API,
     evaluate_limit as _evaluate_limit,
@@ -68,47 +71,41 @@ class Potto:
     """
     _settings: PottoSettings
 
-    def __init__(self, settings: PottoSettings) -> None:
+    def __init__(
+            self,
+            settings: PottoSettings,
+    ) -> None:
         self._settings = settings
 
-    async def _get_core_api(
+    async def _get_pygeoapi(
             self,
-            resource_types: ResourceTypes | Literal["all"] = "all",
-            resource_page: int = 1,
-            resource_page_size: int | None = None,
+            user: BaseUser,
+            collection_page: int = 1,
+            collection_page_size: int = 20,
     ) -> _API:
         async with self._settings.get_db_session_maker()() as session:
             pygeoapi_config = await get_pygeoapi_config(
-                session,
-                self._settings.locales,
-                self._settings.public_url,
-                resource_page=resource_page,
-                resource_page_size=resource_page_size
+                session, self._settings, user,
+                collection_page=collection_page,
+                collection_page_size=collection_page_size
             )
         openapi_document = get_oas_30(pygeoapi_config, fail_on_invalid_collection=True)
         return _API(config=pygeoapi_config, openapi=openapi_document)
 
-    async def get_item_collection_config(
-            self, collection_id: str) -> ItemCollectionConfig | None:
-        # TODO: in a future iteration, when we are no longer reading the
-        #  config from both a file and the db (and read it all from the db),
-        #  we can skip instantiation of pygeoapi api and just retrieve the
-        #  item directly
-        pygeoapi_api = await self._get_core_api()
-        if not (
-                raw_resource := pygeoapi_api.config.get(
-                    "resources", {}).get(collection_id)
-        ):
-            return None
-
-        if not raw_resource.get("type") == "collection":
-            logger.warning(f"resource {collection_id!r} is not of type 'collection'")
-            return None
-
-        return ItemCollectionConfig.from_pygeoapi_config(collection_id, raw_resource)
+    async def _get_collection(
+            self,
+            collection_id: str,
+            user: BaseUser,
+    ) -> potto_schemas.Collection | None:
+        collection_retriever = self._settings.get_collection_retriever()
+        return await collection_retriever.get_collection(
+            self._settings,
+            collection_identifier=collection_id,
+            user=user
+        )
 
     async def get_localized_config(self, locale: babel.Locale) -> dict:
-        pygeoapi_api = await self._get_core_api()
+        pygeoapi_api = await self._get_pygeoapi()
         return translate_struct(
             pygeoapi_api.config,
             locale_=locale,
@@ -116,22 +113,23 @@ class Potto:
         )
 
     async def api_get_landing_page(
-            self, *, language: str | None = None) -> potto_schemas.LandingPage:
+            self,
+            *,
+            user: BaseUser,
+            language: str | None = None,
+    ) -> potto_schemas.LandingPage:
         """Return overview information.
 
         The response contains useful info for generating a landing page for the API.
-
-        Note: This method bypasses pygeoapi.
         """
-        async with self._settings.get_db_session_maker()() as session:
-            db_metadata = await get_metadata(session)
-            db_collections, total = await paginated_list_collections(session, include_total=True)
+        collection_retriever = self._settings.get_collection_retriever()
+        collection_list = await collection_retriever.list_collections(self._settings, user=user)
+        server_metadata_retriever = self._settings.get_server_metadata_retriever()
+        server_metadata = await server_metadata_retriever.get_server_metadata(self._settings, user=user)
         return potto_schemas.LandingPage(
-            metadata=db_metadata,
+            metadata=server_metadata,
             attribution=None,
-            # TODO: add processes and stac collections too
-            collections=db_collections,
-            num_collections=total,
+            collections=collection_list,
         )
 
     async def api_get_conformance_details(self) -> potto_schemas.ConformanceDetail:
@@ -146,7 +144,7 @@ class Potto:
     async def api_get_openapi_document(
             self,
     ) -> potto_schemas.PottoResponse:
-        pygeoapi_api = await self._get_core_api()
+        pygeoapi_api = await self._get_pygeoapi()
         return potto_schemas.PottoResponse(
             content_type=_FORMAT_TYPES[F_JSON],
             content=pygeoapi_api.openapi
@@ -165,7 +163,7 @@ class Potto:
                     session, collection_id)
             ):
                 raise PottoException(f"Collection {collection_id} not found")
-        pygeoapi_api = await self._get_core_api(
+        pygeoapi_api = await self._get_pygeoapi(
             resource_types=["collection"],
             resource_page_size=None
         )
@@ -224,7 +222,7 @@ class Potto:
                         session, collection_id)
             ):
                 raise PottoException(f"Collection {collection_id} not found")
-        pygeoapi_api = await self._get_core_api(
+        pygeoapi_api = await self._get_pygeoapi(
             resource_types=["collection"], resource_page_size=None)
         pygeoapi_response = await asyncio.to_thread(
             _get_collection_item,

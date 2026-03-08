@@ -18,8 +18,8 @@ from ..schemas.base import (
     CollectionProvider,
     CollectionType,
     Title,
-    Description,
-    Keywords,
+    MaybeDescription,
+    MaybeKeywords,
     MaybeShapelyGeometry,
 )
 
@@ -78,8 +78,8 @@ class Collection(SQLModel, table=True):
     )
     collection_type: CollectionType
     title: Title = Field(sa_type=JSONB())
-    description: Description = Field(default=None, sa_type=JSONB(), nullable=True)
-    keywords: Keywords = Field(default=None, sa_type=JSONB(), nullable=True)
+    description: MaybeDescription = Field(default=None, sa_type=JSONB(), nullable=True)
+    keywords: MaybeKeywords = Field(default=None, sa_type=JSONB(), nullable=True)
     spatial_extent: MaybeShapelyGeometry = Field(
         default=None,
         sa_type=ShapelyGeometryAdapter(),
@@ -102,10 +102,10 @@ class ServerMetadata(SQLModel, table=True):
         primary_key=True,
     )
     title: Title = Field(sa_type=JSONB())
-    description: Description = Field(default=None, sa_type=JSONB(), nullable=True)
-    keywords: Keywords = Field(default=None, sa_type=JSONB(), nullable=True)
+    description: MaybeDescription = Field(default=None, sa_type=JSONB(), nullable=True)
+    keywords: MaybeKeywords = Field(default=None, sa_type=JSONB(), nullable=True)
     keywords_type: str | None = Field(default=None, min_length=3, max_length=50, nullable=True)
-    terms_of_service: Description = Field(default=None, sa_type=JSONB(), nullable=True)
+    terms_of_service: MaybeDescription = Field(default=None, sa_type=JSONB(), nullable=True)
     url: str | None = Field(default=None, min_length=3, max_length=100, nullable=True)
     license: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
     data_provider: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)

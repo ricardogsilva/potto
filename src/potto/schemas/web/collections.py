@@ -11,7 +11,7 @@ from .. import base
 class JsonCollection(pydantic.BaseModel):
     id_: Annotated[str, pydantic.Field(alias="id")]
     title: base.Title
-    description: base.Description
+    description: base.MaybeDescription
     links: list[base.Link]
     extent: base.Extent | None = None
     item_type: Annotated[str | None, pydantic.Field(alias="itemType")] = constants.FEATURE_COLLECTION_ITEM_TYPE

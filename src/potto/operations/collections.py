@@ -1,6 +1,8 @@
 import logging
+
 import shapely
 from sqlmodel.ext.asyncio.session import AsyncSession
+from starlette.authentication import BaseUser
 
 from ..db.models import Collection
 from ..db.commands import collections as collection_commands
@@ -22,6 +24,7 @@ logger = logging.getLogger(__name__)
 async def paginated_list_collections(
         session: AsyncSession,
         *,
+        user: BaseUser,
         page: int = 1,
         page_size: int = 20,
         include_total: bool = False,

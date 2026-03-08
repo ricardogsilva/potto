@@ -6,9 +6,9 @@ import pydantic
 from .base import (
     CollectionProvider,
     CollectionType,
-    Description,
+    MaybeDescription,
     Extent,
-    Keywords,
+    MaybeKeywords,
     MaybeShapelyGeometry,
     Title,
 )
@@ -21,8 +21,8 @@ class CollectionCreate(pydantic.BaseModel):
     resource_identifier: str = pydantic.Field(min_length=3, max_length=100)
     collection_type: CollectionType
     title: Title
-    description: Description = None
-    keywords: Keywords = None
+    description: MaybeDescription = None
+    keywords: MaybeKeywords = None
     spatial_extent: MaybeShapelyGeometry = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
@@ -34,8 +34,8 @@ class CollectionUpdate(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
     collection_type: CollectionType | None = None
     title: Title | None = None
-    description: Description = None
-    keywords: Keywords = None
+    description: MaybeDescription = None
+    keywords: MaybeKeywords = None
     spatial_extent: MaybeShapelyGeometry = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None

@@ -5,17 +5,17 @@ from ...db.models import (
 )
 from ..base import (
     Title,
-    Description,
-    Keywords,
+    MaybeDescription,
+    MaybeKeywords,
 )
 
 
 class ServerMetadataDetail(pydantic.BaseModel):
     title: Title
-    description: Description
-    keywords: Keywords
+    description: MaybeDescription
+    keywords: MaybeKeywords
     keywords_type: str | None
-    terms_of_service: Description
+    terms_of_service: MaybeDescription
     url: str | None
     license_name: str | None
     license_url: str | None

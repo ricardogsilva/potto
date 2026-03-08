@@ -73,11 +73,11 @@ Title = typing.Annotated[
     dict[str, str] | str,
     pydantic.PlainSerializer(_serialize_localizable_field)
 ]
-Description = typing.Annotated[
+MaybeDescription = typing.Annotated[
     dict[str, str] | str | None,
     pydantic.PlainSerializer(_serialize_localizable_field)
 ]
-Keywords = typing.Annotated[
+MaybeKeywords = typing.Annotated[
     dict[str, list[str]] | list[str] | None,
     pydantic.PlainSerializer(_serialize_localizable_list_field)
 ]

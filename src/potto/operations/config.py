@@ -4,12 +4,10 @@ import re
 
 import shapely
 from sqlmodel.ext.asyncio.session import AsyncSession
+from starlette.authentication import BaseUser
 
-from ..db.models import (
-    Collection,
-    CollectionType,
-)
-from ..db.queries import paginated_list_collections
+from ..config import PottoSettings
+from ..schemas.potto import Collection
 from .metadata import get_server_metadata
 
 logger = logging.getLogger(__name__)
@@ -17,15 +15,21 @@ logger = logging.getLogger(__name__)
 
 async def get_pygeoapi_config(
         session: AsyncSession,
-        languages: list[str],
-        public_url: str,
+        settings: PottoSettings,
+        user: BaseUser,
         *,
-        collection_types: list[CollectionType] | None = None,
-        resource_page: int = 1,
-        resource_page_size: int | None = None,
+        collection_page: int = 1,
+        collection_page_size: int = 20,
         debug: bool = False,
 ) -> dict:
     metadata = await get_server_metadata(session)
+    collection_retriever = settings.get_collection_retriever()
+    collections = await collection_retriever(
+        settings,
+        user=user,
+        page=collection_page,
+        page_size=collection_page_size,
+    )
     server_conf = {
         "map": {
             "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -48,11 +52,11 @@ async def get_pygeoapi_config(
     pygeoapi_config = {
         "server": {
             "admin": server_conf.get("admin", False),  # we don't use pygeoapi's admin, but rather provide our own
-            "languages": languages,
+            "languages": settings.locales,
             "limits": server_conf["limits"],
             "map": server_conf["map"],
             "locale_dir": server_conf.get("locale_dir"),
-            "url": public_url,
+            "url": settings.public_url,
         },
         "logging": {
             "level": "DEBUG" if debug else "WARNING"
@@ -94,17 +98,9 @@ async def get_pygeoapi_config(
         "resources": {}
     }
 
-    # TODO: need to surface the total number of resources
-    # TODO: this does not show other resources than collections
-    collections, num_total = await paginated_list_collections(
-        session,
-        collection_type_filter=collection_types,
-        page=resource_page,
-        page_size=resource_page_size,
-    )
-    for db_collection in collections:
-        pygeoapi_config["resources"][db_collection.resource_identifier] = (
-            _convert_collection_to_pygeoapi_resource(db_collection)
+    for collection in collections.collections:
+        pygeoapi_config["resources"][collection.identifier] = (
+            _convert_collection_to_pygeoapi_resource(collection)
         )
     # TODO: validate the config
     return pygeoapi_config
