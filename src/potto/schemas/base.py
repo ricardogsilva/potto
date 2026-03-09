@@ -180,3 +180,54 @@ class PaginationContext(pydantic.BaseModel):
                 )
             )
         return result
+
+
+class ItemFilter(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="allow")
+
+    bbox: str | None = None
+    bbox_crs: typing.Annotated[str | None, pydantic.Field(alias="bbox-crs")] = None
+    cql_text: str | None = None
+    datetime_: typing.Annotated[str | None, pydantic.Field(alias="datetime")] = None
+    extra_properties: dict[str, str] | None = None
+    filter_: typing.Annotated[str | None, pydantic.Field(alias="filter")] = None
+    filter_lang: str | None = None
+    filter_crs_uri: str | None = None
+    limit: int = 20
+    locale: typing.Annotated[str | None, pydantic.Field(alias="language")] = None
+    offset: int = 0
+    query: str | None = None
+    result_type: typing.Literal["hits", "results"] = "results"
+    select_properties: typing.Annotated[list[str] | None, pydantic.Field(alias="properties")] = None
+    skip_geometry: typing.Annotated[bool | None, pydantic.Field(alias="skipGeometry")] = None
+    sort_by: typing.Annotated[str | None, pydantic.Field(alias="sortby")] = None
+
+
+class FeatureFilter(ItemFilter):
+    crs: str | None = None
+
+    @classmethod
+    def from_query_parameters(
+            cls,
+            params: typing.Mapping[str, str | typing.Sequence[str]],
+    ) -> "FeatureFilter":
+        return cls(
+            bbox=params.get("bbox"),
+            bbox_crs=params.get("bbox-crs"),
+            crs=params.get("crs"),
+            datetime_=params.get("datetime"),
+            filter_=params.get("filter"),
+            filter_crs_uri=params.get("filter-crs"),
+            filter_lang=params.get("filter-lang"),
+            limit=int(params.get("limit", 20)),
+            offset=int(params.get("offset", 0)),
+            extra_properties=dict(params),
+            query=params.get("q"),
+            result_type=params.get("resulttype", "results"),
+            sort_by=params.get("sortby"),
+            skip_geometry=(
+                True
+                if params.get("skipGeometry", "").lower()
+                   in ("true", "yes", "on", "t", "1") else False
+            ),
+        )

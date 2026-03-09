@@ -10,6 +10,7 @@ from starlette_admin.contrib.sqlmodel import Admin
 from ...config import PottoSettings
 from ...db.models import Collection
 from . import views
+from .auth import PottoAdminAuthProvider
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
     app = PottoAdmin(
         settings.get_sync_db_engine(),
         potto_settings=settings,
+        auth_provider=PottoAdminAuthProvider(settings),
         templates_dir=templates_dir,
         statics_dir=str(
             settings.static_dir or Path(__file__).parents[1] / "static"),

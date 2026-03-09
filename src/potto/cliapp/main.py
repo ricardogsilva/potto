@@ -22,11 +22,10 @@ from ..config import (
 )
 from starlette.authentication import UnauthenticatedUser
 
-from ..operations import auth as auth_ops
-from ..schemas.auth import UserCreate
 from .db import db_app
 from .collections import collections_app
 from .metadata import metadata_app
+from .users import user_app
 
 _console = Console()
 _error_console = Console(stderr=True)
@@ -41,9 +40,12 @@ db_app.console = _console
 db_app.error_console = _error_console
 metadata_app.console = _console
 metadata_app.error_console = _error_console
-potto_app.command(collections_app.meta, name="collections")
+user_app.console = _console
+user_app.error_console = _error_console
+potto_app.command(collections_app.meta, name="collection")
 potto_app.command(db_app.meta, name="db")
 potto_app.command(metadata_app.meta, name="metadata")
+potto_app.command(user_app.meta, name="user")
 
 
 @potto_app.meta.default
@@ -65,7 +67,7 @@ def launcher(
     """
     settings = get_settings()
     rich_log_handler = RichHandler(console=potto_app.error_console)
-    if settings.uvicorn_log_config_file.exists():
+    if (log_config_file := settings.uvicorn_log_config_file) and log_config_file.exists():
         log_config = yaml.safe_load(settings.uvicorn_log_config_file.read_text())
         logging.config.dictConfig(log_config)
     else:
@@ -140,31 +142,3 @@ def run_uvicorn_server(
     sys.stdout.flush()
     sys.stderr.flush()
     os.execvp("uvicorn", uvicorn_args)
-
-
-@potto_app.command(name="create-user")
-async def create_user(
-        username: str,
-        *,
-        email: str | None = None,
-        scopes: list[str] | None = None,
-        settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
-):
-    """Create a new user."""
-    password = getpass.getpass("Password: ")
-    password_confirm = getpass.getpass("Confirm password: ")
-    if password != password_confirm:
-        raise SystemExit("Error: passwords do not match.")
-    try:
-        to_create = UserCreate(
-            username=username,
-            password=password,
-            email=email,
-            scopes=scopes or [],
-        )
-    except Exception as err:
-        raise SystemExit(f"Error: {err}") from err
-    user = UnauthenticatedUser()
-    async with settings.get_db_session_maker()() as session:
-        db_user = await auth_ops.create_user(session, user, to_create)
-    potto_app.console.print(f"User {db_user.username!r} created (id: {db_user.id})")

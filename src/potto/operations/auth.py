@@ -45,8 +45,8 @@ async def delete_user(
 
 async def paginated_list_users(
         session: AsyncSession,
-        user: BaseUser,
         *,
+        admin_filter: bool = False,
         page: int = 1,
         page_size: int = 20,
         include_total: bool = False,
@@ -57,12 +57,12 @@ async def paginated_list_users(
         page=page,
         page_size=page_size,
         include_total=include_total,
+        admin_filter=admin_filter,
     )
 
 
 async def get_user(
         session: AsyncSession,
-        user: BaseUser,
         user_id: uuid.UUID,
 ) -> User | None:
     # TODO: check user permissions

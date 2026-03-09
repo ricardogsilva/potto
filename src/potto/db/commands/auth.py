@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 async def create_user(
         session: AsyncSession, to_create: UserCreate
 ) -> User:
-    hashed = bcrypt.hashpw(to_create.password.encode(), bcrypt.gensalt())
+    hashed = bcrypt.hashpw(to_create.password.get_secret_value().encode(), bcrypt.gensalt())
     instance = User(
         username=to_create.username,
         email=to_create.email,

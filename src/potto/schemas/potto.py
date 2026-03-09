@@ -7,13 +7,8 @@ import shapely
 
 from . import (
     base,
-    items,
     metadata,
-)
-from . import pygeoapi_config
-from .web.items import (
-    FeatureFilter,
-    ItemFilter,
+    pygeoapi_config,
 )
 from ..db import models
 
@@ -53,21 +48,6 @@ class Feature:
             properties={k: v for k, v in pygeoapi_feature["properties"].items() if k != "id"},
             geometry=shapely.from_geojson(json.dumps(pygeoapi_feature["geometry"]))
         )
-
-    def as_jsonld(
-            self,
-            resource_config: pygeoapi_config.ItemCollectionConfig,
-            url_resolver: UrlResolver
-    ) -> dict:
-        detail_url = url_resolver(
-            "get-item",
-            collection_id=resource_config.identifier,
-            item_id=self.id_
-        )
-        return {
-            "@type": "schema:Place",
-            "@id": str(detail_url),
-        }
 
 
 @dataclasses.dataclass(frozen=True)
@@ -111,9 +91,9 @@ class ConformanceDetail:
 @dataclasses.dataclass(frozen=True)
 class FeatureListResponse:
     collection: models.Collection
-    features: list[items.Feature]
+    features: list[Feature]
     pagination: base.PaginationContext
-    filter_: FeatureFilter | None = None
+    filter_: base.FeatureFilter | None = None
     metadata: dict [str, str] | None = None
 
 

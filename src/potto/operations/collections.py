@@ -4,7 +4,10 @@ import shapely
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.authentication import BaseUser
 
-from ..db.models import Collection
+from ..db.models import (
+    Collection,
+    User,
+)
 from ..db.commands import collections as collection_commands
 from ..db.queries import collections as collection_queries
 from ..exceptions import PottoException
@@ -86,7 +89,7 @@ async def delete_collection(
 
 async def import_pygeoapi_collection(
         session: AsyncSession,
-        user: BaseUser,
+        user: User,
         identifier: str,
         pygeoapi_collection: dict,
         *,
@@ -132,6 +135,7 @@ async def import_pygeoapi_collection(
         )
 
     if existing_db_collection and overwrite:
+        # TODO: check if user is allowed to modify it
         logger.debug(f"Updating existing collection {identifier!r}...")
         to_update = CollectionUpdate(
             collection_type=collection_type,
@@ -148,6 +152,7 @@ async def import_pygeoapi_collection(
     else:
         to_create = CollectionCreate(
             resource_identifier=identifier,
+            owner_id=user.id,
             collection_type=collection_type,
             title=pygeoapi_collection.get("title", ""),
             description=pygeoapi_collection.get("description"),

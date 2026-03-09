@@ -60,7 +60,7 @@ ValidScope = typing.Annotated[str, pydantic.AfterValidator(_validate_scope)]
 
 class UserCreate(pydantic.BaseModel):
     username: str = pydantic.Field(min_length=5, max_length=20)
-    password: str = pydantic.Field(min_length=8)
+    password: pydantic.SecretStr = pydantic.Field(min_length=8)
     email: str | None = None
     is_active: bool = True
     scopes: list[ValidScope] = []

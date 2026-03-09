@@ -15,12 +15,7 @@ from ....schemas.web.collections import (
     JsonCollectionList,
     JsonCollection,
 )
-from ....schemas.web import GeoJsonItem, GeoJsonItemCollection
-from ....schemas.web.items import ItemFilter
-from ..dependencies import (
-    PottoDependency,
-    SettingsDependency,
-)
+from ..dependencies import SettingsDependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

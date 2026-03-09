@@ -8,9 +8,11 @@ from fastapi import (
     Request,
 )
 
-from ....schemas.web.items import (
+from ....schemas.base import (
     ItemFilter,
     FeatureFilter,
+)
+from ....schemas.web.items import (
     GeoJsonItem,
     GeoJsonItemCollection,
 )

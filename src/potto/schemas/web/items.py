@@ -14,8 +14,9 @@ from ...db import models
 from ... import constants
 from ...webapp.protocols import UrlResolver
 from .. import (
+    base,
     pygeoapi_config,
-    potto, items, base,
+    potto as potto_schemas,
 )
 from ..base import Link
 
@@ -81,7 +82,7 @@ class GeoJsonItem(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            feature: items.Feature,
+            feature: potto_schemas.Feature,
             collection: models.Collection,
             url_resolver: UrlResolver,
             exclude_link_relations: Sequence[str] | None = None
@@ -153,7 +154,7 @@ class GeoJsonItemCollection(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            potto_response: potto.FeatureListResponse,
+            potto_response: potto_schemas.FeatureListResponse,
             url_resolver: UrlResolver
     ) -> "GeoJsonItemCollection":
         pagination_links = potto_response.pagination.get_links(
@@ -230,7 +231,7 @@ class HtmlItemCollection(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            potto_response: potto.FeatureListResponse,
+            potto_response: potto_schemas.FeatureListResponse,
             url_resolver: UrlResolver
     ) -> "HtmlItemCollection":
         pagination_links = potto_response.pagination.get_links(

@@ -17,7 +17,10 @@ from ..config import (
     PottoSettings,
 )
 from ..exceptions import PottoException
-from ..operations import collections as collection_ops
+from ..operations import (
+    auth as auth_ops,
+    collections as collection_ops,
+)
 from ..schemas import cli as cli_schemas
 
 import cyclopts
@@ -61,13 +64,23 @@ async def import_collections_from_pygeoapi(
     """Import collections from pygeoapi."""
     user = UnauthenticatedUser()
     if not pygeoapi_configuration.is_file():
-        raise SystemExit(f"Error: pygeoapi configuration file not found.")
+        collections_app.error_console.print(f"Error: pygeoapi configuration file not found.")
+        sys.exit(1)
 
     raw_config = await asyncio.to_thread(Path(pygeoapi_configuration).read_text)
     pygeoapi_config = await asyncio.to_thread(yaml.safe_load, raw_config)
 
     num_imported = 0
     async with settings.get_db_session_maker()() as session:
+        existing_admins, total_admins = await auth_ops.paginated_list_users(
+            session, include_total=True, admin_filter=True)
+        if not total_admins:
+            collections_app.error_console.print(
+                f"Cannot import collections without there being at least one user with 'admin' "
+                f"scope to inherit them."
+            )
+            sys.exit(1)
+        collection_owner = existing_admins[0]
         existing_collections = await collection_ops.collect_all_collections(
             session, user)
         relevant_resources = {
@@ -86,7 +99,7 @@ async def import_collections_from_pygeoapi(
             )
             try:
                 await collection_ops.import_pygeoapi_collection(
-                    session, user, identifier, resource, overwrite=overwrite)
+                    session, collection_owner, identifier, resource, overwrite=overwrite)
                 num_imported += 1
             except PottoException as err:
                 collections_app.error_console.print(
@@ -113,9 +126,9 @@ async def list_collections(
             page_size=page_size,
             include_total=True,
         )
-    result = cli_schemas.CollectionList(
+    result = cli_schemas.ItemList[cli_schemas.CollectionListItem](
         items=[cli_schemas.CollectionListItem.from_db_item(i) for i in collections],
-        meta=cli_schemas.CollectionListMeta(
+        meta=cli_schemas.ItemListMeta(
             page=page,
             page_size=len(collections),
             total_items=total,

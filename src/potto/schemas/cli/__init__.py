@@ -1,15 +1,23 @@
+from .base import (
+    ItemList,
+    ItemListMeta,
+)
 from .collections import (
     CollectionDetail,
-    CollectionList,
     CollectionListItem,
-    CollectionListMeta,
 )
 from .metadata import ServerMetadataDetail
+from .auth import (
+    UserDetail,
+    UserListItem,
+)
 
 __all__ = [
     "CollectionDetail",
-    "CollectionList",
     "CollectionListItem",
-    "CollectionListMeta",
+    "ItemList",
+    "ItemListMeta",
     "ServerMetadataDetail",
+    "UserDetail",
+    "UserListItem",
 ]
