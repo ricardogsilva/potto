@@ -7,8 +7,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.authentication import BaseUser
 
 from ..config import PottoSettings
-from ..schemas.potto import Collection
-from .metadata import get_server_metadata
+from ..db.models import Collection
+from . import metadata as metadata_ops
+from . import collections as collection_ops
 
 logger = logging.getLogger(__name__)
 
@@ -18,18 +19,12 @@ async def get_pygeoapi_config(
         settings: PottoSettings,
         user: BaseUser,
         *,
+        collection_identifier: str | None = None,
         collection_page: int = 1,
         collection_page_size: int = 20,
         debug: bool = False,
 ) -> dict:
-    metadata = await get_server_metadata(session)
-    collection_retriever = settings.get_collection_retriever()
-    collections = await collection_retriever(
-        settings,
-        user=user,
-        page=collection_page,
-        page_size=collection_page_size,
-    )
+    metadata = await metadata_ops.get_server_metadata(session)
     server_conf = {
         "map": {
             "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -97,10 +92,17 @@ async def get_pygeoapi_config(
         },
         "resources": {}
     }
+    collections, total = await collection_ops.paginated_list_collections(
+        session,
+        user=user,
+        identifier_filter=collection_identifier,
+        page=collection_page,
+        page_size=collection_page_size,
+    )
 
-    for collection in collections.collections:
-        pygeoapi_config["resources"][collection.identifier] = (
-            _convert_collection_to_pygeoapi_resource(collection)
+    for db_collection in collections:
+        pygeoapi_config["resources"][db_collection.resource_identifier] = (
+            _convert_collection_to_pygeoapi_resource(db_collection)
         )
     # TODO: validate the config
     return pygeoapi_config

@@ -1,5 +1,6 @@
 import datetime as dt
 import logging
+import uuid
 from typing import Any
 
 import pydantic
@@ -76,6 +77,7 @@ class Collection(SQLModel, table=True):
         index=True,
         unique=True,
     )
+    owner_id: uuid.UUID = Field(foreign_key="user.id")
     collection_type: CollectionType
     title: Title = Field(sa_type=JSONB())
     description: MaybeDescription = Field(default=None, sa_type=JSONB(), nullable=True)
@@ -94,6 +96,28 @@ class Collection(SQLModel, table=True):
         sa_type=JSONB(),
         nullable=True
     )
+
+
+class User(SQLModel, table=True):
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+    )
+    username: str = Field(
+        min_length=5,
+        max_length=20,
+        index=True,
+        unique=True,
+    )
+    email: str | None = Field(
+        default=None,
+        max_length=254,
+        unique=True,
+        nullable=True,
+    )
+    hashed_password: str | None = Field(default=None, nullable=True)
+    is_active: bool = Field(default=True)
+    scopes: list[str] = Field(default_factory=list, sa_type=JSONB())
 
 
 class ServerMetadata(SQLModel, table=True):

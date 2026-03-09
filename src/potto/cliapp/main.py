@@ -1,3 +1,6 @@
+import asyncio
+import getpass
+import inspect
 import logging
 import logging.config
 import os
@@ -17,6 +20,10 @@ from ..config import (
     get_settings,
     PottoSettings,
 )
+from starlette.authentication import UnauthenticatedUser
+
+from ..operations import auth as auth_ops
+from ..schemas.auth import UserCreate
 from .db import db_app
 from .collections import collections_app
 from .metadata import metadata_app
@@ -72,6 +79,8 @@ def launcher(
         additional_kwargs = {
             "settings": settings,
         }
+    if inspect.iscoroutinefunction(command):
+        return asyncio.run(command(*bound.args, **bound.kwargs, **additional_kwargs))
     return command(*bound.args, **bound.kwargs, **additional_kwargs)
 
 
@@ -131,3 +140,31 @@ def run_uvicorn_server(
     sys.stdout.flush()
     sys.stderr.flush()
     os.execvp("uvicorn", uvicorn_args)
+
+
+@potto_app.command(name="create-user")
+async def create_user(
+        username: str,
+        *,
+        email: str | None = None,
+        scopes: list[str] | None = None,
+        settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
+):
+    """Create a new user."""
+    password = getpass.getpass("Password: ")
+    password_confirm = getpass.getpass("Confirm password: ")
+    if password != password_confirm:
+        raise SystemExit("Error: passwords do not match.")
+    try:
+        to_create = UserCreate(
+            username=username,
+            password=password,
+            email=email,
+            scopes=scopes or [],
+        )
+    except Exception as err:
+        raise SystemExit(f"Error: {err}") from err
+    user = UnauthenticatedUser()
+    async with settings.get_db_session_maker()() as session:
+        db_user = await auth_ops.create_user(session, user, to_create)
+    potto_app.console.print(f"User {db_user.username!r} created (id: {db_user.id})")

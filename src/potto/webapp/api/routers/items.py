@@ -50,7 +50,7 @@ async def get_item_details(
         item_id: str,
 ) -> GeoJsonItem:
     current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.api_get_item(
+    result = await potto.api_get_collection_item(
         collection_id=collection_id,
         item_id=item_id,
         locale=current_locale,

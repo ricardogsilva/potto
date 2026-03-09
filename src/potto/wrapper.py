@@ -2,14 +2,12 @@ import asyncio
 import json
 import logging
 from typing import (
-    Protocol,
     Literal,
     Sequence,
     TypeAlias,
 )
 
 import babel
-import shapely
 from starlette.authentication import BaseUser
 from pygeoapi.api import (
     API as _API,
@@ -26,18 +24,17 @@ from pygeoapi.l10n import translate_struct
 
 from . import constants
 from .config import PottoSettings
-from .db.queries.metadata import get_metadata
-from .db.queries.collections import paginated_list_collections
 from .exceptions import PottoException
 from .operations.config import get_pygeoapi_config
-from .operations import collections as collection_operations
+from .operations import (
+    collections as collection_ops,
+    metadata as metadata_ops,
+)
 from .schemas import (
     base,
     potto as potto_schemas,
 )
-from .schemas.items import Feature
 from .schemas.web.items import FeatureFilter
-from .schemas.pygeoapi_config import ItemCollectionConfig
 from .webapp.requests import PottoRequest
 
 logger = logging.getLogger(__name__)
@@ -80,12 +77,14 @@ class Potto:
     async def _get_pygeoapi(
             self,
             user: BaseUser,
+            collection_identifier: str | None = None,
             collection_page: int = 1,
             collection_page_size: int = 20,
     ) -> _API:
         async with self._settings.get_db_session_maker()() as session:
             pygeoapi_config = await get_pygeoapi_config(
                 session, self._settings, user,
+                collection_identifier=collection_identifier,
                 collection_page=collection_page,
                 collection_page_size=collection_page_size
             )
@@ -97,11 +96,12 @@ class Potto:
             collection_id: str,
             user: BaseUser,
     ) -> potto_schemas.Collection | None:
-        collection_retriever = self._settings.get_collection_retriever()
-        return await collection_retriever.get_collection(
-            self._settings,
-            collection_identifier=collection_id,
-            user=user
+        async with self._settings.get_db_session_maker()() as session:
+            db_collection = await collection_ops.get_collection_by_resource_identifier(
+                session, user, collection_id)
+        return (
+            potto_schemas.Collection(**db_collection.model_dump())
+            if db_collection else None
         )
 
     async def get_localized_config(self, locale: babel.Locale) -> dict:
@@ -122,14 +122,24 @@ class Potto:
 
         The response contains useful info for generating a landing page for the API.
         """
-        collection_retriever = self._settings.get_collection_retriever()
-        collection_list = await collection_retriever.list_collections(self._settings, user=user)
-        server_metadata_retriever = self._settings.get_server_metadata_retriever()
-        server_metadata = await server_metadata_retriever.get_server_metadata(self._settings, user=user)
+        page = 1
+        async with self._settings.get_db_session_maker()() as session:
+            db_collections, total = await collection_ops.paginated_list_collections(
+                session, user=user, page=page)
+            server_metadata = await metadata_ops.get_server_metadata(session)
         return potto_schemas.LandingPage(
             metadata=server_metadata,
-            attribution=None,
-            collections=collection_list,
+            collections=potto_schemas.CollectionList(
+                collections=[
+                    potto_schemas.Collection(**collection.model_dump())
+                    for collection in db_collections
+                ],
+                pagination=potto_schemas.Pagination(
+                    page=page,
+                    page_size=len(db_collections),
+                    total=total,
+                )
+            ),
         )
 
     async def api_get_conformance_details(self) -> potto_schemas.ConformanceDetail:
@@ -154,13 +164,14 @@ class Potto:
             self,
             collection_id: str,
             *,
+            user: BaseUser,
             locale: babel.Locale,
             filter_: FeatureFilter | None = None,
     ) -> potto_schemas.FeatureListResponse:
         async with self._settings.get_db_session_maker()() as session:
             if not (
-                db_collection := await collection_operations.get_collection_by_resource_identifier(
-                    session, collection_id)
+                db_collection := await collection_ops.get_collection_by_resource_identifier(
+                    session, user, collection_id)
             ):
                 raise PottoException(f"Collection {collection_id} not found")
         pygeoapi_api = await self._get_pygeoapi(
@@ -182,7 +193,7 @@ class Potto:
         logger.debug(f"{parsed_pygeoapi_content=}")
         collection_config = await self.get_item_collection_config(collection_id)
         features=[
-            Feature.from_original_feature(feat)
+            potto_schemas.Feature.from_pygeoapi_feature(feat)
             for feat in parsed_pygeoapi_content["features"]
         ]
         return potto_schemas.FeatureListResponse(
@@ -208,22 +219,18 @@ class Potto:
             },
         )
 
-    async def api_get_item(
+    async def api_get_collection_item(
             self,
+            user: BaseUser,
             *,
             item_id: str,
             collection_id: str,
             locale: babel.Locale,
             output_format: Literal["json", "jsonld"] = "json"
     ) -> potto_schemas.FeatureResponse:
-        async with self._settings.get_db_session_maker()() as session:
-            if not (
-                    db_collection := await collection_operations.get_collection_by_resource_identifier(
-                        session, collection_id)
-            ):
-                raise PottoException(f"Collection {collection_id} not found")
+        collection = await self._get_collection(collection_id, user)
         pygeoapi_api = await self._get_pygeoapi(
-            resource_types=["collection"], resource_page_size=None)
+            user, collection_identifier=collection_id)
         pygeoapi_response = await asyncio.to_thread(
             _get_collection_item,
             pygeoapi_api,
@@ -237,7 +244,7 @@ class Potto:
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
         return potto_schemas.FeatureResponse(
-            collection=db_collection,
-            feature=Feature.from_original_feature(parsed_pygeoapi_content),
+            collection=collection,
+            feature=potto_schemas.Feature.from_pygeoapi_feature(parsed_pygeoapi_content),
             metadata=pygeoapi_headers
         )

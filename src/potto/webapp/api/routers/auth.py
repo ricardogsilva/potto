@@ -1,0 +1,57 @@
+import logging
+
+import bcrypt
+import pydantic
+from fastapi import APIRouter, HTTPException
+
+from ....auth.jwt import create_access_token
+from ....db.queries.auth import get_user_by_username
+from ....schemas.auth import PottoUser
+from ..dependencies import SettingsDependency
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+class LoginRequest(pydantic.BaseModel):
+    username: str
+    password: str
+
+
+class LoginResponse(pydantic.BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+@router.post("/login", name="login")
+async def login(
+        credentials: LoginRequest,
+        settings: SettingsDependency,
+) -> LoginResponse:
+    """Authenticate with username and password, receive a JWT access token."""
+    async with settings.get_db_session_maker()() as session:
+        db_user = await get_user_by_username(session, credentials.username)
+    if db_user is None:
+        logger.debug(f"Login failed: user {credentials.username!r} not found")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not db_user.is_active:
+        logger.warning(f"Login failed: user {credentials.username!r} is inactive")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if db_user.hashed_password is None:
+        logger.warning(f"Login failed: user {credentials.username!r} has no local password")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not bcrypt.checkpw(credentials.password.encode(), db_user.hashed_password.encode()):
+        logger.debug(f"Login failed: wrong password for user {credentials.username!r}")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    potto_user = PottoUser(
+        id=db_user.id,
+        username=db_user.username,
+        email=db_user.email,
+        is_active=db_user.is_active,
+        scopes=db_user.scopes,
+    )
+    token = create_access_token(
+        potto_user,
+        settings.session_secret_key.get_secret_value(),
+    )
+    return LoginResponse(access_token=token)

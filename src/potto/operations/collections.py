@@ -21,10 +21,22 @@ from ..schemas.collections import (
 logger = logging.getLogger(__name__)
 
 
+async def collect_all_collections(
+        session: AsyncSession,
+        user: BaseUser,
+        collection_type_filter: list[CollectionType] | None = None,
+) -> list[Collection]:
+    """List all collections that the user has access to."""
+    return await collection_queries.collect_all_collections(
+        session,
+        collection_type_filter
+    )
+
+
 async def paginated_list_collections(
         session: AsyncSession,
-        *,
         user: BaseUser,
+        *,
         page: int = 1,
         page_size: int = 20,
         include_total: bool = False,
@@ -32,6 +44,7 @@ async def paginated_list_collections(
         collection_type_filter: list[CollectionType] | None = None,
         spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
+    """Produce a paginated list of all collections that the user has access to."""
     return await collection_queries.paginated_list_collections(
         session,
         page=page,
@@ -45,6 +58,7 @@ async def paginated_list_collections(
 
 async def get_collection(
         session: AsyncSession,
+        user: BaseUser,
         collection_id: int,
 ) -> Collection | None:
     return await collection_queries.get_collection(session, collection_id)
@@ -52,6 +66,7 @@ async def get_collection(
 
 async def get_collection_by_resource_identifier(
         session: AsyncSession,
+        user: BaseUser,
         identifier: str,
 ) -> Collection | None:
     return await collection_queries.get_collection_by_resource_identifier(session, identifier)
@@ -64,12 +79,14 @@ async def create_collection(
     return await collection_commands.create_collection(session, to_create)
 
 
-async def delete_collection(session: AsyncSession, collection_id: int) -> None:
+async def delete_collection(
+        session: AsyncSession, user: BaseUser, collection_id: int) -> None:
     return await collection_commands.delete_collection(session, collection_id)
 
 
 async def import_pygeoapi_collection(
         session: AsyncSession,
+        user: BaseUser,
         identifier: str,
         pygeoapi_collection: dict,
         *,

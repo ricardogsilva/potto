@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from ... import config
 
 from .routers import (
+    auth,
     base,
     collections,
     items,
@@ -27,6 +28,7 @@ def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
         title="Potto",
         summary="OGC API server",
     )
+    app.include_router(auth.router)
     app.include_router(collections.router)
     app.include_router(items.router)
     app.include_router(base.router)

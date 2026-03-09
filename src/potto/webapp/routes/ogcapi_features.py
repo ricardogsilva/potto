@@ -82,7 +82,7 @@ async def list_collection_items(request: Request) -> Response:
 async def get_item_details(request: Request) -> Response:
     current_locale = babel.Locale.parse(request.state.language)
     potto: Potto = request.state.potto
-    result = await potto.api_get_item(
+    result = await potto.api_get_collection_item(
         collection_id=request.path_params["collection_id"],
         item_id=request.path_params["item_id"],
         locale=current_locale,

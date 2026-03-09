@@ -2,6 +2,8 @@
 
 import dataclasses
 import datetime as dt
+import json
+import shapely
 
 from . import (
     base,
@@ -38,6 +40,37 @@ class Collection:
 
 
 @dataclasses.dataclass(frozen=True)
+class Feature:
+
+    id_: str
+    properties: dict[str, str | int | float | bool]
+    geometry: shapely.Geometry
+
+    @classmethod
+    def from_pygeoapi_feature(cls, pygeoapi_feature: dict) -> "Feature":
+        return cls(
+            id=str(pygeoapi_feature["id"]),
+            properties={k: v for k, v in pygeoapi_feature["properties"].items() if k != "id"},
+            geometry=shapely.from_geojson(json.dumps(pygeoapi_feature["geometry"]))
+        )
+
+    def as_jsonld(
+            self,
+            resource_config: pygeoapi_config.ItemCollectionConfig,
+            url_resolver: UrlResolver
+    ) -> dict:
+        detail_url = url_resolver(
+            "get-item",
+            collection_id=resource_config.identifier,
+            item_id=self.id_
+        )
+        return {
+            "@type": "schema:Place",
+            "@id": str(detail_url),
+        }
+
+
+@dataclasses.dataclass(frozen=True)
 class CollectionList:
     collections: list[Collection]
     pagination: Pagination
@@ -66,9 +99,8 @@ class PottoResponse:
 @dataclasses.dataclass(frozen=True)
 class LandingPage:
     metadata: models.ServerMetadata
-    num_collections: int
+    collections: CollectionList
     attribution: str | None = None
-    collections: list[models.Collection] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -87,6 +119,6 @@ class FeatureListResponse:
 
 @dataclasses.dataclass(frozen=True)
 class FeatureResponse:
-    collection: models.Collection
-    feature: items.Feature
+    collection: Collection
+    feature: Feature
     metadata: dict [str, str] | None = None

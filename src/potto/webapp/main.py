@@ -4,6 +4,7 @@ from typing import AsyncIterator
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.routing import (
@@ -15,6 +16,7 @@ from starlette.templating import Jinja2Templates
 from starlette_babel import LocaleMiddleware
 
 from .. import config
+from ..auth.backend import PottoAuthBackend
 from ..wrapper import Potto
 from .routes import (
     ogcapi_common as ogc_api_common_routes,
@@ -66,6 +68,10 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
             Middleware(
                 SessionMiddleware,
                 secret_key=settings.session_secret_key.get_secret_value(),
+            ),
+            Middleware(
+                AuthenticationMiddleware,
+                backend=PottoAuthBackend(settings),
             ),
             Middleware(
                 GZipMiddleware,

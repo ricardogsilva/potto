@@ -3,9 +3,10 @@ from typing import (
     Iterator,
 )
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from ... import config
+from ...schemas.auth import PottoUser
 from ...wrapper import Potto
 
 
@@ -19,5 +20,10 @@ def get_potto(
     yield Potto(settings)
 
 
+def get_current_user(request: Request) -> PottoUser:
+    return request.user
+
+
 SettingsDependency = Annotated[config.PottoSettings, Depends(get_settings)]
 PottoDependency = Annotated[Potto, Depends(get_potto)]
+UserDependency = Annotated[PottoUser, Depends(get_current_user)]

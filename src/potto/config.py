@@ -1,14 +1,13 @@
-import importlib
 import warnings
 from pathlib import Path
 
 import jinja2
+import importlib
 import pydantic
 import pydantic_settings
 import sqlmodel
 from pydantic.networks import PostgresDsn
 from pygeoapi import __version__ as pygeoapi_version
-from pygeoapi.util import yaml_load
 from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio.session import async_sessionmaker
 from sqlalchemy.ext.asyncio.engine import (
@@ -19,10 +18,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette_babel import get_translator
 from starlette_babel.contrib.jinja import configure_jinja_env
 
-from . import (
-    jinjafilters,
-    protocols,
-)
+from . import jinjafilters
 
 warnings.filterwarnings(
     "ignore",
@@ -62,8 +58,6 @@ class PottoSettings(pydantic_settings.BaseSettings):
     _db_engine: AsyncEngine | None = None
     _sync_db_engine: Engine | None = None
     _db_session_maker: async_sessionmaker | None = None
-    _collection_retriever: protocols.CollectionRetrieverProtocol | None = None
-    _server_metadata_retriever: protocols.ServerMetadataRetrieverProtocol | None = None
 
     def get_jinja_env(self) -> jinja2.Environment:
         if self._jinja_env is None:
@@ -94,20 +88,6 @@ class PottoSettings(pydantic_settings.BaseSettings):
                 class_=AsyncSession
             )
         return self._db_session_maker
-
-    def get_collection_retriever(self) -> protocols.CollectionRetrieverProtocol:
-        if self._collection_retriever is None:
-            module_path, retriever_name = self.retriever_collections.rpartition(".")[::2]
-            imported_module = importlib.import_module(module_path)
-            self._collection_retriever = getattr(imported_module, retriever_name)
-        return self._collection_retriever
-
-    def get_server_metadata_retriever(self) -> protocols.ServerMetadataRetrieverProtocol:
-        if self._server_metadata_retriever is None:
-            module_path, retriever_name = self.retriever_server_metadata.rpartition(".")[::2]
-            imported_module = importlib.import_module(module_path)
-            self._server_metadata_retriever = getattr(imported_module, retriever_name)
-        return self._server_metadata_retriever
 
 
 def get_settings() -> PottoSettings:

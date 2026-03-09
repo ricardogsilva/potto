@@ -17,16 +17,11 @@ from ..config import (
     PottoSettings,
 )
 from ..exceptions import PottoException
-from ..operations.collections import import_pygeoapi_collection
-from ..db.commands import collections as collection_commands
-from ..db.queries import (
-    collect_all_collections,
-    get_collection_by_resource_identifier,
-    paginated_list_collections,
-)
+from ..operations import collections as collection_ops
 from ..schemas import cli as cli_schemas
 
 import cyclopts
+from starlette.authentication import UnauthenticatedUser
 
 collections_app = cyclopts.App()
 logger = logging.getLogger(__name__)
@@ -64,6 +59,7 @@ async def import_collections_from_pygeoapi(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Import collections from pygeoapi."""
+    user = UnauthenticatedUser()
     if not pygeoapi_configuration.is_file():
         raise SystemExit(f"Error: pygeoapi configuration file not found.")
 
@@ -72,21 +68,31 @@ async def import_collections_from_pygeoapi(
 
     num_imported = 0
     async with settings.get_db_session_maker()() as session:
-        existing_collections = await collect_all_collections(session)
+        existing_collections = await collection_ops.collect_all_collections(
+            session, user)
         relevant_resources = {
             id_: res for id_, res in pygeoapi_config.get("resources", {}).items()
             if res.get("type") == "collection"
                and (resources is None or id in resources)
-               and (overwrite or id_ not in [c.resource_identifier for c in existing_collections])
+               and (
+                       overwrite or id_ not in
+                       [c.resource_identifier for c in existing_collections]
+               )
         }
         for idx, (identifier, resource) in enumerate(relevant_resources.items()):
-            logger.debug(f"[{idx+1}/{len(relevant_resources)}]Processing collection {identifier!r}...")
+            logger.debug(
+                f"[{idx+1}/{len(relevant_resources)}]Processing "
+                f"collection {identifier!r}..."
+            )
             try:
-                await import_pygeoapi_collection(session, identifier, resource, overwrite=overwrite)
+                await collection_ops.import_pygeoapi_collection(
+                    session, user, identifier, resource, overwrite=overwrite)
                 num_imported += 1
             except PottoException as err:
-                collections_app.error_console.print(f"Could not import collection {identifier!r} - {err}")
-    collections_app.console.print(f"Done! Imported [{num_imported}/{len(relevant_resources)}] collections")
+                collections_app.error_console.print(
+                    f"Could not import collection {identifier!r} - {err}")
+    collections_app.console.print(
+        f"Done! Imported [{num_imported}/{len(relevant_resources)}] collections")
 
 
 @collections_app.command(name="list")
@@ -98,9 +104,11 @@ async def list_collections(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """List collections."""
+    user = UnauthenticatedUser()
     async with settings.get_db_session_maker()() as session:
-        collections, total = await paginated_list_collections(
+        collections, total = await collection_ops.paginated_list_collections(
             session,
+            user,
             page=page,
             page_size=page_size,
             include_total=True,
@@ -140,8 +148,12 @@ async def get_collection(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Get details about a collection."""
+    user = UnauthenticatedUser()
     async with settings.get_db_session_maker()() as session:
-        if not (collection := await get_collection_by_resource_identifier(session, collection_identifier)):
+        if not (
+            collection := await collection_ops.get_collection_by_resource_identifier(
+                session, user, collection_identifier)
+        ):
             raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
     result = cli_schemas.CollectionDetail.from_db_item(collection)
     if format == "json":
@@ -161,20 +173,23 @@ async def delete_collections(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Delete collections."""
+    user = UnauthenticatedUser()
     found_error = False
     async with settings.get_db_session_maker()() as session:
         for id_ in collection_identifier:
             if not (
-                    db_collection := await get_collection_by_resource_identifier(session, id_)
+                db_collection := await collection_ops.get_collection_by_resource_identifier(
+                    session, user, id_)
             ):
                 collections_app.error_console.print(f"Collection {id_!r} not found.")
                 found_error = True
                 continue
             try:
-                await collection_commands.delete_collection(session, db_collection.id)
+                await collection_ops.delete_collection(session, user, db_collection.id)
                 collections_app.console.print(f"Collection {id_!r} deleted")
             except PottoException as err:
-                collections_app.error_console.print(f"Could not delete {collection_identifier!r} - {err}")
+                collections_app.error_console.print(
+                    f"Could not delete {collection_identifier!r} - {err}")
                 found_error = True
                 continue
     sys.exit(0 if not found_error else 1)
