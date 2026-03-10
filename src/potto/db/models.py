@@ -12,9 +12,12 @@ from geoalchemy2.shape import to_shape
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import (
     Field,
+    Relationship,
     SQLModel,
 )
 
+from ..schemas.auth import PottoUser
+from ..schemas import potto as potto_schemas
 from ..schemas.base import (
     CollectionProvider,
     CollectionType,
@@ -97,6 +100,23 @@ class Collection(SQLModel, table=True):
         nullable=True
     )
 
+    owner: "User" = Relationship(back_populates="owned_collections")
+
+    def to_potto(self) -> potto_schemas.Collection:
+        return potto_schemas.Collection(
+            type_=self.collection_type,
+            identifier=self.resource_identifier,
+            title=self.title,
+            description=self.description,
+            owner=self.owner.to_potto(),
+            keywords=self.keywords,
+            spatial_extent=self.spatial_extent,
+            temporal_extent_begin=self.temporal_extent_begin,
+            temporal_extent_end=self.temporal_extent_end,
+            additional_links=self.additional_links,
+            providers=self.providers,
+        )
+
 
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(
@@ -119,6 +139,17 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True)
     scopes: list[str] = Field(default_factory=list, sa_type=JSONB())
 
+    owned_collections: list[Collection] = Relationship(back_populates="owner")
+
+    def to_potto(self) -> PottoUser:
+        return PottoUser(
+            **self.model_dump(
+                exclude={
+                    "hashed_password"
+                }
+            ),
+        )
+
 
 class ServerMetadata(SQLModel, table=True):
     id: int | None = Field(
@@ -134,3 +165,37 @@ class ServerMetadata(SQLModel, table=True):
     license: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
     data_provider: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
     point_of_contact: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
+
+    def to_potto(self) -> potto_schemas.ServerMetadata:
+        return potto_schemas.ServerMetadata(
+            title=self.title,
+            description=self.description,
+            keywords=self.keywords,
+            keywords_type=self.keywords_type,
+            terms_of_service=self.terms_of_service,
+            url=self.url,
+            license=potto_schemas.ServerMetadataLicense(
+                name=self.license.get("name"),
+                url=self.license.get("url"),
+            ),
+            data_provider=potto_schemas.ServerMetadataDataProvider(
+                name=self.data_provider.get("name"),
+                url=self.data_provider.get("url"),
+            ),
+            point_of_contact=potto_schemas.ServerMetadataPointOfContact(
+                name=self.point_of_contact.get("name"),
+                position=self.point_of_contact.get("position"),
+                address=self.point_of_contact.get("address"),
+                city=self.point_of_contact.get("city"),
+                state_or_province=self.point_of_contact.get("state_or_province"),
+                postal_code=self.point_of_contact.get("postal_code"),
+                country=self.point_of_contact.get("country"),
+                phone=self.point_of_contact.get("phone"),
+                fax=self.point_of_contact.get("fax"),
+                email=self.point_of_contact.get("email"),
+                url=self.point_of_contact.get("url"),
+                contact_hours=self.point_of_contact.get("contact_hours"),
+                contact_instructions=self.point_of_contact.get("contact_instructions"),
+            )
+        )
+

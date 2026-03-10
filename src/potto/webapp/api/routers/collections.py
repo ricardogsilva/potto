@@ -1,6 +1,5 @@
 import logging
 
-import babel
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -15,7 +14,11 @@ from ....schemas.web.collections import (
     JsonCollectionList,
     JsonCollection,
 )
-from ..dependencies import SettingsDependency
+from ..dependencies import (
+    PottoDependency,
+    SettingsDependency,
+    UserDependency,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -52,7 +55,12 @@ async def delete_collection(
     "/collections",
     name="list-collections",
 )
-async def list_collections(request: Request, settings: SettingsDependency) -> JsonCollectionList:
+async def list_collections(
+        request: Request,
+        settings: SettingsDependency,
+        PottoDependency,
+        UserDependency,
+) -> JsonCollectionList:
     async with settings.get_db_session_maker()() as session:
         db_collections, total = await collection_operations.paginated_list_collections(
             session,

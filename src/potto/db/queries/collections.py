@@ -1,4 +1,5 @@
 import shapely
+from sqlalchemy.orm import selectinload
 from sqlmodel import (
     func,
     or_,
@@ -65,7 +66,7 @@ async def list_collections(
         collection_type_filter: list[CollectionType] | None = None,
         spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
-    statement = select(Collection)
+    statement = select(Collection).options(selectinload(Collection.owner))
     if identifier_filter:
         statement = statement.where(
             Collection.resource_identifier.ilike(f"%{identifier_filter}%")
@@ -96,12 +97,21 @@ async def get_collection(
         session: AsyncSession,
         collection_id: int,
 ) -> Collection | None:
-    return await session.get(Collection, collection_id)
+    statement = (
+        select(Collection)
+        .options(selectinload(Collection.owner))
+        .where(Collection.id == collection_id)
+    )
+    return (await session.exec(statement)).first()
 
 
 async def get_collection_by_resource_identifier(
         session: AsyncSession,
         resource_identifier: str,
 ) -> Collection | None:
-    statement = select(Collection).where(Collection.resource_identifier == resource_identifier)
+    statement = (
+        select(Collection)
+        .options(selectinload(Collection.owner))
+        .where(Collection.resource_identifier == resource_identifier)
+    )
     return (await session.exec(statement)).first()

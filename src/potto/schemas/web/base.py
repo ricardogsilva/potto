@@ -1,11 +1,17 @@
+import logging
 from typing import Annotated
 
 import pydantic
 
 from ... import constants
 from ...webapp.protocols import UrlResolver
-from ..base import Link
+from ..base import (
+    CollectionType,
+    Link,
+)
 from ..potto import LandingPage
+
+logger = logging.getLogger(__name__)
 
 
 class JsonLanding(pydantic.BaseModel):
@@ -53,8 +59,8 @@ class JsonLanding(pydantic.BaseModel):
             ),
         ]
         if any(
-                c for c in potto_response.collections
-                if c.item_type == constants.FEATURE_COLLECTION_ITEM_TYPE
+                c for c in potto_response.collections.collections
+                if c.type_ == CollectionType.FEATURE_COLLECTION
         ):
             links.extend([
                 Link(
@@ -65,8 +71,8 @@ class JsonLanding(pydantic.BaseModel):
                 ),
             ])
         return cls(
-            title=potto_response.title,
-            description=potto_response.description,
+            title=potto_response.metadata.title,
+            description=potto_response.metadata.description,
             attribution=potto_response.attribution,
             links=links
         )

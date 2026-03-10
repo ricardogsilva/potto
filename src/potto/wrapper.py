@@ -11,6 +11,7 @@ import babel
 from starlette.authentication import BaseUser
 from pygeoapi.api import (
     API as _API,
+    describe_collections as _describe_collections,
     evaluate_limit as _evaluate_limit,
     F_JSON,
     FORMAT_TYPES as _FORMAT_TYPES,
@@ -32,6 +33,7 @@ from .operations import (
 )
 from .schemas import (
     base,
+    auth,
     potto as potto_schemas,
 )
 from .schemas.web.items import FeatureFilter
@@ -77,6 +79,7 @@ class Potto:
     async def _get_pygeoapi(
             self,
             user: BaseUser,
+            *,
             collection_identifier: str | None = None,
             collection_page: int = 1,
             collection_page_size: int = 20,
@@ -130,10 +133,7 @@ class Potto:
         return potto_schemas.LandingPage(
             metadata=server_metadata,
             collections=potto_schemas.CollectionList(
-                collections=[
-                    potto_schemas.Collection(**collection.model_dump())
-                    for collection in db_collections
-                ],
+                collections=[db_col.to_potto() for db_col in db_collections],
                 pagination=potto_schemas.Pagination(
                     page=page,
                     page_size=len(db_collections),
@@ -159,6 +159,34 @@ class Potto:
             content_type=_FORMAT_TYPES[F_JSON],
             content=pygeoapi_api.openapi
         )
+
+    async def api_list_collections(
+            self,
+            *,
+            user: BaseUser,
+            locale: babel.Locale,
+            page: int = 1,
+            page_size: int = 20,
+    ):
+        pygeoapi_api = await self._get_pygeoapi(
+            user, collection_page=page, collection_page_size=page_size)
+        pygeoapi_response = asyncio.to_thread(
+            _describe_collections,
+            pygeoapi_api,
+            PottoRequest(locale=locale, output_format="json")
+        )
+        pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
+        parsed_pygeoapi_content = json.loads(pygeoapi_content)
+        logger.debug(f"{parsed_pygeoapi_content=}")
+        found_collections = []
+        for collection in parsed_pygeoapi_content.get("collections", []):
+            found_collections.append(
+                potto_schemas.Collection.from_pygeoapi()
+            )
+
+
+    async def api_get_collection(self, collection_id: str):
+        ...
 
     async def api_list_collection_items(
             self,

@@ -5,15 +5,23 @@ from fastapi import (
 
 from ....schemas.web import base
 
-from ..dependencies import PottoDependency
+from ..dependencies import (
+    PottoDependency,
+    UserDependency,
+)
 
 router = APIRouter()
 
 
 
 @router.get("/", name="landing-page", response_model_exclude_none=True)
-async def landing_page(request: Request, potto: PottoDependency) -> base.JsonLanding:
-    result = await potto.api_get_landing_page(language=request.state.locale.language)
+async def landing_page(
+        request: Request,
+        potto: PottoDependency,
+        user: UserDependency
+) -> base.JsonLanding:
+    result = await potto.api_get_landing_page(
+        user=user, language=request.state.locale.language)
     return base.JsonLanding.from_potto(result, request.url_for)
 
 

@@ -82,7 +82,10 @@ async def list_users(
         for item_collection in result.items:
             table_row = []
             for field_name in cli_schemas.UserListItem.model_fields.keys():
-                table_row.append(str(getattr(item_collection, field_name)))
+                if field_name == "scopes":
+                    table_row.append(", ".join(getattr(item_collection, field_name)))
+                else:
+                    table_row.append(str(getattr(item_collection, field_name)))
             user_table.add_row(*table_row)
         serialized = user_table
         user_app.console.print(serialized)
