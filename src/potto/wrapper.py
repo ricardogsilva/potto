@@ -167,25 +167,39 @@ class Potto:
             locale: babel.Locale,
             page: int = 1,
             page_size: int = 20,
-    ):
+    ) -> potto_schemas.CollectionList:
         pygeoapi_api = await self._get_pygeoapi(
             user, collection_page=page, collection_page_size=page_size)
-        pygeoapi_response = asyncio.to_thread(
+        pygeoapi_response = await asyncio.to_thread(
             _describe_collections,
             pygeoapi_api,
             PottoRequest(locale=locale, output_format="json")
         )
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
-        logger.debug(f"{parsed_pygeoapi_content=}")
         found_collections = []
-        for collection in parsed_pygeoapi_content.get("collections", []):
+        for pygeoapi_collection in parsed_pygeoapi_content.get("collections", []):
             found_collections.append(
-                potto_schemas.Collection.from_pygeoapi()
+                potto_schemas.Collection.from_pygeoapi(
+                    pygeoapi_collection, pygeoapi_api)
             )
+        return potto_schemas.CollectionList(
+            collections=found_collections,
+            pagination=potto_schemas.Pagination(
+                page=page,
+                page_size=len(found_collections),
+                total=0,  # FIXME
+            )
+        )
 
 
-    async def api_get_collection(self, collection_id: str):
+    async def api_get_collection(
+            self,
+            collection_id: str,
+            *,
+            user: BaseUser,
+            locale: babel.Locale
+    ) -> potto_schemas.Collection:
         ...
 
     async def api_list_collection_items(

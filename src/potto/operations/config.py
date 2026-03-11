@@ -108,9 +108,9 @@ async def get_pygeoapi_config(
     return pygeoapi_config
 
 
-def _convert_collection_to_pygeoapi_resource(collection: Collection) -> dict:
+def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
     links = []
-    for collection_link in collection.additional_links or []:
+    for collection_link in db_collection.additional_links or []:
         link_ = dict(collection_link)
         type_ = link_.pop("media_type", "")
         links.append(
@@ -120,7 +120,7 @@ def _convert_collection_to_pygeoapi_resource(collection: Collection) -> dict:
             }
         )
     converted_providers = []
-    for type_, provider in (collection.providers or {}).items():
+    for type_, provider in (db_collection.providers or {}).items():
         raw_data_value = provider.get("config", {}).pop("data", "")
         interpolated_data_value = re.sub(
             r"\${?(\w+)}?",
@@ -138,30 +138,34 @@ def _convert_collection_to_pygeoapi_resource(collection: Collection) -> dict:
 
     return {
         "type": "collection",
-        "title": collection.title,
-        "description": collection.description or "",
-        "keywords": collection.keywords or [],
+        "title": db_collection.title,
+        "description": db_collection.description or "",
+        "keywords": db_collection.keywords or [],
         "linked-data": None,
         "links": links,
         "extents": {
             "spatial": {
                 "bbox": (
-                    collection.spatial_extent.bounds
-                    if collection.spatial_extent
+                    db_collection.spatial_extent.bounds
+                    if db_collection.spatial_extent
                     else shapely.box(-180, -90, 180, 90).bounds
                 ),
                 "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
             },
             "temporal": {
                 "begin": (
-                    collection.temporal_extent_begin.isoformat()
-                    if collection.temporal_extent_begin else None
+                    db_collection.temporal_extent_begin.isoformat()
+                    if db_collection.temporal_extent_begin else None
                 ),
                 "end": (
-                    collection.temporal_extent_end.isoformat()
-                    if collection.temporal_extent_end else None
+                    db_collection.temporal_extent_end.isoformat()
+                    if db_collection.temporal_extent_end else None
                 ),
             }
         },
         "providers": converted_providers,
+        # owner is not a property recognized by pygeoapi but we require it in
+        # potto.Adding it here takes advantage of the fact that pygeoapi
+        # allows additional configuration properties on collections
+        "owner": db_collection.owner.to_potto()
     }

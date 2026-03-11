@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 import pydantic
@@ -5,16 +6,21 @@ import pydantic
 from ... import constants
 from ...db import models
 from ...webapp.protocols import UrlResolver
-from .. import base
+from .. import (
+    base,
+    potto as potto_schemas,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class JsonCollection(pydantic.BaseModel):
-    id_: Annotated[str, pydantic.Field(alias="id")]
+    id_: Annotated[str, pydantic.Field(serialization_alias="id")]
     title: base.Title
     description: base.MaybeDescription
     links: list[base.Link]
     extent: base.Extent | None = None
-    item_type: Annotated[str | None, pydantic.Field(alias="itemType")] = constants.FEATURE_COLLECTION_ITEM_TYPE
+    item_type: Annotated[str | None, pydantic.Field(serialization_alias="itemType")] = constants.FEATURE_COLLECTION_ITEM_TYPE
     crs: list[str] = pydantic.Field(default_factory=lambda : [constants.CRS_84])
 
     @classmethod
@@ -45,6 +51,43 @@ class JsonCollection(pydantic.BaseModel):
             ) if (temporal_extent or spatial_extent) else None
         )
 
+    @classmethod
+    def from_potto(
+            cls,
+            potto_collection: potto_schemas.Collection,
+            url_resolver: UrlResolver,
+    ) -> "JsonCollection":
+        spatial_extent = base.TwoDimensionalSpatialExtent(
+            bbox=[potto_collection.spatial_extent.bounds]
+        ) if potto_collection.spatial_extent else None
+        logger.debug(f"{potto_collection.temporal_extent_begin=}")
+        logger.debug(f"{potto_collection.temporal_extent_end=}")
+        temporal_extent = base.TemporalExtent(
+            interval=[
+                (
+                    (
+                        potto_collection.temporal_extent_begin.isoformat()
+                        if potto_collection.temporal_extent_begin else None
+                    ),
+                    (
+                        potto_collection.temporal_extent_end.isoformat()
+                        if potto_collection.temporal_extent_end else None
+                    )
+                )
+            ]
+        ) if (potto_collection.temporal_extent_begin or potto_collection.temporal_extent_end) else None
+        return cls(
+            id_=potto_collection.identifier,
+            item_type=potto_collection.type_.value,
+            title=potto_collection.title,
+            description=potto_collection.description,
+            links=[],
+            extent=base.Extent(
+                spatial=spatial_extent,
+                temporal=temporal_extent,
+            )
+        )
+
 
 class JsonCollectionList(pydantic.BaseModel):
     links: list[base.Link]
@@ -59,6 +102,20 @@ class JsonCollectionList(pydantic.BaseModel):
         return cls(
             collections=[JsonCollection.from_db_item(i, url_resolver) for i in items],
             links=[]
+        )
+
+    @classmethod
+    def from_potto(
+            cls,
+            potto_result: potto_schemas.CollectionList,
+            url_resolver: UrlResolver
+    ) -> "JsonCollectionList":
+        return cls(
+            collections=[
+                JsonCollection.from_potto(col, url_resolver)
+                for col in potto_result.collections
+            ],
+            links=[],
         )
 
 

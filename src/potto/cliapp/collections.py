@@ -56,7 +56,7 @@ def launcher(
 @collections_app.command(name="import-from-pygeoapi")
 async def import_collections_from_pygeoapi(
         pygeoapi_configuration: Path,
-        resources: list[str] | None = None,
+        resource: list[str] | None = None,
         overwrite: bool = False,
         *,
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
@@ -83,29 +83,29 @@ async def import_collections_from_pygeoapi(
         collection_owner = existing_admins[0]
         existing_collections = await collection_ops.collect_all_collections(
             session, user)
-        relevant_resources = {
+        relevant_collections = {
             id_: res for id_, res in pygeoapi_config.get("resources", {}).items()
             if res.get("type") == "collection"
-               and (resources is None or id in resources)
+               and (resource is None or id_ in resource)
                and (
                        overwrite or id_ not in
                        [c.resource_identifier for c in existing_collections]
                )
         }
-        for idx, (identifier, resource) in enumerate(relevant_resources.items()):
+        for idx, (identifier, relevant_collection) in enumerate(relevant_collections.items()):
             logger.debug(
-                f"[{idx+1}/{len(relevant_resources)}]Processing "
+                f"[{idx+1}/{len(relevant_collections)}]Processing "
                 f"collection {identifier!r}..."
             )
             try:
                 await collection_ops.import_pygeoapi_collection(
-                    session, collection_owner, identifier, resource, overwrite=overwrite)
+                    session, collection_owner, identifier, relevant_collection, overwrite=overwrite)
                 num_imported += 1
             except PottoException as err:
                 collections_app.error_console.print(
                     f"Could not import collection {identifier!r} - {err}")
     collections_app.console.print(
-        f"Done! Imported [{num_imported}/{len(relevant_resources)}] collections")
+        f"Done! Imported [{num_imported}/{len(relevant_collections)}] collections")
 
 
 @collections_app.command(name="list")
@@ -124,6 +124,7 @@ async def list_collections(
             user,
             page=page,
             page_size=page_size,
+            is_public_filter=None,
             include_total=True,
         )
     result = cli_schemas.ItemList[cli_schemas.CollectionListItem](

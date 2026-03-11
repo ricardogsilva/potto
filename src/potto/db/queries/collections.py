@@ -17,17 +17,20 @@ from .common import _get_total_num_records
 async def collect_all_collections(
         session: AsyncSession,
         collection_type_filter: list[CollectionType] | None = None,
+        is_public_filter: bool | None = True,
 ) -> list[Collection]:
     _, num_total = await list_collections(
         session,
         limit=1,
         collection_type_filter=collection_type_filter,
+        is_public_filter=is_public_filter,
         include_total=True
     )
     items, _ = await list_collections(
         session,
         limit=num_total,
         collection_type_filter=collection_type_filter,
+        is_public_filter=is_public_filter,
         include_total=False,
     )
     return items
@@ -39,6 +42,7 @@ async def paginated_list_collections(
         page: int = 1,
         page_size: int = 20,
         include_total: bool = False,
+        is_public_filter: bool | None = True,
         identifier_filter: str | None = None,
         collection_type_filter: list[CollectionType] | None = None,
         spatial_intersect: shapely.Polygon | None = None,
@@ -50,6 +54,7 @@ async def paginated_list_collections(
         limit=limit,
         offset=offset,
         include_total=include_total,
+        is_public_filter=is_public_filter,
         identifier_filter=identifier_filter,
         collection_type_filter=collection_type_filter,
         spatial_intersect=spatial_intersect,
@@ -62,11 +67,14 @@ async def list_collections(
         limit: int = 20,
         offset: int = 0,
         include_total: bool = False,
+        is_public_filter: bool | None = True,
         identifier_filter: str | None = None,
         collection_type_filter: list[CollectionType] | None = None,
         spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
     statement = select(Collection).options(selectinload(Collection.owner))
+    if is_public_filter is not None:
+        statement = statement.where(Collection.is_public == is_public_filter)
     if identifier_filter:
         statement = statement.where(
             Collection.resource_identifier.ilike(f"%{identifier_filter}%")

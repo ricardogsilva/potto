@@ -2,7 +2,6 @@ import logging
 
 from fastapi import (
     APIRouter,
-    HTTPException,
     Request,
 )
 
@@ -15,6 +14,7 @@ from ....schemas.web.collections import (
     JsonCollection,
 )
 from ..dependencies import (
+    LocaleDependency,
     PottoDependency,
     SettingsDependency,
     UserDependency,
@@ -22,6 +22,37 @@ from ..dependencies import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+@router.get(
+    "/collections",
+    name="list-collections",
+)
+async def list_collections(
+        request: Request,
+        potto: PottoDependency,
+        user: UserDependency,
+        locale: LocaleDependency,
+) -> JsonCollectionList:
+    potto_collections = await potto.api_list_collections(
+        user=user, locale=locale)
+    return JsonCollectionList.from_potto(potto_collections, request.url_for)
+
+
+@router.get(
+    "/collections/{collection_id}",
+    name="get-collection",
+    response_model=JsonCollection,
+)
+async def get_collection_details(
+        request: Request,
+        collection_id: str,
+        potto: PottoDependency,
+        user: UserDependency,
+        locale: LocaleDependency,
+) -> JsonCollection:
+    potto_collection = await potto.api_get_collection(
+        collection_id, user=user, locale=locale)
+    return JsonCollection.from_potto(potto_collection, request.url_for)
 
 
 @router.post(
@@ -51,39 +82,3 @@ async def delete_collection(
         await collection_operations.delete_collection(session, collection_id)
 
 
-@router.get(
-    "/collections",
-    name="list-collections",
-)
-async def list_collections(
-        request: Request,
-        settings: SettingsDependency,
-        PottoDependency,
-        UserDependency,
-) -> JsonCollectionList:
-    async with settings.get_db_session_maker()() as session:
-        db_collections, total = await collection_operations.paginated_list_collections(
-            session,
-            page=1,
-            page_size=20,
-            include_total=True
-        )
-    return JsonCollectionList.from_db_items(db_collections, request.url_for)
-
-
-@router.get(
-    "/collections/{collection_id}",
-    name="get-collection",
-    response_model=JsonCollection,
-)
-async def get_collection_details(
-        collection_id: str,
-        request: Request,
-        settings: SettingsDependency,
-) -> JsonCollection:
-    async with settings.get_db_session_maker()() as session:
-        db_collection = await collection_operations.get_collection_by_resource_identifier(
-            session, collection_id)
-        if not db_collection:
-            raise HTTPException(status_code=404, detail="Collection not found")
-    return JsonCollection.from_db_item(db_collection, request.url_for)

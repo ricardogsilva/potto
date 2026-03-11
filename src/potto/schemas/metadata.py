@@ -1,29 +1,11 @@
-import datetime as dt
-import json
 import logging
-from typing import (
-    Annotated,
-    Literal,
-    Mapping,
-    Sequence,
-)
 
 import pydantic
-import shapely
 
-from .. import constants
-from ..db.models import (
-    CollectionType,
+from .base import (
     Title,
     MaybeDescription,
     MaybeKeywords,
-    MaybeShapelyGeometry,
-)
-from ..webapp.protocols import UrlResolver
-from . import pygeoapi_config
-from .base import (
-    Extent,
-    Link,
 )
 
 logger = logging.getLogger(__name__)

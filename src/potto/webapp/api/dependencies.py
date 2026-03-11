@@ -3,6 +3,7 @@ from typing import (
     Iterator,
 )
 
+import babel
 from fastapi import Depends, Request
 
 from ... import config
@@ -24,6 +25,11 @@ def get_current_user(request: Request) -> PottoUser:
     return request.user
 
 
+def get_current_locale(request: Request) -> babel.Locale:
+    return babel.Locale.parse(request.state.language)
+
+
 SettingsDependency = Annotated[config.PottoSettings, Depends(get_settings)]
 PottoDependency = Annotated[Potto, Depends(get_potto)]
 UserDependency = Annotated[PottoUser, Depends(get_current_user)]
+LocaleDependency = Annotated[babel.Locale, Depends(get_current_locale)]

@@ -1,9 +1,11 @@
+import copy
 import logging
 
 import shapely
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.authentication import BaseUser
 
+from .. import util
 from ..db.models import (
     Collection,
     User,
@@ -27,12 +29,14 @@ logger = logging.getLogger(__name__)
 async def collect_all_collections(
         session: AsyncSession,
         user: BaseUser,
+        is_public_filter: bool | None = True,
         collection_type_filter: list[CollectionType] | None = None,
 ) -> list[Collection]:
     """List all collections that the user has access to."""
     return await collection_queries.collect_all_collections(
         session,
-        collection_type_filter
+        collection_type_filter=collection_type_filter,
+        is_public_filter=is_public_filter,
     )
 
 
@@ -43,6 +47,7 @@ async def paginated_list_collections(
         page: int = 1,
         page_size: int = 20,
         include_total: bool = False,
+        is_public_filter: bool | None = True,
         identifier_filter: str | None = None,
         collection_type_filter: list[CollectionType] | None = None,
         spatial_intersect: shapely.Polygon | None = None,
@@ -54,6 +59,7 @@ async def paginated_list_collections(
         page_size=page_size,
         include_total=include_total,
         identifier_filter=identifier_filter,
+        is_public_filter=is_public_filter,
         collection_type_filter=collection_type_filter,
         spatial_intersect=spatial_intersect
     )
@@ -99,22 +105,6 @@ async def import_pygeoapi_collection(
         session, identifier)
     if existing_db_collection and not overwrite:
         raise PottoException(f"Collection {identifier!r} already exists!")
-    provider_types = set([p.get("type") for p in pygeoapi_collection.get("providers", [])])
-    collection_type_mapping = {
-        "feature": CollectionType.FEATURE_COLLECTION,
-        "record": CollectionType.RECORD_COLLECTION,
-        "coverage": CollectionType.COVERAGE,
-        # mapping provider 'map' to 'CollectionType.COVERAGE' is really an arbitrary mapping,
-        # pygeoapi does not seem to know about the underlying type of data of a map
-        "map": CollectionType.COVERAGE,
-    }
-    try:
-        collection_type = collection_type_mapping[
-            provider_types.intersection(set(collection_type_mapping)).pop()
-        ]
-    except (TypeError, KeyError) as err:
-        raise PottoException(f"Unsupported collection type: {provider_types=}") from err
-
     resource_spatial_extents = pygeoapi_collection.get(
         "extents", {}).get("spatial", {})
     try:
@@ -124,16 +114,18 @@ async def import_pygeoapi_collection(
         spatial_extent = None
     providers = {}
     for prov in pygeoapi_collection.get("providers", []):
-        if (type_ := prov.pop("type")) in providers.keys():
+        modifiable_prov = copy.deepcopy(prov)
+        if (type_ := modifiable_prov.pop("type")) in providers.keys():
             continue
         providers[type_] = CollectionProvider(
-            python_callable=prov.pop("name"),
+            python_callable=modifiable_prov.pop("name"),
             config=CollectionProviderConfiguration(
-                data=prov.pop("data"),
-                options=prov
+                data=modifiable_prov.pop("data"),
+                options=modifiable_prov
             )
         )
 
+    collection_type = util.get_collection_type(pygeoapi_collection)
     if existing_db_collection and overwrite:
         # TODO: check if user is allowed to modify it
         logger.debug(f"Updating existing collection {identifier!r}...")

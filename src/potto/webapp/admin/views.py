@@ -46,6 +46,7 @@ class CollectionItemView(_PottoAdminModelView):
     fields = (
         Collection.resource_identifier,
         Collection.collection_type,
+        Collection.is_public,
         Collection.title,
         Collection.description,
         SpatialExtentField(name="spatial_extent"),
@@ -111,7 +112,7 @@ class CollectionItemView(_PottoAdminModelView):
         data["providers"] = self._adapt_request_providers_to_internal_model(data["providers"])
         settings = cast(PottoSettings, request.app.state.SETTINGS)
         async with settings.get_db_session_maker()() as session:
-            db_collection = await collection_queries.get_collection(session, pk)
+            db_collection = await collection_queries.get_collection(session, int(pk))
             if db_collection is None:
                 raise RuntimeError(f"Collection {pk} not found")
             try:

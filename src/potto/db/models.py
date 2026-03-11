@@ -81,6 +81,7 @@ class Collection(SQLModel, table=True):
         unique=True,
     )
     owner_id: uuid.UUID = Field(foreign_key="user.id")
+    is_public: bool = Field(default=False)
     collection_type: CollectionType
     title: Title = Field(sa_type=JSONB())
     description: MaybeDescription = Field(default=None, sa_type=JSONB(), nullable=True)

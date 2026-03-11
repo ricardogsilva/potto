@@ -55,8 +55,8 @@ MaybeShapelyGeometry = typing.Annotated[
 
 class CollectionType(str, enum.Enum):
     COVERAGE = "coverage"
-    FEATURE_COLLECTION = "feature_collection"
-    RECORD_COLLECTION = "record_collection"
+    FEATURE_COLLECTION = "feature"
+    RECORD_COLLECTION = "record"
 
 
 class PygeoapiProviderType(str, enum.Enum):

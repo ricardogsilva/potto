@@ -8,6 +8,7 @@ class CollectionListItem(pydantic.BaseModel):
     resource_identifier: str
     collection_type: CollectionType
     owner: str
+    is_public: bool
 
     @classmethod
     def from_db_item(cls, item: Collection) ->"CollectionListItem":

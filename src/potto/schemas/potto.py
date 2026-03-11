@@ -4,7 +4,9 @@ import dataclasses
 import datetime as dt
 import json
 import shapely
+from pygeoapi.api import API as _PygeoapiApi
 
+from .. import util
 from . import (
     auth,
     base,
@@ -76,19 +78,59 @@ class Collection:
     providers: dict[str, base.CollectionProvider] | None = None
 
     @classmethod
-    def from_pygeoapi(cls, original: dict) -> "Collection":
+    def from_pygeoapi(
+            cls,
+            pygeoapi_collection: dict,
+            pygeoapi_api: _PygeoapiApi,
+    ) -> "Collection":
+        raw_bbox = (
+            pygeoapi_collection
+            .get("extent", {})
+            .get("spatial", {})
+            .get("bbox")
+        )
+        spatial_extent = shapely.box(*raw_bbox[0]) if raw_bbox else None
+        raw_temporal_interval = (
+            pygeoapi_collection
+            .get("extent", {})
+            .get("temporal", {})
+            .get("interval", [[None, None]])
+        )
+        temporal_begin = (
+            dt.datetime.fromisoformat(raw_begin)
+            if (raw_begin := raw_temporal_interval[0][0]) else None
+        )
+        temporal_end = (
+            dt.datetime.fromisoformat(raw_end)
+            if (raw_end := raw_temporal_interval[0][1]) else None
+        )
+        collection_id = pygeoapi_collection["id"]
+        pygeoapi_collection_conf = pygeoapi_api.config["resources"][collection_id]
+        parsed_providers = {}
+        for raw_provider in pygeoapi_collection_conf.get("providers", []):
+            modifiable_provider = dict(raw_provider)
+            provider_type = base.PygeoapiProviderType(
+                modifiable_provider.pop("type"))
+            parsed_providers[provider_type] = base.CollectionProvider(
+                python_callable=modifiable_provider.pop("name"),
+                config=base.CollectionProviderConfiguration(
+                    data=modifiable_provider.pop("data"),
+                    options=modifiable_provider
+                )
+            )
+        additional_links = pygeoapi_collection_conf.get("links")
         return cls(
-            type_=base.CollectionType(original.get("itemType")),
-            identifier=None,
-            title=original.get("title", ""),
-            owner=None,
-            description=original.get("description", ""),
-            keywords=original.get("keywords", []),
-            spatial_extent=None,
-            temporal_extent_begin=None,
-            temporal_extent_end=None,
-            additional_links=None,
-            providers=None,
+            type_=util.get_collection_type(pygeoapi_collection_conf),
+            identifier=collection_id,
+            title=pygeoapi_collection.get("title", ""),
+            owner=pygeoapi_collection_conf["owner"],
+            description=pygeoapi_collection.get("description", ""),
+            keywords=pygeoapi_collection.get("keywords", []),
+            spatial_extent=spatial_extent,
+            temporal_extent_begin=temporal_begin,
+            temporal_extent_end=temporal_end,
+            additional_links=additional_links,
+            providers=parsed_providers,
         )
 
 
