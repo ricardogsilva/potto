@@ -16,9 +16,10 @@ from starlette.templating import Jinja2Templates
 from starlette_babel import LocaleMiddleware
 
 from .. import config
-from ..auth.backend import PottoAuthBackend
+from ..auth.backend import LocalAuthBackend, OIDCAuthBackend
 from ..wrapper import Potto
 from .routes import (
+    auth as auth_routes,
     ogcapi_common as ogc_api_common_routes,
     ogcapi_features as ogc_api_features_routes,
 )
@@ -35,11 +36,15 @@ _default_app_state: AppState | None = None
 @contextlib.asynccontextmanager
 async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
     settings = config.get_settings()
+    oidc_provider = settings.get_oidc_provider()
+    if oidc_provider is not None:
+        await oidc_provider.get_discovery()
     global _default_app_state
     _default_app_state = AppState(
-        settings = settings,
+        settings=settings,
         templates=Jinja2Templates(env=settings.get_jinja_env()),
         potto=Potto(settings),
+        oidc_provider=oidc_provider,
     )
     yield _default_app_state
     _default_app_state = None
@@ -53,12 +58,15 @@ def create_app() -> Starlette:
 def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
     if settings.static_dir is not None:
         settings.static_dir.mkdir(parents=True, exist_ok=True)
+    oidc_provider = settings.get_oidc_provider()
+    auth_backend = (
+        OIDCAuthBackend(settings, oidc_provider)
+        if oidc_provider is not None
+        else LocalAuthBackend(settings)
+    )
     app = Starlette(
         debug=settings.debug,
-        routes=get_routes(
-            settings,
-            enable_ogcapi_features=True,
-        ),
+        routes=get_routes(settings, enable_ogcapi_features=True),
         middleware=[
             Middleware(
                 LocaleMiddleware,
@@ -71,7 +79,7 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
             ),
             Middleware(
                 AuthenticationMiddleware,
-                backend=PottoAuthBackend(settings),
+                backend=auth_backend,
             ),
             Middleware(
                 GZipMiddleware,
@@ -88,8 +96,14 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
 def get_routes(
         settings: config.PottoSettings,
         enable_ogcapi_features: bool = False,
-) -> list[Route]:
-    routes: list[Route | Mount] = [
+) -> list[Route | Mount]:
+    routes: list[Route | Mount] = []
+    if settings.oidc is not None:
+        routes += [
+            Route("/auth/oidc/login", auth_routes.oidc_login, name="oidc-login"),
+            Route("/auth/oidc/callback", auth_routes.oidc_callback, name="oidc-callback"),
+        ]
+    routes += [
         Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
         Route(
             "/conformance",

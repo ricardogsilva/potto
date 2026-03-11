@@ -19,12 +19,24 @@ from starlette_babel import get_translator
 from starlette_babel.contrib.jinja import configure_jinja_env
 
 from . import jinjafilters
+from .auth.oidc import OIDCProvider
 
 warnings.filterwarnings(
     "ignore",
     message="directory .* does not exist",
     module="pydantic_settings",
 )
+
+
+class OIDCSettings(pydantic.BaseModel):
+    issuer: str
+    client_id: str
+    client_secret: pydantic.SecretStr
+    scopes: list[str] = ["openid", "email", "profile"]
+    # Dot-notation claim path for roles to map to potto scopes, e.g. "realm_access.roles"
+    roles_claim: str | None = None
+    # Audience expected in access tokens; None skips audience verification
+    access_token_audience: str | None = None
 
 
 class PottoSettings(pydantic_settings.BaseSettings):
@@ -53,11 +65,13 @@ class PottoSettings(pydantic_settings.BaseSettings):
     static_dir: Path | None = None
     uvicorn_num_workers: int = 8
     uvicorn_log_config_file: Path | None = None
+    oidc: OIDCSettings | None = None
 
     _jinja_env: jinja2.Environment | None = None
     _db_engine: AsyncEngine | None = None
     _sync_db_engine: Engine | None = None
     _db_session_maker: async_sessionmaker | None = None
+    _oidc_provider: OIDCProvider | None = None
 
     def get_jinja_env(self) -> jinja2.Environment:
         if self._jinja_env is None:
@@ -77,6 +91,20 @@ class PottoSettings(pydantic_settings.BaseSettings):
                 self.database_dsn.unicode_string()
             )
         return self._sync_db_engine
+
+    def get_oidc_provider(self) -> OIDCProvider | None:
+        if self.oidc is None:
+            return None
+        if self._oidc_provider is None:
+            self._oidc_provider = OIDCProvider(
+                issuer=self.oidc.issuer,
+                client_id=self.oidc.client_id,
+                client_secret=self.oidc.client_secret.get_secret_value(),
+                scopes=self.oidc.scopes,
+                roles_claim=self.oidc.roles_claim,
+                access_token_audience=self.oidc.access_token_audience,
+            )
+        return self._oidc_provider
 
     def get_db_session_maker(self) -> async_sessionmaker:
         if self._db_session_maker is None:

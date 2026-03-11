@@ -137,6 +137,7 @@ class User(SQLModel, table=True):
         nullable=True,
     )
     hashed_password: str | None = Field(default=None, nullable=True)
+    oidc_sub: str | None = Field(default=None, nullable=True, unique=True)
     is_active: bool = Field(default=True)
     scopes: list[str] = Field(default_factory=list, sa_type=JSONB())
 

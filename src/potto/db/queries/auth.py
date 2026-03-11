@@ -50,3 +50,11 @@ async def get_user_by_username(
 ) -> User | None:
     statement = select(User).where(User.username == username)
     return (await session.exec(statement)).first()
+
+
+async def get_user_by_oidc_sub(
+        session: AsyncSession,
+        sub: str,
+) -> User | None:
+    statement = select(User).where(User.oidc_sub == sub)
+    return (await session.exec(statement)).first()
