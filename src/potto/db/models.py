@@ -7,14 +7,15 @@ import pydantic
 import shapely
 import sqlalchemy
 import geoalchemy2
+from jinja2 import Template
 from geoalchemy2.shape import to_shape
-
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import (
     Field,
     Relationship,
     SQLModel,
 )
+from starlette.requests import Request
 
 from ..schemas.auth import PottoUser
 from ..schemas import potto as potto_schemas
@@ -142,6 +143,17 @@ class User(SQLModel, table=True):
     scopes: list[str] = Field(default_factory=list, sa_type=JSONB())
 
     owned_collections: list[Collection] = Relationship(back_populates="owner")
+
+    def __admin_repr__(self, request: Request) -> str:
+        return self.username
+
+    def __admin_select2_repr__(self, request: Request) -> str:
+        return Template(
+            "<span>{{ name }}</span>",
+            autoescape=True
+        ).render(
+            name=self.username,
+        )
 
     def to_potto(self) -> PottoUser:
         return PottoUser(

@@ -8,7 +8,10 @@ from starlette.requests import Request
 from starlette_admin.contrib.sqlmodel import Admin
 
 from ...config import PottoSettings
-from ...db.models import Collection
+from ...db.models import (
+    Collection,
+    User,
+)
 from . import views
 from .auth import (
     LocalAdminAuthProvider,
@@ -72,5 +75,8 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
     app.add_view(
         views.CollectionItemView(
             Collection, identity="collection_item",)
+    )
+    app.add_view(
+        views.UserView(User, identity="user")
     )
     return app

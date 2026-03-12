@@ -1,28 +1,43 @@
 import logging
+import uuid
 from typing import cast, Any, Dict
 
 import pydantic
 from starlette.requests import Request
 from starlette_admin import BaseField, RequestAction
-
 from starlette_admin.contrib.sqlmodel import ModelView
 from starlette_admin.fields import (
     CollectionField,
     EnumField,
+    HasOne,
     JSONField,
     ListField,
+    PasswordField,
     StringField,
     URLField,
 )
 
 from ...config import PottoSettings
-from ...db.models import Collection
-from ...db.commands import collections as collection_commands
-from ...db.queries import collections as collection_queries
+from ...db.models import (
+    Collection,
+    User,
+)
+from ...db.commands import (
+    auth as auth_commands,
+    collections as collection_commands,
+)
+from ...db.queries import (
+    auth as auth_queries,
+    collections as collection_queries,
+)
 from ...schemas.base import PygeoapiProviderType
 from ...schemas.collections import (
     CollectionCreate,
     CollectionUpdate,
+)
+from ...schemas.auth import (
+    UserCreate,
+    UserUpdate,
 )
 from .fields import SpatialExtentField
 
@@ -34,6 +49,74 @@ class _PottoAdminModelView(ModelView):
     def handle_exception(self, exc: Exception) -> None:
         logger.exception("An error occurred", exc)
         return super().handle_exception(exc)
+
+
+class UserView(_PottoAdminModelView):
+    """Custom starlette-admin view for managing local users
+
+    This view overrides both the `create` and `edit` methods in order to ensure they
+    use our own db commands, thus ensuring a consistent schema is preserved whether modifications
+    are done via the admin UI, the web API or the CLI.
+    """
+    fields = (
+        User.username,
+        User.email,
+        User.is_active,
+        User.scopes,
+        PasswordField("password"),
+    )
+    exclude_fields_from_detail = (
+        "password",
+    )
+    exclude_fields_from_list = (
+        "password",
+    )
+
+    async def create(self, request: Request, data: dict[str, Any]) -> Any:
+        settings = cast(PottoSettings, request.app.state.SETTINGS)
+        async with settings.get_db_session_maker()() as session:
+            try:
+                return await auth_commands.create_user(
+                    session,
+                    to_create=UserCreate(
+                        **{
+                            k: v for k, v in {
+                                "username": data["username"],
+                                "is_active": data["is_active"],
+                                "email": data["email"] or None,
+                                "scopes": data["scopes"] or None,
+                                "password": data["password"],
+                                }.items()
+                            if v is not None
+                        }
+                    ),
+                )
+            except pydantic.ValidationError as err:
+                self.handle_exception(err)
+
+    async def edit(self, request: Request, pk: Any, data: Dict[str, Any]) -> Any:
+        settings = cast(PottoSettings, request.app.state.SETTINGS)
+        async with settings.get_db_session_maker()() as session:
+            if (db_user := await auth_queries.get_user(session, uuid.UUID(pk))) is None:
+                raise RuntimeError(f"User {pk} not found")
+            try:
+                return await auth_commands.update_user(
+                    session,
+                    db_user,
+                    to_update=UserUpdate(
+                        **{
+                            k: v for k,v in {
+                                "username": data["username"],
+                                "is_active": data["is_active"],
+                                "email": data["email"] or None,
+                                "scopes": data["scopes"] or None,
+                                "password": data["password"],
+                            }.items() if v is not None
+                        }
+                    ),
+                )
+            except pydantic.ValidationError as err:
+                return self.handle_exception(err)
 
 
 class CollectionItemView(_PottoAdminModelView):
@@ -49,6 +132,7 @@ class CollectionItemView(_PottoAdminModelView):
         Collection.is_public,
         Collection.title,
         Collection.description,
+        HasOne("owner", identity="user"),
         SpatialExtentField(name="spatial_extent"),
         Collection.temporal_extent_begin,
         Collection.temporal_extent_end,

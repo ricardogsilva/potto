@@ -99,7 +99,9 @@ async def create_user(
         scope: list[str] | None = None,
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
-    """Create a new user."""
+    """Create a new user when using the local auth provider."""
+    if settings.oidc is not None:
+        raise SystemExit("Error: user creation is not supported when using an OIDC auth provider. Users are provisioned automatically on first login.")
     password = getpass.getpass("Password (at least 8 characters): ")
     password_confirm = getpass.getpass("Confirm password: ")
     if password != password_confirm:
