@@ -5,11 +5,12 @@ from urllib.parse import urlencode
 
 import httpx
 import jwt
-from jwt import PyJWK
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.models import User
+from ..db.commands import auth as auth_commands
 from ..db.queries.auth import get_user_by_oidc_sub
+from ..schemas.auth import UserCreateFromOidc
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,15 @@ _JWKS_CACHE_TTL = 3600  # seconds
 
 
 class OIDCProvider:
+    _access_token_audience: str | None
+    _client_id: str
+    _client_secret: str
+    _discovery: dict | None
+    _issuer: str
+    _jwks: list[dict] | None
+    _jwks_fetched_at: float
+    _scopes: list[str]
+    _roles_claim: str | None
 
     def __init__(
         self,
@@ -62,12 +72,11 @@ class OIDCProvider:
                 self._jwks_fetched_at = now
         return self._jwks
 
-    async def _find_signing_key(self, token: str) -> PyJWK:
+    async def _find_signing_key(self, token: str) -> jwt.PyJWK:
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
         jwks = await self._get_jwks()
-        key = _match_key(jwks, kid)
-        if key is None:
+        if (key:=_match_key(jwks, kid)) is None:
             # Possible key rotation – clear cache and retry once
             self._jwks = None
             jwks = await self._get_jwks()
@@ -162,32 +171,27 @@ class OIDCProvider:
     async def provision_user(self, session: AsyncSession, claims: dict) -> User:
         """Find or JIT-provision a local User from OIDC token claims."""
         sub = claims["sub"]
-
-        db_user = await get_user_by_oidc_sub(session, sub)
-        if db_user is not None:
+        if (db_user := await get_user_by_oidc_sub(session, sub)) is not None:
             return db_user
 
-        username = _derive_username(claims)
-        scopes = self.extract_scopes(claims)
-        db_user = User(
-            username=username,
-            email=claims.get("email"),
-            hashed_password=None,
-            is_active=True,
-            oidc_sub=sub,
-            scopes=scopes,
+        db_user = await auth_commands.provision_oidc_user(
+            session,
+            to_create=UserCreateFromOidc(
+                username=_derive_username(claims),
+                is_active=True,
+                scopes=self.extract_scopes(claims),
+                email=claims.get("email"),
+                oidc_sub=sub,
+            )
         )
-        session.add(db_user)
-        await session.commit()
-        await session.refresh(db_user)
-        logger.info(f"JIT-provisioned OIDC user {username!r} (sub={sub!r})")
+        logger.info(f"JIT-provisioned OIDC user {db_user.username!r} (sub={sub!r})")
         return db_user
 
 
-def _match_key(jwks: list[dict], kid: str | None) -> PyJWK | None:
+def _match_key(jwks: list[dict], kid: str | None) -> jwt.PyJWK | None:
     for key_data in jwks:
         if kid is None or key_data.get("kid") == kid:
-            return PyJWK(key_data)
+            return jwt.PyJWK(key_data)
     return None
 
 

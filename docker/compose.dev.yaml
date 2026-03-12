@@ -22,23 +22,23 @@ services:
     volumes:
       - db:/var/lib/postgresql/data
 
-  # keycloak:
-  #   image: "quay.io/keycloak/keycloak:26.5.5"
-  #   command: start-dev
-  #   environment:
-  #     KEYCLOAK_ADMIN: admin
-  #     KEYCLOAK_ADMIN_PASSWORD: admin
-  #   ports:
-  #     - target: 8080
-  #       published: 58080
-  #   volumes:
-  #     - keycloak:/opt/keycloak/data
-  #   healthcheck:
-  #     test: "curl -sf http://localhost:8080/health/ready || exit 1"
-  #     start_period: 30s
-  #     interval: 30s
-  #     retries: 5
-  #     timeout: 5s
+  keycloak:
+    image: "quay.io/keycloak/keycloak:26.5.5"
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - target: 8080
+        published: 58080
+    volumes:
+      - keycloak:/opt/keycloak/data
+    healthcheck:
+      test: "curl -sf http://localhost:8080/health/ready || exit 1"
+      start_period: 30s
+      interval: 30s
+      retries: 5
+      timeout: 5s
 
 volumes:
   db:

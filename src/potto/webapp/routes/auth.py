@@ -72,6 +72,14 @@ async def oidc_callback(request: Request) -> Response:
         logger.error(f"ID token validation failed: {exc}")
         return Response("Invalid ID token", status_code=400)
 
+    access_token = token_response.get("access_token")
+    if access_token:
+        try:
+            access_claims = await oidc_provider.validate_access_token(access_token)
+            claims = {**claims, **access_claims}
+        except jwt.InvalidTokenError as exc:
+            logger.warning(f"Access token validation failed, using ID token claims only: {exc}")
+
     async with settings.get_db_session_maker()() as session:
         db_user = await oidc_provider.provision_user(session, claims)
 
@@ -87,4 +95,5 @@ async def oidc_callback(request: Request) -> Response:
             await session.commit()
 
     request.session["user_id"] = str(db_user.id)
+    request.session["id_token"] = id_token
     return RedirectResponse(next_url, status_code=303)

@@ -9,7 +9,7 @@ from starlette.authentication import (
 from starlette.requests import HTTPConnection
 
 from ..config import PottoSettings
-from ..db.queries.auth import get_user, get_user_by_oidc_sub
+from ..db.queries import auth as auth_queries
 from ..schemas.auth import PottoUser
 from .jwt import decode_access_token
 from .oidc import OIDCProvider
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class LocalAuthBackend(AuthenticationBackend):
+    _settings: PottoSettings
 
     def __init__(self, settings: PottoSettings) -> None:
         self._settings = settings
@@ -28,17 +29,18 @@ class LocalAuthBackend(AuthenticationBackend):
         # Try session first
         user_id = conn.session.get("user_id")
         if user_id:
-            potto_user = await self._get_user_from_db(user_id)
-            if potto_user is not None:
+            if (potto_user := await self._get_user_from_db(user_id)) is not None:
                 return AuthCredentials(potto_user.scopes), potto_user
             logger.warning(
                 f"Session contains user_id {user_id!r} but user not found or inactive"
             )
 
         # Try local HS256 Bearer JWT
-        auth_header = conn.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+        if (
+                (auth_header := conn.headers.get("Authorization"))
+                and auth_header.startswith("Bearer ")
+        ):
+            token = auth_header.rpartition(" ")[-1]
             try:
                 payload = decode_access_token(
                     token,
@@ -46,8 +48,7 @@ class LocalAuthBackend(AuthenticationBackend):
                 )
             except jwt.InvalidTokenError:
                 return None
-            potto_user = await self._get_user_from_db(payload["sub"])
-            if potto_user is not None:
+            if (potto_user := await self._get_user_from_db(payload["sub"])) is not None:
                 return AuthCredentials(potto_user.scopes), potto_user
             logger.warning(
                 f"JWT contains sub {payload['sub']!r} but user not found or inactive"
@@ -62,7 +63,7 @@ class LocalAuthBackend(AuthenticationBackend):
             logger.warning(f"Invalid user_id format: {user_id!r}")
             return None
         async with self._settings.get_db_session_maker()() as session:
-            db_user = await get_user(session, uid)
+            db_user = await auth_queries.get_user(session, uid)
         if db_user is None:
             logger.debug(f"User {uid} not found in database")
             return None
@@ -73,6 +74,8 @@ class LocalAuthBackend(AuthenticationBackend):
 
 
 class OIDCAuthBackend(AuthenticationBackend):
+    _settings: PottoSettings
+    _oidc_provider: OIDCProvider
 
     def __init__(self, settings: PottoSettings, oidc_provider: OIDCProvider) -> None:
         self._settings = settings
@@ -82,8 +85,7 @@ class OIDCAuthBackend(AuthenticationBackend):
             self, conn: HTTPConnection
     ) -> tuple[AuthCredentials, PottoUser] | None:
         # Try session first (set during OIDC callback)
-        user_id = conn.session.get("user_id")
-        if user_id:
+        if user_id := conn.session.get("user_id"):
             potto_user = await self._get_user_from_db(user_id)
             if potto_user is not None:
                 return AuthCredentials(potto_user.scopes), potto_user
@@ -92,15 +94,17 @@ class OIDCAuthBackend(AuthenticationBackend):
             )
 
         # Try OIDC RS256 Bearer JWT
-        auth_header = conn.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+        if (
+                (auth_header := conn.headers.get("Authorization"))
+                and auth_header.startswith("Bearer ")
+        ):
+            token = auth_header.rpartition(" ")[-1]
             try:
                 claims = await self._oidc_provider.validate_access_token(token)
             except jwt.InvalidTokenError:
                 return None
             async with self._settings.get_db_session_maker()() as session:
-                db_user = await get_user_by_oidc_sub(session, claims["sub"])
+                db_user = await auth_queries.get_user_by_oidc_sub(session, claims["sub"])
                 if db_user is None:
                     db_user = await self._oidc_provider.provision_user(session, claims)
             if not db_user.is_active:
@@ -128,7 +132,7 @@ class OIDCAuthBackend(AuthenticationBackend):
             logger.warning(f"Invalid user_id format: {user_id!r}")
             return None
         async with self._settings.get_db_session_maker()() as session:
-            db_user = await get_user(session, uid)
+            db_user = await auth_queries.get_user(session, uid)
         if db_user is None:
             logger.debug(f"User {uid} not found in database")
             return None

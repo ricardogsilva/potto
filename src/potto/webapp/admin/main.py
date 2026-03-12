@@ -10,7 +10,10 @@ from starlette_admin.contrib.sqlmodel import Admin
 from ...config import PottoSettings
 from ...db.models import Collection
 from . import views
-from .auth import LocalAdminAuthProvider, OIDCAdminAuthProvider
+from .auth import (
+    LocalAdminAuthProvider,
+    OIDCAdminAuthProvider
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +57,7 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
         Path(__file__).parents[1] / "templates/admin"
     )
     auth_provider = (
-        OIDCAdminAuthProvider(settings)
-        if settings.oidc is not None
+        OIDCAdminAuthProvider(settings) if settings.oidc is not None
         else LocalAdminAuthProvider(settings)
     )
     app = PottoAdmin(
