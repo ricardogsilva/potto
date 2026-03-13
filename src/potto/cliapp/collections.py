@@ -16,15 +16,19 @@ from ..config import (
     get_settings,
     PottoSettings,
 )
+from ..db.queries import collections as collection_queries
 from ..exceptions import PottoException
 from ..operations import (
     auth as auth_ops,
     collections as collection_ops,
 )
 from ..schemas import cli as cli_schemas
+from ..schemas.auth import (
+    PottoScope,
+    PottoUser,
+)
 
 import cyclopts
-from starlette.authentication import UnauthenticatedUser
 
 collections_app = cyclopts.App()
 logger = logging.getLogger(__name__)
@@ -62,7 +66,7 @@ async def import_collections_from_pygeoapi(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Import collections from pygeoapi."""
-    user = UnauthenticatedUser()
+    user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
     if not pygeoapi_configuration.is_file():
         collections_app.error_console.print(f"Error: pygeoapi configuration file not found.")
         sys.exit(1)
@@ -117,14 +121,13 @@ async def list_collections(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """List collections."""
-    user = UnauthenticatedUser()
+    user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
     async with settings.get_db_session_maker()() as session:
         collections, total = await collection_ops.paginated_list_collections(
             session,
             user,
             page=page,
             page_size=page_size,
-            is_public_filter=None,
             include_total=True,
         )
     result = cli_schemas.ItemList[cli_schemas.CollectionListItem](
@@ -162,14 +165,18 @@ async def get_collection(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Get details about a collection."""
-    user = UnauthenticatedUser()
+    user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
     async with settings.get_db_session_maker()() as session:
         if not (
             collection := await collection_ops.get_collection_by_resource_identifier(
                 session, user, collection_identifier)
         ):
             raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
-    result = cli_schemas.CollectionDetail.from_db_item(collection)
+        editors = await collection_queries.get_collection_editors(
+            session, collection.resource_identifier)
+        viewers = await collection_queries.get_collection_viewers(
+            session, collection.resource_identifier)
+    result = cli_schemas.CollectionDetail.from_db_item(collection, editors=editors, viewers=viewers)
     if format == "json":
         collections_app.console.print_json(result.model_dump_json(indent=2))
     else:
@@ -187,7 +194,7 @@ async def delete_collections(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Delete collections."""
-    user = UnauthenticatedUser()
+    user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
     found_error = False
     async with settings.get_db_session_maker()() as session:
         for id_ in collection_identifier:
@@ -207,3 +214,48 @@ async def delete_collections(
                 found_error = True
                 continue
     sys.exit(0 if not found_error else 1)
+
+
+@collections_app.command(name="grant-access")
+async def grant_collection_access(
+        collection_identifier: str,
+        user_id: str,
+        role: Literal["editor", "viewer"],
+        *,
+        settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
+) -> None:
+    """Grant a user editor or viewer access to a collection."""
+    user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
+    async with settings.get_db_session_maker()() as session:
+        collection = await collection_ops.get_collection_by_resource_identifier(
+            session, user, collection_identifier)
+        if collection is None:
+            raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
+        try:
+            await collection_ops.grant_collection_access(session, user, user_id, collection, role)
+        except PottoException as err:
+            raise SystemExit(f"Error: {err}")
+    collections_app.console.print(
+        f"Granted {role!r} access on {collection_identifier!r} to user {user_id!r}.")
+
+
+@collections_app.command(name="revoke-access")
+async def revoke_collection_access(
+        collection_identifier: str,
+        user_id: str,
+        *,
+        settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
+) -> None:
+    """Revoke a user's access to a collection."""
+    user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
+    async with settings.get_db_session_maker()() as session:
+        collection = await collection_ops.get_collection_by_resource_identifier(
+            session, user, collection_identifier)
+        if collection is None:
+            raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
+        try:
+            await collection_ops.revoke_collection_access(session, user, user_id, collection)
+        except PottoException as err:
+            raise SystemExit(f"Error: {err}")
+    collections_app.console.print(
+        f"Revoked access on {collection_identifier!r} from user {user_id!r}.")

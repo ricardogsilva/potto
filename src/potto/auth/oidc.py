@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.models import User
 from ..db.commands import auth as auth_commands
-from ..db.queries.auth import get_user_by_oidc_sub
+from ..db.queries.auth import get_user
 from ..schemas.auth import UserCreateFromOidc
 
 logger = logging.getLogger(__name__)
@@ -171,17 +171,17 @@ class OIDCProvider:
     async def provision_user(self, session: AsyncSession, claims: dict) -> User:
         """Find or JIT-provision a local User from OIDC token claims."""
         sub = claims["sub"]
-        if (db_user := await get_user_by_oidc_sub(session, sub)) is not None:
+        if (db_user := await get_user(session, sub)) is not None:
             return db_user
 
         db_user = await auth_commands.provision_oidc_user(
             session,
             to_create=UserCreateFromOidc(
+                id=sub,
                 username=_derive_username(claims),
                 is_active=True,
                 scopes=self.extract_scopes(claims),
                 email=claims.get("email"),
-                oidc_sub=sub,
             )
         )
         logger.info(f"JIT-provisioned OIDC user {db_user.username!r} (sub={sub!r})")

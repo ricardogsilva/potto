@@ -1,5 +1,3 @@
-import uuid
-
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -39,7 +37,7 @@ async def paginated_list_users(
 
 async def get_user(
         session: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: str,
 ) -> User | None:
     return await session.get(User, user_id)
 
@@ -52,9 +50,3 @@ async def get_user_by_username(
     return (await session.exec(statement)).first()
 
 
-async def get_user_by_oidc_sub(
-        session: AsyncSession,
-        sub: str,
-) -> User | None:
-    statement = select(User).where(User.oidc_sub == sub)
-    return (await session.exec(statement)).first()

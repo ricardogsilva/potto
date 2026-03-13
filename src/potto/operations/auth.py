@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.authentication import BaseUser
@@ -37,7 +36,7 @@ async def update_user(
 async def delete_user(
         session: AsyncSession,
         user: BaseUser,
-        user_id: uuid.UUID,
+        user_id: str,
 ) -> None:
     # TODO: check user permissions
     return await auth_commands.delete_user(session, user_id)
@@ -63,7 +62,7 @@ async def paginated_list_users(
 
 async def get_user(
         session: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: str,
 ) -> User | None:
     # TODO: check user permissions
     return await auth_queries.get_user(session, user_id)

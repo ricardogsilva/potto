@@ -4,6 +4,7 @@ from ...db.models import User
 
 
 class UserListItem(pydantic.BaseModel):
+    id: str
     username: str
     scopes: list[str]
 

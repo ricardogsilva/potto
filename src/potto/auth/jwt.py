@@ -1,6 +1,5 @@
 import datetime as dt
 import logging
-import uuid
 
 import jwt
 
@@ -17,7 +16,7 @@ def create_access_token(
         expires_minutes: int = 60,
 ) -> str:
     payload = {
-        "sub": str(user.id),
+        "sub": user.id,
         "username": user.username,
         "exp": dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=expires_minutes),
     }

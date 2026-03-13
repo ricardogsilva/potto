@@ -1,7 +1,6 @@
 import enum
 import re
 import typing
-import uuid
 
 import pydantic
 from starlette.authentication import BaseUser
@@ -36,7 +35,7 @@ def _validate_scope(scope: str) -> str:
 
 
 class PottoUser(pydantic.BaseModel, BaseUser):
-    id: uuid.UUID
+    id: str
     username: str
     email: str | None = None
     is_active: bool
@@ -70,7 +69,7 @@ class UserCreate(BaseUserCreate):
 
 
 class UserCreateFromOidc(BaseUserCreate):
-    oidc_sub: str
+    id: str
 
 
 class UserUpdate(pydantic.BaseModel):

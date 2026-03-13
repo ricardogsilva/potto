@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 import bcrypt
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -64,7 +63,7 @@ async def update_user(
 
 async def delete_user(
         session: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: str,
 ) -> None:
     if instance := (await session.get(User, user_id)):
         await session.delete(instance)

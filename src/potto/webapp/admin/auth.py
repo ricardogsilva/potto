@@ -1,4 +1,3 @@
-import uuid
 from urllib.parse import urlencode
 
 import bcrypt
@@ -103,12 +102,8 @@ async def _check_session(request: Request, settings: PottoSettings) -> bool:
     user_id = request.session.get("user_id")
     if not user_id:
         return False
-    try:
-        uid = uuid.UUID(user_id)
-    except (ValueError, TypeError):
-        return False
     async with settings.get_db_session_maker()() as session:
-        db_user = await auth_queries.get_user(session, uid)
+        db_user = await auth_queries.get_user(session, user_id)
     if db_user is None or not db_user.is_active:
         return False
     request.state.admin_db_user = db_user

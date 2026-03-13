@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 import jwt
 from starlette.authentication import (
@@ -57,15 +56,10 @@ class LocalAuthBackend(AuthenticationBackend):
         return None
 
     async def _get_user_from_db(self, user_id: str) -> PottoUser | None:
-        try:
-            uid = uuid.UUID(user_id)
-        except (ValueError, TypeError):
-            logger.warning(f"Invalid user_id format: {user_id!r}")
-            return None
         async with self._settings.get_db_session_maker()() as session:
-            db_user = await auth_queries.get_user(session, uid)
+            db_user = await auth_queries.get_user(session, user_id)
         if db_user is None:
-            logger.debug(f"User {uid} not found in database")
+            logger.debug(f"User {user_id!r} not found in database")
             return None
         if not db_user.is_active:
             logger.warning(f"User {db_user.username!r} is inactive, denying access")
@@ -104,7 +98,7 @@ class OIDCAuthBackend(AuthenticationBackend):
             except jwt.InvalidTokenError:
                 return None
             async with self._settings.get_db_session_maker()() as session:
-                db_user = await auth_queries.get_user_by_oidc_sub(session, claims["sub"])
+                db_user = await auth_queries.get_user(session, claims["sub"])
                 if db_user is None:
                     db_user = await self._oidc_provider.provision_user(session, claims)
             if not db_user.is_active:
@@ -126,15 +120,10 @@ class OIDCAuthBackend(AuthenticationBackend):
         return None
 
     async def _get_user_from_db(self, user_id: str) -> PottoUser | None:
-        try:
-            uid = uuid.UUID(user_id)
-        except (ValueError, TypeError):
-            logger.warning(f"Invalid user_id format: {user_id!r}")
-            return None
         async with self._settings.get_db_session_maker()() as session:
-            db_user = await auth_queries.get_user(session, uid)
+            db_user = await auth_queries.get_user(session, user_id)
         if db_user is None:
-            logger.debug(f"User {uid} not found in database")
+            logger.debug(f"User {user_id!r} not found in database")
             return None
         if not db_user.is_active:
             logger.warning(f"User {db_user.username!r} is inactive, denying access")

@@ -1,6 +1,6 @@
 import datetime as dt
 import logging
-import uuid
+from typing import Literal
 
 import pydantic
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class CollectionCreate(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
     resource_identifier: str = pydantic.Field(min_length=3, max_length=100)
-    owner_id: uuid.UUID
+    owner_id: str
     is_public: bool = False
     collection_type: CollectionType
     title: Title
@@ -33,9 +33,13 @@ class CollectionCreate(pydantic.BaseModel):
     providers: dict[str, CollectionProvider] | None = None
 
 
+class CollectionAccessGrant(pydantic.BaseModel):
+    role: Literal["editor", "viewer"]
+
+
 class CollectionUpdate(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
-    owner_id: uuid.UUID | None = None
+    owner_id: str | None = None
     is_public: bool | None = None
     collection_type: CollectionType | None = None
     title: Title | None = None
