@@ -28,7 +28,8 @@ def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
         title="Potto",
         summary="OGC API server",
     )
-    app.include_router(auth.router)
+    if settings.oidc is None:
+        app.include_router(auth.router)
     app.include_router(collections.router)
     app.include_router(items.router)
     app.include_router(base.router)

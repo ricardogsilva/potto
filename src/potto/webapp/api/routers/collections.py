@@ -5,6 +5,7 @@ from fastapi import (
     Request,
 )
 
+from ....exceptions import PottoException
 from ....operations import collections as collection_operations
 from ....schemas import (
     collections as collections_schemas,
@@ -19,6 +20,7 @@ from ..dependencies import (
     SettingsDependency,
     UserDependency,
 )
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -80,5 +82,50 @@ async def delete_collection(
 ):
     async with settings.get_db_session_maker()() as session:
         await collection_operations.delete_collection(session, collection_id)
+
+
+@router.put(
+    "/collections/{collection_id}/access/{user_id}",
+    name="grant-collection-access",
+    status_code=204,
+)
+async def grant_collection_access(
+        collection_id: str,
+        user_id: str,
+        body: collections_schemas.CollectionAccessGrant,
+        user: UserDependency,
+        settings: SettingsDependency,
+):
+    async with settings.get_db_session_maker()() as session:
+        collection = await collection_operations.get_collection_by_resource_identifier(
+            session, user, collection_id
+        )
+        if collection is None:
+            raise PottoException(f"Collection {collection_id!r} not found.")
+        await collection_operations.grant_collection_access(
+            session, user, user_id, collection, body.role
+        )
+
+
+@router.delete(
+    "/collections/{collection_id}/access/{user_id}",
+    name="revoke-collection-access",
+    status_code=204,
+)
+async def revoke_collection_access(
+        collection_id: str,
+        user_id: str,
+        user: UserDependency,
+        settings: SettingsDependency,
+):
+    async with settings.get_db_session_maker()() as session:
+        collection = await collection_operations.get_collection_by_resource_identifier(
+            session, user, collection_id
+        )
+        if collection is None:
+            raise PottoException(f"Collection {collection_id!r} not found.")
+        await collection_operations.revoke_collection_access(
+            session, user, user_id, collection
+        )
 
 

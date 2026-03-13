@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 import bcrypt
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -7,11 +6,22 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ...exceptions import PottoException
 from ...schemas.auth import (
     UserCreate,
+    UserCreateFromOidc,
     UserUpdate,
 )
 from ..models import User
 
 logger = logging.getLogger(__name__)
+
+
+async def provision_oidc_user(
+        session: AsyncSession, to_create: UserCreateFromOidc
+) -> User:
+    instance = User(**to_create.model_dump())
+    session.add(instance)
+    await session.commit()
+    await session.refresh(instance)
+    return instance
 
 
 async def create_user(
@@ -53,7 +63,7 @@ async def update_user(
 
 async def delete_user(
         session: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: str,
 ) -> None:
     if instance := (await session.get(User, user_id)):
         await session.delete(instance)
