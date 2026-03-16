@@ -17,17 +17,20 @@ class OPAAuthorizationBackend:
 
     async def _query(self, rule: str, input_data: dict) -> object:
         url = f"{self._base_url}/v1/data/{self._policy_path}/{rule}"
+        logger.debug(f"{url=}")
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json={"input": input_data})
             response.raise_for_status()
             return response.json().get("result")
 
-    def _user_input(self, user: PottoUser) -> dict | None:
+    def _user_input(self, user: PottoUser | None) -> dict | None:
+        if user is None:
+            return None
         return {
             "id": user.id,
             "username": user.username,
             "scopes": user.scopes,
-        } if user.is_authenticated else None
+        }
 
     def _collection_input(self, collection: Collection) -> dict:
         return {
@@ -37,7 +40,7 @@ class OPAAuthorizationBackend:
             "owner_id": collection.owner_id,
         }
 
-    async def can_view_collection(self, user: PottoUser, collection: Collection) -> bool:
+    async def can_view_collection(self, user: PottoUser | None, collection: Collection) -> bool:
         result = await self._query(
             "can_view_collection",
             {
@@ -47,7 +50,7 @@ class OPAAuthorizationBackend:
         )
         return bool(result)
 
-    async def can_edit_collection(self, user: PottoUser, collection: Collection) -> bool:
+    async def can_edit_collection(self, user: PottoUser | None, collection: Collection) -> bool:
         result = await self._query(
             "can_edit_collection",
             {
@@ -58,7 +61,7 @@ class OPAAuthorizationBackend:
         return bool(result)
 
     async def get_accessible_collection_identifiers(
-            self, user: PottoUser
+            self, user: PottoUser | None
     ) -> list[str] | None:
         result = await self._query(
             "accessible_collection_identifiers",
@@ -67,3 +70,26 @@ class OPAAuthorizationBackend:
         if result is None:
             return None
         return list(result)
+
+    async def can_set_user_scopes(
+            self,
+            requesting_user: PottoUser | None,
+            new_scopes: list[str],
+            editable_collection_identifiers: list[str],
+    ) -> bool:
+        result = await self._query(
+            "can_set_user_scopes",
+            {
+                "user": self._user_input(requesting_user),
+                "new_scopes": new_scopes,
+                "editable_collection_identifiers": editable_collection_identifiers,
+            },
+        )
+        return bool(result)
+
+    async def can_assign_admin_scope(self, requesting_user: PottoUser | None) -> bool:
+        result = await self._query(
+            "can_assign_admin_scope",
+            {"user": self._user_input(requesting_user)},
+        )
+        return bool(result)

@@ -43,7 +43,7 @@ services:
   opa:
     image: "openpolicyagent/opa:1.14.1"
     # reload policies from disk whenever they change
-    command: run --server --watch /policies
+    command: run --server --watch --addr 0.0.0.0:8181 /policies
     ports:
       - target: 8181
         published: 58181

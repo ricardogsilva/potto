@@ -1,5 +1,4 @@
 import re
-from typing import Protocol
 
 from ..db.models import Collection
 from ..schemas.auth import (
@@ -10,32 +9,14 @@ from ..schemas.auth import (
 _COLLECTION_SCOPE_RE = re.compile(r"^collection-(.+):(editor|viewer)$")
 
 
-class AuthorizationBackendProtocol(Protocol):
-    async def can_view_collection(self, user: PottoUser, collection: Collection) -> bool:
-        """Return True if the user is allowed to view the collection."""
-        ...
-
-    async def can_edit_collection(self, user: PottoUser, collection: Collection) -> bool:
-        """Return True if the user is allowed to edit the collection."""
-        ...
-
-    async def get_accessible_collection_identifiers(
-            self, user: PottoUser
-    ) -> list[str] | None:
-        """Return identifiers of collections accessible to the user.
-
-        Returns None if the user has unrestricted access (e.g. admin), or a list of
-        collection resource identifiers the user can explicitly access.
-        """
-        ...
-
-
 class LocalAuthorizationBackend:
     """Authorization backend that evaluates permissions from locally-stored user scopes."""
 
-    async def can_view_collection(self, user: PottoUser, collection: Collection) -> bool:
+    async def can_view_collection(self, user: PottoUser | None, collection: Collection) -> bool:
         if collection.is_public:
             return True
+        if user is None:
+            return False
         if PottoScope.ADMIN.value in user.scopes:
             return True
         if user.id == collection.owner_id:
@@ -46,7 +27,9 @@ class LocalAuthorizationBackend:
             return True
         return False
 
-    async def can_edit_collection(self, user: PottoUser, collection: Collection) -> bool:
+    async def can_edit_collection(self, user: PottoUser | None, collection: Collection) -> bool:
+        if user is None:
+            return False
         if PottoScope.ADMIN.value in user.scopes:
             return True
         if user.id == collection.owner_id:
@@ -56,8 +39,10 @@ class LocalAuthorizationBackend:
         return False
 
     async def get_accessible_collection_identifiers(
-            self, user: PottoUser
+            self, user: PottoUser | None
     ) -> list[str] | None:
+        if user is None:
+            return []
         if PottoScope.ADMIN.value in user.scopes:
             return None
         return [
@@ -65,3 +50,28 @@ class LocalAuthorizationBackend:
             for scope in user.scopes
             if (m := _COLLECTION_SCOPE_RE.match(scope))
         ]
+
+    async def can_set_user_scopes(
+            self,
+            requesting_user: PottoUser | None,
+            new_scopes: list[str],
+            editable_collection_identifiers: list[str],
+    ) -> bool:
+        if requesting_user is None:
+            return False
+        if PottoScope.ADMIN.value in requesting_user.scopes:
+            return True
+        editable = set(editable_collection_identifiers)
+        for scope in new_scopes:
+            m = _COLLECTION_SCOPE_RE.match(scope)
+            if m:
+                if m.group(1) not in editable:
+                    return False
+            else:
+                return False  # non-collection scopes require admin
+        return True
+
+    async def can_assign_admin_scope(self, requesting_user: PottoUser | None) -> bool:
+        if requesting_user is None:
+            return False
+        return PottoScope.ADMIN.value in requesting_user.scopes

@@ -18,9 +18,10 @@ from starlette_babel import get_translator
 from starlette_babel.contrib.jinja import configure_jinja_env
 
 from . import jinjafilters
-from .auth.oidc import OIDCProvider
-from .authorization.backend import AuthorizationBackendProtocol, LocalAuthorizationBackend
-from .authorization.opa import OPAAuthorizationBackend
+from .authn.oidc import OIDCProvider
+from .authz.base import AuthorizationBackendProtocol
+from .authz.backend import LocalAuthorizationBackend
+from .authz.opa import OPAAuthorizationBackend
 
 warnings.filterwarnings(
     "ignore",

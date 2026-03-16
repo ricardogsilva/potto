@@ -16,7 +16,7 @@ from starlette.templating import Jinja2Templates
 from starlette_babel import LocaleMiddleware
 
 from .. import config
-from ..auth.backend import LocalAuthBackend, OIDCAuthBackend
+from ..authn.backend import LocalAuthBackend, OIDCAuthBackend
 from ..wrapper import Potto
 from .routes import (
     auth as auth_routes,

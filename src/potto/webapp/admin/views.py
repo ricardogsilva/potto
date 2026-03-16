@@ -11,6 +11,7 @@ from starlette_admin import (
     RequestAction,
 )
 from starlette_admin.contrib.sqlmodel import ModelView
+from starlette_admin.exceptions import FormValidationError
 from starlette_admin.fields import (
     CollectionField,
     EnumField,
@@ -24,20 +25,24 @@ from starlette_admin.fields import (
 )
 
 from ...config import PottoSettings
+from ...exceptions import (
+    PottoCannotSetAdminScopeException,
+    PottoCannotSetScopesException,
+    PottoException,
+)
 from ...operations import collections as collection_operations
+from ...operations import auth as auth_operations
 from ...db.models import (
     Collection,
     User,
 )
 from ...db.commands import (
-    auth as auth_commands,
     collections as collection_commands,
 )
 from ...db.queries import (
     auth as auth_queries,
     collections as collection_queries,
 )
-from ...exceptions import PottoException
 from ...schemas.base import PygeoapiProviderType
 from ...schemas.collections import (
     CollectionCreate,
@@ -56,6 +61,8 @@ logger = logging.getLogger(__name__)
 class _PottoAdminModelView(ModelView):
 
     def handle_exception(self, exc: Exception) -> None:
+        if isinstance(exc, (PottoCannotSetAdminScopeException, PottoCannotSetScopesException)):
+            raise FormValidationError({"scopes": str(exc)})
         logger.exception("An error occurred", exc)
         return super().handle_exception(exc)
 
@@ -70,9 +77,9 @@ class UserView(_PottoAdminModelView):
     fields = (
         User.username,
         User.email,
+        PasswordField("password"),
         User.is_active,
         User.scopes,
-        PasswordField("password"),
     )
     exclude_fields_from_detail = (
         "password",
@@ -82,11 +89,15 @@ class UserView(_PottoAdminModelView):
     )
 
     async def create(self, request: Request, data: dict[str, Any]) -> Any:
+        user = cast(PottoUser, request.user)
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             try:
-                return await auth_commands.create_user(
+                return await auth_operations.create_user(
                     session,
+                    requesting_user=user,
+                    authorization_backend=auth_backend,
                     to_create=UserCreate(
                         **{
                             k: v for k, v in {
@@ -102,16 +113,22 @@ class UserView(_PottoAdminModelView):
                 )
             except pydantic.ValidationError as err:
                 self.handle_exception(err)
+            except PottoException as err:
+                self.handle_exception(err)
 
     async def edit(self, request: Request, pk: Any, data: dict[str, Any]) -> Any:
+        user = cast(PottoUser, request.user)
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             if (db_user := await auth_queries.get_user(session, pk)) is None:
                 raise RuntimeError(f"User {pk} not found")
             try:
-                return await auth_commands.update_user(
+                return await auth_operations.update_user(
                     session,
-                    db_user,
+                    requesting_user=user,
+                    authorization_backend=auth_backend,
+                    db_user=db_user,
                     to_update=UserUpdate(
                         **{
                             k: v for k,v in {
@@ -119,13 +136,15 @@ class UserView(_PottoAdminModelView):
                                 "is_active": data["is_active"],
                                 "email": data["email"] or None,
                                 "scopes": data["scopes"] or None,
-                                "password": data["password"],
+                                "password": data["password"] or None,
                             }.items() if v is not None
                         }
                     ),
                 )
             except pydantic.ValidationError as err:
                 return self.handle_exception(err)
+            except PottoException as err:
+                self.handle_exception(err)
 
 
 class CollectionItemView(_PottoAdminModelView):

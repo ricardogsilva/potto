@@ -6,7 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.authentication import BaseUser
 
 from .. import util
-from ..authorization.backend import AuthorizationBackendProtocol
+from ..authz.base import AuthorizationBackendProtocol
 from ..db.models import (
     Collection,
     User,
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 async def collect_all_collections(
         session: AsyncSession,
-        user: PottoUser,
+        user: PottoUser | None,
         authorization_backend: AuthorizationBackendProtocol,
         collection_type_filter: list[CollectionType] | None = None,
 ) -> list[Collection]:
@@ -52,14 +52,14 @@ async def collect_all_collections(
     return await collection_queries.collect_all_collections(
         session,
         collection_type_filter=collection_type_filter,
-        user_id=user.id,
+        user_id=user.id if user is not None else None,
         accessible_identifiers=accessible_ids,
     )
 
 
 async def paginated_list_collections(
         session: AsyncSession,
-        user: PottoUser,
+        user: PottoUser | None,
         authorization_backend: AuthorizationBackendProtocol,
         *,
         page: int = 1,
@@ -88,7 +88,7 @@ async def paginated_list_collections(
         page_size=page_size,
         include_total=include_total,
         identifier_filter=identifier_filter,
-        user_id=user.id,
+        user_id=user.id if user is not None else None,
         accessible_identifiers=accessible_ids,
         collection_type_filter=collection_type_filter,
         spatial_intersect=spatial_intersect,
@@ -97,7 +97,7 @@ async def paginated_list_collections(
 
 async def get_collection(
         session: AsyncSession,
-        user: PottoUser,
+        user: PottoUser | None,
         authorization_backend: AuthorizationBackendProtocol,
         collection_id: int,
 ) -> Collection | None:
@@ -111,7 +111,7 @@ async def get_collection(
 
 async def get_collection_by_resource_identifier(
         session: AsyncSession,
-        user: PottoUser,
+        user: PottoUser | None,
         authorization_backend: AuthorizationBackendProtocol,
         identifier: str,
 ) -> Collection | None:

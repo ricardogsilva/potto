@@ -3,8 +3,8 @@ from typing import TypedDict
 from starlette.templating import Jinja2Templates
 
 from .. import config
-from ..auth.oidc import OIDCProvider
-from ..authorization.backend import AuthorizationBackendProtocol
+from ..authn.oidc import OIDCProvider
+from ..authz.base import AuthorizationBackendProtocol
 from ..wrapper import Potto
 
 
