@@ -41,8 +41,8 @@ services:
       timeout: 5s
 
   opa:
-    image: "openpolicyagent/opa:latest"
-    # --watch reloads policies from disk whenever they change - convenient for development
+    image: "openpolicyagent/opa:1.14.1"
+    # reload policies from disk whenever they change
     command: run --server --watch /policies
     ports:
       - target: 8181

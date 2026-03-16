@@ -22,12 +22,12 @@ class OPAAuthorizationBackend:
             response.raise_for_status()
             return response.json().get("result")
 
-    def _user_input(self, user: PottoUser) -> dict:
+    def _user_input(self, user: PottoUser) -> dict | None:
         return {
             "id": user.id,
             "username": user.username,
             "scopes": user.scopes,
-        }
+        } if user.is_authenticated else None
 
     def _collection_input(self, collection: Collection) -> dict:
         return {

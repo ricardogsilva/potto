@@ -2,7 +2,10 @@ import re
 from typing import Protocol
 
 from ..db.models import Collection
-from ..schemas.auth import PottoScope, PottoUser
+from ..schemas.auth import (
+    PottoScope,
+    PottoUser,
+)
 
 _COLLECTION_SCOPE_RE = re.compile(r"^collection-(.+):(editor|viewer)$")
 
