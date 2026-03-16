@@ -6,6 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.authentication import BaseUser
 
 from .. import util
+from ..authorization.backend import AuthorizationBackendProtocol
 from ..db.models import (
     Collection,
     User,
@@ -19,11 +20,6 @@ from ..db.queries import (
     collections as collection_queries,
 )
 from ..exceptions import PottoException
-from ..permissions import (
-    can_edit_collection,
-    can_view_collection,
-    get_accessible_collection_identifiers,
-)
 from ..schemas.auth import PottoScope, PottoUser
 from ..schemas.base import (
     CollectionProvider,
@@ -42,10 +38,12 @@ logger = logging.getLogger(__name__)
 async def collect_all_collections(
         session: AsyncSession,
         user: PottoUser,
+        authorization_backend: AuthorizationBackendProtocol,
         collection_type_filter: list[CollectionType] | None = None,
 ) -> list[Collection]:
     """List all collections that the user has access to."""
-    if PottoScope.ADMIN.value in user.scopes:
+    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(user)
+    if accessible_ids is None:
         return await collection_queries.collect_all_collections(
             session,
             collection_type_filter=collection_type_filter,
@@ -55,13 +53,14 @@ async def collect_all_collections(
         session,
         collection_type_filter=collection_type_filter,
         user_id=user.id,
-        accessible_identifiers=get_accessible_collection_identifiers(user),
+        accessible_identifiers=accessible_ids,
     )
 
 
 async def paginated_list_collections(
         session: AsyncSession,
         user: PottoUser,
+        authorization_backend: AuthorizationBackendProtocol,
         *,
         page: int = 1,
         page_size: int = 20,
@@ -71,7 +70,8 @@ async def paginated_list_collections(
         spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
     """Produce a paginated list of all collections that the user has access to."""
-    if PottoScope.ADMIN.value in user.scopes:
+    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(user)
+    if accessible_ids is None:
         return await collection_queries.paginated_list_collections(
             session,
             page=page,
@@ -89,7 +89,7 @@ async def paginated_list_collections(
         include_total=include_total,
         identifier_filter=identifier_filter,
         user_id=user.id,
-        accessible_identifiers=get_accessible_collection_identifiers(user),
+        accessible_identifiers=accessible_ids,
         collection_type_filter=collection_type_filter,
         spatial_intersect=spatial_intersect,
     )
@@ -98,12 +98,13 @@ async def paginated_list_collections(
 async def get_collection(
         session: AsyncSession,
         user: PottoUser,
+        authorization_backend: AuthorizationBackendProtocol,
         collection_id: int,
 ) -> Collection | None:
     collection = await collection_queries.get_collection(session, collection_id)
     if collection is None:
         return None
-    if not can_view_collection(user, collection):
+    if not await authorization_backend.can_view_collection(user, collection):
         return None
     return collection
 
@@ -111,12 +112,13 @@ async def get_collection(
 async def get_collection_by_resource_identifier(
         session: AsyncSession,
         user: PottoUser,
+        authorization_backend: AuthorizationBackendProtocol,
         identifier: str,
 ) -> Collection | None:
     collection = await collection_queries.get_collection_by_resource_identifier(session, identifier)
     if collection is None:
         return None
-    if not can_view_collection(user, collection):
+    if not await authorization_backend.can_view_collection(user, collection):
         return None
     return collection
 
@@ -129,11 +131,15 @@ async def create_collection(
 
 
 async def delete_collection(
-        session: AsyncSession, user: PottoUser, collection_id: int) -> None:
+        session: AsyncSession,
+        user: PottoUser,
+        authorization_backend: AuthorizationBackendProtocol,
+        collection_id: int,
+) -> None:
     collection = await collection_queries.get_collection(session, collection_id)
     if collection is None:
         raise PottoException(f"Collection with id {collection_id} does not exist.")
-    if not can_edit_collection(user, collection):
+    if not await authorization_backend.can_edit_collection(user, collection):
         raise PottoException(f"User does not have permission to delete collection {collection_id}.")
     return await collection_commands.delete_collection(session, collection_id)
 
@@ -141,11 +147,12 @@ async def delete_collection(
 async def grant_collection_access(
         session: AsyncSession,
         granting_user: PottoUser,
+        authorization_backend: AuthorizationBackendProtocol,
         target_user_id: str,
         collection: Collection,
         role: str,
 ) -> None:
-    if not can_edit_collection(granting_user, collection):
+    if not await authorization_backend.can_edit_collection(granting_user, collection):
         raise PottoException("User does not have permission to grant access to this collection.")
     target_user = await auth_queries.get_user(session, target_user_id)
     if target_user is None:
@@ -163,10 +170,11 @@ async def grant_collection_access(
 async def revoke_collection_access(
         session: AsyncSession,
         revoking_user: PottoUser,
+        authorization_backend: AuthorizationBackendProtocol,
         target_user_id: str,
         collection: Collection,
 ) -> None:
-    if not can_edit_collection(revoking_user, collection):
+    if not await authorization_backend.can_edit_collection(revoking_user, collection):
         raise PottoException("User does not have permission to revoke access to this collection.")
     target_user = await auth_queries.get_user(session, target_user_id)
     if target_user is None:
@@ -180,6 +188,7 @@ async def revoke_collection_access(
 async def import_pygeoapi_collection(
         session: AsyncSession,
         user: User,
+        authorization_backend: AuthorizationBackendProtocol,
         identifier: str,
         pygeoapi_collection: dict,
         *,
@@ -211,7 +220,7 @@ async def import_pygeoapi_collection(
 
     collection_type = util.get_collection_type(pygeoapi_collection)
     if existing_db_collection and overwrite:
-        if not can_edit_collection(user, existing_db_collection):
+        if not await authorization_backend.can_edit_collection(user, existing_db_collection):
             raise PottoException(f"User does not have permission to overwrite collection {identifier!r}.")
         logger.debug(f"Updating existing collection {identifier!r}...")
         to_update = CollectionUpdate(
