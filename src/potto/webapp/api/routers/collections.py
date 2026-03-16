@@ -15,6 +15,7 @@ from ....schemas.web.collections import (
     JsonCollection,
 )
 from ..dependencies import (
+    AuthorizationBackendDependency,
     LocaleDependency,
     PottoDependency,
     SettingsDependency,
@@ -78,10 +79,14 @@ async def create_collection(
 )
 async def delete_collection(
         collection_id: str,
+        user: UserDependency,
+        authorization_backend: AuthorizationBackendDependency,
         settings: SettingsDependency,
 ):
     async with settings.get_db_session_maker()() as session:
-        await collection_operations.delete_collection(session, collection_id)
+        await collection_operations.delete_collection(
+            session, user, authorization_backend, int(collection_id)
+        )
 
 
 @router.put(
@@ -94,16 +99,17 @@ async def grant_collection_access(
         user_id: str,
         body: collections_schemas.CollectionAccessGrant,
         user: UserDependency,
+        authorization_backend: AuthorizationBackendDependency,
         settings: SettingsDependency,
 ):
     async with settings.get_db_session_maker()() as session:
         collection = await collection_operations.get_collection_by_resource_identifier(
-            session, user, collection_id
+            session, user, authorization_backend, collection_id
         )
         if collection is None:
             raise PottoException(f"Collection {collection_id!r} not found.")
         await collection_operations.grant_collection_access(
-            session, user, user_id, collection, body.role
+            session, user, authorization_backend, user_id, collection, body.role
         )
 
 
@@ -116,16 +122,15 @@ async def revoke_collection_access(
         collection_id: str,
         user_id: str,
         user: UserDependency,
+        authorization_backend: AuthorizationBackendDependency,
         settings: SettingsDependency,
 ):
     async with settings.get_db_session_maker()() as session:
         collection = await collection_operations.get_collection_by_resource_identifier(
-            session, user, collection_id
+            session, user, authorization_backend, collection_id
         )
         if collection is None:
             raise PottoException(f"Collection {collection_id!r} not found.")
         await collection_operations.revoke_collection_access(
-            session, user, user_id, collection
+            session, user, authorization_backend, user_id, collection
         )
-
-

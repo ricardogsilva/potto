@@ -86,7 +86,7 @@ async def import_collections_from_pygeoapi(
             sys.exit(1)
         collection_owner = existing_admins[0]
         existing_collections = await collection_ops.collect_all_collections(
-            session, user)
+            session, user, settings.get_authorization_backend())
         relevant_collections = {
             id_: res for id_, res in pygeoapi_config.get("resources", {}).items()
             if res.get("type") == "collection"
@@ -103,7 +103,8 @@ async def import_collections_from_pygeoapi(
             )
             try:
                 await collection_ops.import_pygeoapi_collection(
-                    session, collection_owner, identifier, relevant_collection, overwrite=overwrite)
+                    session, collection_owner, settings.get_authorization_backend(),
+                    identifier, relevant_collection, overwrite=overwrite)
                 num_imported += 1
             except PottoException as err:
                 collections_app.error_console.print(
@@ -126,6 +127,7 @@ async def list_collections(
         collections, total = await collection_ops.paginated_list_collections(
             session,
             user,
+            settings.get_authorization_backend(),
             page=page,
             page_size=page_size,
             include_total=True,
@@ -169,7 +171,7 @@ async def get_collection(
     async with settings.get_db_session_maker()() as session:
         if not (
             collection := await collection_ops.get_collection_by_resource_identifier(
-                session, user, collection_identifier)
+                session, user, settings.get_authorization_backend(), collection_identifier)
         ):
             raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
         editors = await collection_queries.get_collection_editors(
@@ -200,13 +202,14 @@ async def delete_collections(
         for id_ in collection_identifier:
             if not (
                 db_collection := await collection_ops.get_collection_by_resource_identifier(
-                    session, user, id_)
+                    session, user, settings.get_authorization_backend(), id_)
             ):
                 collections_app.error_console.print(f"Collection {id_!r} not found.")
                 found_error = True
                 continue
             try:
-                await collection_ops.delete_collection(session, user, db_collection.id)
+                await collection_ops.delete_collection(
+                    session, user, settings.get_authorization_backend(), db_collection.id)
                 collections_app.console.print(f"Collection {id_!r} deleted")
             except PottoException as err:
                 collections_app.error_console.print(
@@ -228,11 +231,12 @@ async def grant_collection_access(
     user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
     async with settings.get_db_session_maker()() as session:
         collection = await collection_ops.get_collection_by_resource_identifier(
-            session, user, collection_identifier)
+            session, user, settings.get_authorization_backend(), collection_identifier)
         if collection is None:
             raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
         try:
-            await collection_ops.grant_collection_access(session, user, user_id, collection, role)
+            await collection_ops.grant_collection_access(
+                session, user, settings.get_authorization_backend(), user_id, collection, role)
         except PottoException as err:
             raise SystemExit(f"Error: {err}")
     collections_app.console.print(
@@ -250,11 +254,12 @@ async def revoke_collection_access(
     user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
     async with settings.get_db_session_maker()() as session:
         collection = await collection_ops.get_collection_by_resource_identifier(
-            session, user, collection_identifier)
+            session, user, settings.get_authorization_backend(), collection_identifier)
         if collection is None:
             raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
         try:
-            await collection_ops.revoke_collection_access(session, user, user_id, collection)
+            await collection_ops.revoke_collection_access(
+                session, user, settings.get_authorization_backend(), user_id, collection)
         except PottoException as err:
             raise SystemExit(f"Error: {err}")
     collections_app.console.print(

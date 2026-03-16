@@ -164,3 +164,11 @@ async def get_collection_by_resource_identifier(
         .where(Collection.resource_identifier == resource_identifier)
     )
     return (await session.exec(statement)).first()
+
+
+async def get_owned_collection_identifiers(
+        session: AsyncSession,
+        user_id: str,
+) -> list[str]:
+    statement = select(Collection.resource_identifier).where(Collection.owner_id == user_id)
+    return list((await session.exec(statement)).all())

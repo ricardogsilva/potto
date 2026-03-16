@@ -11,6 +11,7 @@ from starlette_admin import (
     RequestAction,
 )
 from starlette_admin.contrib.sqlmodel import ModelView
+from starlette_admin.exceptions import FormValidationError
 from starlette_admin.fields import (
     CollectionField,
     EnumField,
@@ -24,24 +25,23 @@ from starlette_admin.fields import (
 )
 
 from ...config import PottoSettings
+from ...exceptions import (
+    PottoCannotSetAdminScopeException,
+    PottoCannotSetScopesException,
+    PottoException,
+)
 from ...operations import collections as collection_operations
+from ...operations import auth as auth_operations
 from ...db.models import (
     Collection,
     User,
 )
 from ...db.commands import (
-    auth as auth_commands,
     collections as collection_commands,
 )
 from ...db.queries import (
     auth as auth_queries,
     collections as collection_queries,
-)
-from ...exceptions import PottoException
-from ...permissions import (
-    can_edit_collection,
-    can_view_collection,
-    get_accessible_collection_identifiers,
 )
 from ...schemas.base import PygeoapiProviderType
 from ...schemas.collections import (
@@ -49,7 +49,6 @@ from ...schemas.collections import (
     CollectionUpdate,
 )
 from ...schemas.auth import (
-    PottoScope,
     PottoUser,
     UserCreate,
     UserUpdate,
@@ -62,6 +61,8 @@ logger = logging.getLogger(__name__)
 class _PottoAdminModelView(ModelView):
 
     def handle_exception(self, exc: Exception) -> None:
+        if isinstance(exc, (PottoCannotSetAdminScopeException, PottoCannotSetScopesException)):
+            raise FormValidationError({"scopes": str(exc)})
         logger.exception("An error occurred", exc)
         return super().handle_exception(exc)
 
@@ -76,9 +77,9 @@ class UserView(_PottoAdminModelView):
     fields = (
         User.username,
         User.email,
+        PasswordField("password"),
         User.is_active,
         User.scopes,
-        PasswordField("password"),
     )
     exclude_fields_from_detail = (
         "password",
@@ -88,11 +89,15 @@ class UserView(_PottoAdminModelView):
     )
 
     async def create(self, request: Request, data: dict[str, Any]) -> Any:
+        user = cast(PottoUser, request.user)
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             try:
-                return await auth_commands.create_user(
+                return await auth_operations.create_user(
                     session,
+                    requesting_user=user,
+                    authorization_backend=auth_backend,
                     to_create=UserCreate(
                         **{
                             k: v for k, v in {
@@ -108,16 +113,22 @@ class UserView(_PottoAdminModelView):
                 )
             except pydantic.ValidationError as err:
                 self.handle_exception(err)
+            except PottoException as err:
+                self.handle_exception(err)
 
     async def edit(self, request: Request, pk: Any, data: dict[str, Any]) -> Any:
+        user = cast(PottoUser, request.user)
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             if (db_user := await auth_queries.get_user(session, pk)) is None:
                 raise RuntimeError(f"User {pk} not found")
             try:
-                return await auth_commands.update_user(
+                return await auth_operations.update_user(
                     session,
-                    db_user,
+                    requesting_user=user,
+                    authorization_backend=auth_backend,
+                    db_user=db_user,
                     to_update=UserUpdate(
                         **{
                             k: v for k,v in {
@@ -125,13 +136,15 @@ class UserView(_PottoAdminModelView):
                                 "is_active": data["is_active"],
                                 "email": data["email"] or None,
                                 "scopes": data["scopes"] or None,
-                                "password": data["password"],
+                                "password": data["password"] or None,
                             }.items() if v is not None
                         }
                     ),
                 )
             except pydantic.ValidationError as err:
                 return self.handle_exception(err)
+            except PottoException as err:
+                self.handle_exception(err)
 
 
 class CollectionItemView(_PottoAdminModelView):
@@ -201,20 +214,22 @@ class CollectionItemView(_PottoAdminModelView):
             if pk is not None:
                 user = cast(PottoUser, request.user)
                 settings = cast(PottoSettings, request.app.state.SETTINGS)
+                auth_backend = settings.get_authorization_backend()
                 async with settings.get_db_session_maker()() as session:
                     collection = await collection_queries.get_collection(session, int(pk))
                 if collection is not None:
-                    return can_edit_collection(user, collection)
+                    return await auth_backend.can_edit_collection(user, collection)
         return await super().is_row_action_allowed(request, name)
 
     async def find_by_pk(self, request: Request, pk: Any) -> Any:
         user = cast(PottoUser, request.user)
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             collection = await collection_queries.get_collection(session, int(pk))
             if collection is None:
                 return None
-            if not can_view_collection(user, collection):
+            if not await auth_backend.can_view_collection(user, collection):
                 return None
             editors = await collection_queries.get_collection_editors(
                 session, collection.resource_identifier
@@ -236,8 +251,10 @@ class CollectionItemView(_PottoAdminModelView):
     ) -> list[Any]:
         user = cast(PottoUser, request.user)
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
-            if PottoScope.ADMIN.value in user.scopes:
+            accessible_ids = await auth_backend.get_accessible_collection_identifiers(user)
+            if accessible_ids is None:
                 items, _ = await collection_queries.list_collections(
                     session,
                     offset=skip,
@@ -250,15 +267,17 @@ class CollectionItemView(_PottoAdminModelView):
                     offset=skip,
                     limit=limit,
                     user_id=user.id,
-                    accessible_identifiers=get_accessible_collection_identifiers(user),
+                    accessible_identifiers=accessible_ids,
                 )
         return items
 
     async def count(self, request: Request, where: Any = None) -> int:
         user = cast(PottoUser, request.user)
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
-            if PottoScope.ADMIN.value in user.scopes:
+            accessible_ids = await auth_backend.get_accessible_collection_identifiers(user)
+            if accessible_ids is None:
                 _, total = await collection_queries.list_collections(
                     session,
                     limit=1,
@@ -270,7 +289,7 @@ class CollectionItemView(_PottoAdminModelView):
                     session,
                     limit=1,
                     user_id=user.id,
-                    accessible_identifiers=get_accessible_collection_identifiers(user),
+                    accessible_identifiers=accessible_ids,
                     include_total=True,
                 )
         return total or 0
@@ -279,7 +298,9 @@ class CollectionItemView(_PottoAdminModelView):
         result = await super().serialize(obj, request, action, **kwargs)
         if action == RequestAction.LIST:
             user = cast(PottoUser, request.user)
-            result["_meta"]["can_edit"] = can_edit_collection(user, obj)
+            settings = cast(PottoSettings, request.app.state.SETTINGS)
+            auth_backend = settings.get_authorization_backend()
+            result["_meta"]["can_edit"] = await auth_backend.can_edit_collection(user, obj)
         return result
 
     async def serialize_field_value(
@@ -310,11 +331,12 @@ class CollectionItemView(_PottoAdminModelView):
             "owner_id": data.get("owner"),
         }
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             db_collection = await collection_queries.get_collection(session, int(pk))
             if db_collection is None:
                 raise RuntimeError(f"Collection {pk} not found")
-            if not can_edit_collection(user, db_collection):
+            if not await auth_backend.can_edit_collection(user, db_collection):
                 raise PottoException(f"User does not have permission to edit collection {pk}.")
             try:
                 result = await collection_commands.update_collection(
@@ -338,16 +360,16 @@ class CollectionItemView(_PottoAdminModelView):
                 if target_user_id in new_editor_ids:
                     if target_user_id not in current_editor_ids:
                         await collection_operations.grant_collection_access(
-                            session, user, target_user_id, db_collection, "editor"
+                            session, user, auth_backend, target_user_id, db_collection, "editor"
                         )
                 elif target_user_id in new_viewer_ids:
                     if target_user_id not in current_viewer_ids:
                         await collection_operations.grant_collection_access(
-                            session, user, target_user_id, db_collection, "viewer"
+                            session, user, auth_backend, target_user_id, db_collection, "viewer"
                         )
                 else:
                     await collection_operations.revoke_collection_access(
-                        session, user, target_user_id, db_collection
+                        session, user, auth_backend, target_user_id, db_collection
                     )
             return result
 

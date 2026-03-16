@@ -6,7 +6,7 @@ import jwt
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
-from ...auth.oidc import OIDCProvider
+from ...authn.oidc import OIDCProvider
 from ...config import PottoSettings
 
 logger = logging.getLogger(__name__)

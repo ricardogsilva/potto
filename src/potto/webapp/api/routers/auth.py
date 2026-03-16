@@ -4,7 +4,7 @@ import bcrypt
 import pydantic
 from fastapi import APIRouter, HTTPException
 
-from ....auth.jwt import create_access_token
+from ....authn.jwt import create_access_token
 from ....db.queries.auth import get_user_by_username
 from ....schemas.auth import PottoUser
 from ..dependencies import SettingsDependency

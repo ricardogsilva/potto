@@ -98,6 +98,7 @@ async def get_pygeoapi_config(
         identifier_filter=collection_identifier,
         page=collection_page,
         page_size=collection_page_size,
+        authorization_backend=settings.get_authorization_backend(),
     )
 
     for db_collection in collections:

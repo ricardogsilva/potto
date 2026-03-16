@@ -101,7 +101,7 @@ class Potto:
     ) -> potto_schemas.Collection | None:
         async with self._settings.get_db_session_maker()() as session:
             db_collection = await collection_ops.get_collection_by_resource_identifier(
-                session, user, collection_id)
+                session, user, self._settings.get_authorization_backend(), collection_id)
         return (
             potto_schemas.Collection(**db_collection.model_dump())
             if db_collection else None
@@ -128,7 +128,7 @@ class Potto:
         page = 1
         async with self._settings.get_db_session_maker()() as session:
             db_collections, total = await collection_ops.paginated_list_collections(
-                session, user=user, page=page)
+                session, user, self._settings.get_authorization_backend(), page=page)
             server_metadata = await metadata_ops.get_server_metadata(session)
         return potto_schemas.LandingPage(
             metadata=server_metadata,
@@ -213,7 +213,7 @@ class Potto:
         async with self._settings.get_db_session_maker()() as session:
             if not (
                 db_collection := await collection_ops.get_collection_by_resource_identifier(
-                    session, user, collection_id)
+                    session, user, self._settings.get_authorization_backend(), collection_id)
             ):
                 raise PottoException(f"Collection {collection_id} not found")
         pygeoapi_api = await self._get_pygeoapi(

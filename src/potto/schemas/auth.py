@@ -73,7 +73,7 @@ class UserCreateFromOidc(BaseUserCreate):
 
 
 class UserUpdate(pydantic.BaseModel):
-    password: str | None = None
+    password: str | None = pydantic.Field(default=None, min_length=8)
     email: str | None = None
     is_active: bool | None = None
     scopes: list[ValidScope] | None = None

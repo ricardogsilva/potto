@@ -18,13 +18,21 @@ from starlette_babel import get_translator
 from starlette_babel.contrib.jinja import configure_jinja_env
 
 from . import jinjafilters
-from .auth.oidc import OIDCProvider
+from .authn.oidc import OIDCProvider
+from .authz.base import AuthorizationBackendProtocol
+from .authz.backend import LocalAuthorizationBackend
+from .authz.opa import OPAAuthorizationBackend
 
 warnings.filterwarnings(
     "ignore",
     message="directory .* does not exist",
     module="pydantic_settings",
 )
+
+
+class OPASettings(pydantic.BaseModel):
+    url: str
+    policy_path: str = "potto/authz"
 
 
 class OIDCSettings(pydantic.BaseModel):
@@ -65,12 +73,14 @@ class PottoSettings(pydantic_settings.BaseSettings):
     uvicorn_num_workers: int = 8
     uvicorn_log_config_file: Path | None = None
     oidc: OIDCSettings | None = None
+    opa: OPASettings | None = None
 
     _jinja_env: jinja2.Environment | None = None
     _db_engine: AsyncEngine | None = None
     _sync_db_engine: Engine | None = None
     _db_session_maker: async_sessionmaker | None = None
     _oidc_provider: OIDCProvider | None = None
+    _authorization_backend: AuthorizationBackendProtocol | None = None
 
     def get_jinja_env(self) -> jinja2.Environment:
         if self._jinja_env is None:
@@ -104,6 +114,16 @@ class PottoSettings(pydantic_settings.BaseSettings):
                 access_token_audience=self.oidc.access_token_audience,
             )
         return self._oidc_provider
+
+    def get_authorization_backend(self) -> AuthorizationBackendProtocol:
+        if self._authorization_backend is None:
+            if self.opa is not None:
+                self._authorization_backend = OPAAuthorizationBackend(
+                    self.opa.url, self.opa.policy_path
+                )
+            else:
+                self._authorization_backend = LocalAuthorizationBackend()
+        return self._authorization_backend
 
     def get_db_session_maker(self) -> async_sessionmaker:
         if self._db_session_maker is None:

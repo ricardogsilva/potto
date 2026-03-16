@@ -16,7 +16,7 @@ from starlette.templating import Jinja2Templates
 from starlette_babel import LocaleMiddleware
 
 from .. import config
-from ..auth.backend import LocalAuthBackend, OIDCAuthBackend
+from ..authn.backend import LocalAuthBackend, OIDCAuthBackend
 from ..wrapper import Potto
 from .routes import (
     auth as auth_routes,
@@ -45,6 +45,7 @@ async def lifespan(app: Starlette) -> AsyncIterator[AppState]:
         templates=Jinja2Templates(env=settings.get_jinja_env()),
         potto=Potto(settings),
         oidc_provider=oidc_provider,
+        authorization_backend=settings.get_authorization_backend(),
     )
     yield _default_app_state
     _default_app_state = None
