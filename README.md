@@ -46,12 +46,13 @@ In Potto, this translates to:
 - pygeoapi core does not have configuration for the web application server because it does not need to launch it
 - pygeoapi core does not need to generate an OpenAPI document, this is a job for the web framework
 
-It also means that there are additional features not currently offered by pygeoapi core which this project can 
-implement in the future, like:
+It also means that there are additional features not currently offered by pygeoapi core which this project is 
+free to implement, such as:
 
 - Allowing changes to pygeoapi configuration dynamically without needing to restart the server
-- User authentication
-- Role-based authorization
+- Adding a richer admin UI
+- Adding an ownership model to resources
+- User authentication and authorization
 - Improving async support
 - etc.
 

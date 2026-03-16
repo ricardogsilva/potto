@@ -93,3 +93,22 @@ class OPAAuthorizationBackend:
             {"user": self._user_input(requesting_user)},
         )
         return bool(result)
+
+    async def can_change_collection_owner(
+            self, user: PottoUser | None, collection: Collection
+    ) -> bool:
+        result = await self._query(
+            "can_change_collection_owner",
+            {
+                "user": self._user_input(user),
+                "collection": self._collection_input(collection),
+            },
+        )
+        return bool(result)
+
+    async def can_create_collection(self, user: PottoUser | None) -> bool:
+        result = await self._query(
+            "can_create_collection",
+            {"user": self._user_input(user)},
+        )
+        return bool(result)

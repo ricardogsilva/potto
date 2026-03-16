@@ -67,9 +67,13 @@ async def create_collection(
         request: Request,
         to_create: collections_schemas.CollectionCreate,
         settings: SettingsDependency,
+        user: UserDependency,
+        authorization_backend: AuthorizationBackendDependency,
 ):
     async with settings.get_db_session_maker()() as session:
-        db_collection = await collection_operations.create_collection(session, to_create)
+        db_collection = await collection_operations.create_collection(
+            session, user, authorization_backend, to_create
+        )
     return JsonCollection.from_db_item(db_collection, request.url_for)
 
 

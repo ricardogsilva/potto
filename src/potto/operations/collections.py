@@ -19,7 +19,13 @@ from ..db.queries import (
     auth as auth_queries,
     collections as collection_queries,
 )
-from ..exceptions import PottoException
+from ..exceptions import (
+    PottoCannotChangeCollectionOwnerException,
+    PottoCannotCreateCollectionException,
+    PottoCannotDeleteCollectionException,
+    PottoCannotEditCollectionException,
+    PottoException,
+)
 from ..schemas.auth import PottoScope, PottoUser
 from ..schemas.base import (
     CollectionProvider,
@@ -125,9 +131,36 @@ async def get_collection_by_resource_identifier(
 
 async def create_collection(
         session: AsyncSession,
+        user: PottoUser | None,
+        authorization_backend: AuthorizationBackendProtocol,
         to_create: CollectionCreate,
 ) -> Collection:
+    if not await authorization_backend.can_create_collection(user):
+        raise PottoCannotCreateCollectionException(
+            "User does not have permission to create a collection."
+        )
     return await collection_commands.create_collection(session, to_create)
+
+
+async def update_collection(
+        session: AsyncSession,
+        user: PottoUser | None,
+        authorization_backend: AuthorizationBackendProtocol,
+        collection: Collection,
+        to_update: CollectionUpdate,
+) -> Collection:
+    if not await authorization_backend.can_edit_collection(user, collection):
+        raise PottoCannotEditCollectionException(
+            f"User does not have permission to edit collection "
+            f"{collection.resource_identifier!r}."
+        )
+    if to_update.owner_id is not None and to_update.owner_id != collection.owner_id:
+        if not await authorization_backend.can_change_collection_owner(user, collection):
+            raise PottoCannotChangeCollectionOwnerException(
+                f"User does not have permission to change the owner of collection "
+                f"{collection.resource_identifier!r}."
+            )
+    return await collection_commands.update_collection(session, collection, to_update)
 
 
 async def delete_collection(
@@ -140,7 +173,9 @@ async def delete_collection(
     if collection is None:
         raise PottoException(f"Collection with id {collection_id} does not exist.")
     if not await authorization_backend.can_edit_collection(user, collection):
-        raise PottoException(f"User does not have permission to delete collection {collection_id}.")
+        raise PottoCannotDeleteCollectionException(
+            f"User does not have permission to delete collection {collection_id}."
+        )
     return await collection_commands.delete_collection(session, collection_id)
 
 
@@ -249,4 +284,4 @@ async def import_pygeoapi_collection(
             additional_links=pygeoapi_collection.get("links"),
             providers=providers
         )
-        return await create_collection(session, to_create)
+        return await create_collection(session, user, authorization_backend, to_create)

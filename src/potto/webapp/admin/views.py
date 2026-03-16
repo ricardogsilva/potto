@@ -26,6 +26,9 @@ from starlette_admin.fields import (
 
 from ...config import PottoSettings
 from ...exceptions import (
+    PottoCannotChangeCollectionOwnerException,
+    PottoCannotCreateCollectionException,
+    PottoCannotEditCollectionException,
     PottoCannotSetAdminScopeException,
     PottoCannotSetScopesException,
     PottoException,
@@ -35,9 +38,6 @@ from ...operations import auth as auth_operations
 from ...db.models import (
     Collection,
     User,
-)
-from ...db.commands import (
-    collections as collection_commands,
 )
 from ...db.queries import (
     auth as auth_queries,
@@ -63,6 +63,12 @@ class _PottoAdminModelView(ModelView):
     def handle_exception(self, exc: Exception) -> None:
         if isinstance(exc, (PottoCannotSetAdminScopeException, PottoCannotSetScopesException)):
             raise FormValidationError({"scopes": str(exc)})
+        if isinstance(exc, PottoCannotChangeCollectionOwnerException):
+            raise FormValidationError({"owner": str(exc)})
+        if isinstance(exc, PottoCannotEditCollectionException):
+            raise FormValidationError({"resource_identifier": str(exc)})
+        if isinstance(exc, PottoCannotCreateCollectionException):
+            raise FormValidationError({"resource_identifier": str(exc)})
         logger.exception("An error occurred", exc)
         return super().handle_exception(exc)
 
@@ -336,17 +342,17 @@ class CollectionItemView(_PottoAdminModelView):
             db_collection = await collection_queries.get_collection(session, int(pk))
             if db_collection is None:
                 raise RuntimeError(f"Collection {pk} not found")
-            if not await auth_backend.can_edit_collection(user, db_collection):
-                raise PottoException(f"User does not have permission to edit collection {pk}.")
             try:
-                result = await collection_commands.update_collection(
+                result = await collection_operations.update_collection(
                     session,
+                    user,
+                    auth_backend,
                     db_collection,
                     to_update=CollectionUpdate(
                         **{k: v for k, v in to_set.items() if v is not None},
                     ),
                 )
-            except pydantic.ValidationError as err:
+            except (pydantic.ValidationError, PottoException) as err:
                 return self.handle_exception(err)
             current_editors = await collection_queries.get_collection_editors(
                 session, db_collection.resource_identifier
@@ -374,15 +380,19 @@ class CollectionItemView(_PottoAdminModelView):
             return result
 
     async def create(self, request: Request, data: dict[str, Any]) -> Any:
+        user = cast(PottoUser, request.user)
         data["providers"] = self._adapt_request_providers_to_internal_model(data["providers"])
         settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             try:
-                return await collection_commands.create_collection(
+                return await collection_operations.create_collection(
                     session,
-                    to_create=CollectionCreate(**data)
+                    user,
+                    auth_backend,
+                    to_create=CollectionCreate(**data),
                 )
-            except pydantic.ValidationError as err:
+            except (pydantic.ValidationError, PottoException) as err:
                 return self.handle_exception(err)
 
     def _adapt_request_providers_to_internal_model(

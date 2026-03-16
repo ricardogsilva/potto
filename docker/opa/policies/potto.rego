@@ -7,7 +7,9 @@
 #   potto/authz/can_edit_collection        input: {user, collection}  -> boolean
 #   potto/authz/accessible_collection_identifiers  input: {user}      -> [string] | null
 #   potto/authz/can_set_user_scopes        input: {user, new_scopes, editable_collection_identifiers} -> boolean
-#   potto/authz/can_assign_admin_scope     input: {user}              -> boolean
+#   potto/authz/can_assign_admin_scope          input: {user}              -> boolean
+#   potto/authz/can_change_collection_owner     input: {user, collection}  -> boolean
+#   potto/authz/can_create_collection           input: {user}              -> boolean
 #
 # The user object has: id, username, scopes (list of strings).
 # For anonymous (unauthenticated) visitors, user is null.
@@ -117,4 +119,26 @@ default can_assign_admin_scope := false
 can_assign_admin_scope if {
     input.user != null
     "admin" in input.user.scopes
+}
+
+# --- can_change_collection_owner ---
+
+default can_change_collection_owner := false
+
+can_change_collection_owner if {
+    input.user != null
+    "admin" in input.user.scopes
+}
+
+can_change_collection_owner if {
+    input.user != null
+    input.user.id == input.collection.owner_id
+}
+
+# --- can_create_collection ---
+
+default can_create_collection := false
+
+can_create_collection if {
+    input.user != null
 }

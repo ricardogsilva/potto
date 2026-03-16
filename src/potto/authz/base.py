@@ -46,3 +46,13 @@ class AuthorizationBackendProtocol(Protocol):
     async def can_assign_admin_scope(self, requesting_user: PottoUser | None) -> bool:
         """Return True if requesting_user is allowed to grant the admin scope to another user."""
         ...
+
+    async def can_change_collection_owner(
+            self, user: PottoUser | None, collection: Collection
+    ) -> bool:
+        """Return True if user is allowed to change the owner of the collection."""
+        ...
+
+    async def can_create_collection(self, user: PottoUser | None) -> bool:
+        """Return True if user is allowed to create a new collection."""
+        ...

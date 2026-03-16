@@ -75,3 +75,15 @@ class LocalAuthorizationBackend:
         if requesting_user is None:
             return False
         return PottoScope.ADMIN.value in requesting_user.scopes
+
+    async def can_change_collection_owner(
+            self, user: PottoUser | None, collection: Collection
+    ) -> bool:
+        if user is None:
+            return False
+        if PottoScope.ADMIN.value in user.scopes:
+            return True
+        return user.id == collection.owner_id
+
+    async def can_create_collection(self, user: PottoUser | None) -> bool:
+        return user is not None

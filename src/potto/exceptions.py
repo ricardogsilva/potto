@@ -8,3 +8,19 @@ class PottoCannotSetAdminScopeException(PottoException):
 
 class PottoCannotSetScopesException(PottoException):
     ...
+
+
+class PottoCannotChangeCollectionOwnerException(PottoException):
+    ...
+
+
+class PottoCannotEditCollectionException(PottoException):
+    ...
+
+
+class PottoCannotCreateCollectionException(PottoException):
+    ...
+
+
+class PottoCannotDeleteCollectionException(PottoException):
+    ...
