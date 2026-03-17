@@ -260,21 +260,13 @@ class CollectionItemView(_PottoAdminModelView):
         auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             accessible_ids = await auth_backend.get_accessible_collection_identifiers(user)
-            if accessible_ids is None:
-                items, _ = await collection_queries.list_collections(
-                    session,
-                    offset=skip,
-                    limit=limit,
-                    is_public_filter=None,
-                )
-            else:
-                items, _ = await collection_queries.list_collections(
-                    session,
-                    offset=skip,
-                    limit=limit,
-                    user_id=user.id,
-                    accessible_identifiers=accessible_ids,
-                )
+            items, _ = await collection_queries.list_user_collections(
+                session,
+                offset=skip,
+                limit=limit,
+                user_id=user.id,
+                accessible_identifiers=accessible_ids,
+            )
         return items
 
     async def count(self, request: Request, where: Any = None) -> int:
@@ -283,21 +275,13 @@ class CollectionItemView(_PottoAdminModelView):
         auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
             accessible_ids = await auth_backend.get_accessible_collection_identifiers(user)
-            if accessible_ids is None:
-                _, total = await collection_queries.list_collections(
-                    session,
-                    limit=1,
-                    is_public_filter=None,
-                    include_total=True,
-                )
-            else:
-                _, total = await collection_queries.list_collections(
-                    session,
-                    limit=1,
-                    user_id=user.id,
-                    accessible_identifiers=accessible_ids,
-                    include_total=True,
-                )
+            _, total = await collection_queries.list_user_collections(
+                session,
+                limit=1,
+                user_id=user.id,
+                accessible_identifiers=accessible_ids,
+                include_total=True,
+            )
         return total or 0
 
     async def serialize(self, obj: Any, request: Request, action: RequestAction, **kwargs: Any) -> Any:

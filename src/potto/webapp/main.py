@@ -20,6 +20,7 @@ from ..authn.backend import LocalAuthBackend, OIDCAuthBackend
 from ..wrapper import Potto
 from .routes import (
     auth as auth_routes,
+    landing as landing_routes,
     ogcapi_common as ogc_api_common_routes,
     ogcapi_features as ogc_api_features_routes,
 )
@@ -105,7 +106,8 @@ def get_routes(
             Route("/auth/oidc/callback", auth_routes.oidc_callback, name="oidc-callback"),
         ]
     routes += [
-        Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
+        # Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
+        Route("/", landing_routes.get_landing_page, name="landing-page"),
         Route(
             "/conformance",
             ogc_api_common_routes.get_conformance_details,
@@ -127,17 +129,17 @@ def get_routes(
             Route(
                 "/collections/{collection_id}/items",
                 ogc_api_features_routes.list_collection_items,
-                name="list-collection-items"
+                name="collection-list-items"
             ),
             Route(
                 "/collections/{collection_id}",
                 ogc_api_features_routes.get_collection_details,
-                name="get-collection"
+                name="collection-get"
             ),
             Route(
                 "/collections",
                 ogc_api_features_routes.list_collections,
-                name="list-collections"
+                name="collection-list"
             ),
         ])
     api_app = create_api_app_from_settings(settings)

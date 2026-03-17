@@ -1,0 +1,156 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ contents.metadata.title }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item active" aria-current="page">Home</li>
+{% endblock %}
+
+{% block body %}
+
+{# ── Hero ─────────────────────────────────────────────────────────────── #}
+<div class="py-4 mb-4 border-bottom">
+    <h1 class="display-5 fw-bold">{{ contents.metadata.title }}</h1>
+    {% if contents.metadata.description %}
+        <p class="lead text-muted">{{ contents.metadata.description }}</p>
+    {% endif %}
+    {% if contents.metadata.keywords %}
+        <div class="d-flex flex-wrap gap-1 mt-2">
+            {% set kws = contents.metadata.keywords %}
+            {% if kws is mapping %}
+                {% set kws = kws.values() | list | first %}
+            {% endif %}
+            {% for kw in kws %}
+                <span class="badge text-bg-secondary">{{ kw }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+{# ── Server metadata cards ────────────────────────────────────────────── #}
+{% set has_meta = contents.metadata.url or contents.metadata.license or contents.metadata.data_provider or contents.metadata.terms_of_service %}
+{% if has_meta %}
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mb-5">
+
+    {% if contents.metadata.url %}
+    <div class="col">
+        <div class="card h-100 border-0 bg-light">
+            <div class="card-body">
+                <p class="card-subtitle small text-muted mb-1">Service URL</p>
+                <a href="{{ contents.metadata.url }}" class="text-break small">{{ contents.metadata.url }}</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if contents.metadata.license %}
+    <div class="col">
+        <div class="card h-100 border-0 bg-light">
+            <div class="card-body">
+                <p class="card-subtitle small text-muted mb-1">License</p>
+                {% if contents.metadata.license.url %}
+                    <a href="{{ contents.metadata.license.url }}">{{ contents.metadata.license.name }}</a>
+                {% else %}
+                    <span>{{ contents.metadata.license.name }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if contents.metadata.data_provider %}
+    <div class="col">
+        <div class="card h-100 border-0 bg-light">
+            <div class="card-body">
+                <p class="card-subtitle small text-muted mb-1">Data provider</p>
+                {% if contents.metadata.data_provider.url %}
+                    <a href="{{ contents.metadata.data_provider.url }}">{{ contents.metadata.data_provider.name }}</a>
+                {% else %}
+                    <span>{{ contents.metadata.data_provider.name }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if contents.metadata.terms_of_service %}
+    <div class="col">
+        <div class="card h-100 border-0 bg-light">
+            <div class="card-body">
+                <p class="card-subtitle small text-muted mb-1">Terms of service</p>
+                <p class="card-text small">{{ contents.metadata.terms_of_service }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}
+
+{# ── Collections ──────────────────────────────────────────────────────── #}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h2 class="mb-0">Collections</h2>
+    <span class="badge text-bg-secondary fs-6">{{ contents.collections.pagination.total }}</span>
+</div>
+
+{% if contents.collections.collections %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-5">
+    {% for collection in contents.collections.collections %}
+
+    {% set type_val = collection.type_.value %}
+    {% if type_val == "feature" %}
+        {% set badge_class = "text-bg-primary" %}
+    {% elif type_val == "coverage" %}
+        {% set badge_class = "text-bg-success" %}
+    {% else %}
+        {% set badge_class = "text-bg-info" %}
+    {% endif %}
+
+    <div class="col">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <span class="badge {{ badge_class }}">{{ type_val }}</span>
+                <code class="small text-muted">{{ collection.identifier }}</code>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title mb-1">
+                    <a href="{{ url_for('collection-get', collection_id=collection.identifier) }}"
+                       class="text-decoration-none stretched-link text-body">
+                        {{ collection.title }}
+                    </a>
+                </h5>
+                {% if collection.description %}
+                    <p class="card-text text-muted small">{{ collection.description }}</p>
+                {% endif %}
+                {% if collection.keywords %}
+                    {% set kws = collection.keywords %}
+                    {% if kws is mapping %}
+                        {% set kws = kws.values() | list | first %}
+                    {% endif %}
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        {% for kw in kws %}
+                            <span class="badge text-bg-light border text-muted">{{ kw }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-transparent text-muted small d-flex justify-content-between align-items-center">
+                <span>{{ collection.owner.username }}</span>
+                {% if collection.temporal_extent_begin or collection.temporal_extent_end %}
+                <span class="font-monospace">
+                    {{ collection.temporal_extent_begin.strftime('%Y-%m-%d') if collection.temporal_extent_begin else '…' }}
+                    –
+                    {{ collection.temporal_extent_end.strftime('%Y-%m-%d') if collection.temporal_extent_end else 'present' }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% endfor %}
+</div>
+{% else %}
+    <p class="text-muted">No collections available.</p>
+{% endif %}
+
+{% endblock %}

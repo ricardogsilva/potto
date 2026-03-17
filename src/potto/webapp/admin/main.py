@@ -6,6 +6,7 @@ from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette_admin.contrib.sqlmodel import Admin
+from starlette_admin.views import Link
 
 from ...config import PottoSettings
 from ...db.models import (
@@ -78,5 +79,8 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
     )
     app.add_view(
         views.UserView(User, identity="user")
+    )
+    app.add_view(
+        Link(label="Back to front page", url="/", icon="fa fa-home")
     )
     return app

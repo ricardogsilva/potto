@@ -118,7 +118,7 @@ class Potto:
     async def api_get_landing_page(
             self,
             *,
-            user: BaseUser,
+            user: auth.PottoUser | None,
             language: str | None = None,
     ) -> potto_schemas.LandingPage:
         """Return overview information.
@@ -128,7 +128,12 @@ class Potto:
         page = 1
         async with self._settings.get_db_session_maker()() as session:
             db_collections, total = await collection_ops.paginated_list_collections(
-                session, user, self._settings.get_authorization_backend(), page=page)
+                session,
+                user,
+                self._settings.get_authorization_backend(),
+                page=page,
+                include_total=True,
+            )
             server_metadata = await metadata_ops.get_server_metadata(session)
         return potto_schemas.LandingPage(
             metadata=server_metadata,

@@ -1,146 +1,99 @@
 <!doctype html>
 <html lang="{{ (request.state.language | lower)[:2] }}" dir="{% trans %}text_direction{% endtrans %}">
 
-{% if pygeoapi_config.server.icon %}
-    {% set icon = pygeoapi_config.server.icon %}
-{% else %}
-    {% set icon = url_for('static', path='/img/favicon.ico') %}
-{% endif %}
-
-{% if pygeoapi_config.server.logo %}
-    {% set logo = pygeoapi_config.server.logo %}
-{% else %}
-    {% set logo = url_for('static', path='/img/potto-logo.png') %}
-{% endif %}
+{% set logo = url_for('static', path='/img/potto-head-logo-small.png') %}
 
 <head>
-    <meta charset="{{ pygeoapi_config.server.encoding | default('utf-8', True) }}">
+    <meta charset="utf-8">
     <title>{% block title %}{% endblock %}{% if not self.title() %}
-        {{ pygeoapi_config.metadata.identification.title }}{% endif %}</title>
+        {{ contents.metadata.title }}{% endif %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="language" content="{{ pygeoapi_config.server.language }}">
-    <meta name="description" content="{{ pygeoapi_config.metadata.identification.title }}">
-    <meta name="keywords" content="{{ pygeoapi_config.metadata.identification.keywords | join(',') }}">
-    <link rel="shortcut icon" href="{{ icon }}" type="image/x-icon">
+    <meta name="language" content="{{ request.state.language }}">
+    <meta name="description" content="{{ contents.metadata.description or contents.metadata.title }}">
+    <meta name="keywords" content="{{ contents.metadata.keywords|default([], True) | join(',') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', path='/img/favicon.ico') }}" type="image/x-icon">
 
     <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+            href="{{ url_for('static', path='/css/bootstrap.min.css') }}"
             rel="stylesheet"
-            integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
-            crossorigin="anonymous"
     >
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-            crossorigin="anonymous"
+    <script src="{{ url_for('static', path='/js/bootstrap.bundle.min.js') }}"
     ></script>
 
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/default.css') }}">
-    <!--[if lt IE 9]>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
-    <![endif]-->
+    {#    <link rel="stylesheet" href="{{ url_for('static', path='/css/default.css') }}">#}
     <meta name="twitter:image:src"
           content="{% block thumb %}{% endblock %}{% if not self.thumb() %}{{ logo }}{% endif %}"/>
     <meta property="og:image" content="{{ self.thumb() }}{% if not self.thumb() %}{{ logo }}{% endif %}"/>
-    <meta name="twitter:site" content="{{ pygeoapi_config.metadata.identification.title }}"/>
-    <meta property="og:site_name" content="{{ pygeoapi_config.metadata.identification.title }}"/>
+    <meta name="twitter:site" content="{{ contents.metadata.title }}"/>
+    <meta property="og:site_name" content="{{ contents.metadata.title }}"/>
     <meta name="twitter:card" content="summary_large_image"/>
     <meta name="twitter:title"
-          content="{{ self.title() }}{% if not self.title() %}{{ pygeoapi_config.metadata.identification.title }}{% endif %}"/>
+          content="{{ self.title() }}{% if not self.title() %}{{ contents.metadata.title }}{% endif %}"/>
     <meta property="og:title"
-          content="{{ self.title() }}{% if not self.title() %}{{ pygeoapi_config.metadata.identification.title }}{% endif %}"/>
-    <meta name="twitter:description" content="{{ pygeoapi_config.metadata.identification.description }}"/>
-    <meta property="og:description" content="{{ pygeoapi_config.metadata.identification.description }}"/>
+          content="{{ self.title() }}{% if not self.title() %}{{ contents.metadata.title }}{% endif %}"/>
+    <meta name="twitter:description" content="{{ contents.metadata.description }}"/>
+    <meta property="og:description" content="{{ contents.metadata.description }}"/>
 
     <meta property="og:type" content="website"/>
-    {% for link in data.links %}
-        {% if link.rel == "self" and link.type == "text/html" %}
-            <link rel="canonical" href="{{ link.href.split('?')[0] }}?f=html" />
-        {% elif link.rel != "canonical" %}
-            <link rel="{{ link.rel }}" type="{{ link.type }}" title="{{ link.title }}" href="{{ link.href }}"/>
-        {% endif %}
-    {% endfor %}
-    {% if jsonld_content %}
-        <script type="application/ld+json">{{ jsonld_content | safe }}</script>
-    {% endif %}
     {% block extrahead %}
     {% endblock %}
 </head>
 <body>
-<div class="bg-light sticky-top border-bottom">
-    <div class="container">
-        <header class="d-flex flex-wrap align-items-center py-3 justify-content-between">
-            <a href="{{ url_for('landing-page') }}"
-               class="d-flex align-items-center mb-3 mb-md-0 text-dark text-decoration-none"
-            >
-                <img src="{{ logo }}"
-                     title="{{ pygeoapi_config.metadata.identification.title }}"
-                     style="height:40px;vertical-align: middle;"
-                />
-            </a>
-            <ul class="nav nav-pills">
+<div class="container">
+    <header class="navbar navbar-expand-lg">
+        <a class="navbar-brand" href="{{ url_for('landing-page') }}">
+            <img src="{{ logo }}" alt="{{ contents.metadata.title }}" style="height: 60px;">
+        </a>
+        <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+        >
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a href="mailto:{{ pygeoapi_config.metadata.contact.email }}" class="nav-link" aria-current="page">
-                        {% trans %}Contact{% endtrans %}
-                    </a>
+                    <a class="nav-link" href="{{ url_for('collection-list') }}">Collections</a>
                 </li>
-                {% if pygeoapi_config.server.admin %}
-                    <li class="nav-item">
-                        <a href="{{ pygeoapi_config.server.url }}/admin/config" class="nav-link" aria-current="page">
-                            {% trans %}Admin{% endtrans %}
-                        </a>
-                    </li>
-                {% endif %}
-                <!--
-                  Add additional menu items here
-                  <a href="https://pygeoapi.io" class="nav-link">About</a>
-                -->
             </ul>
-        </header>
-    </div>
-</div>
-<div class="crumbs">
-    <div class="container">
-        <div class="row">
-            <div class="col-sm-12">
-                {% block crumbs %}
-                    <a href="{{ url_for('landing-page') }}">{% trans %}Home{% endtrans %}</a>
-                {% endblock %}
-                <span style="float: inline-end">
-                    {% for link in data.links %}
-                        {% if link.rel == 'alternate' and link.media_type in ['application/json', 'application/geo+json', 'application/prs.coverage+json'] %}
-                            <a href="{{ link.href }}">{% trans %}json{% endtrans %}</a>
-                        {% elif link.rel == 'alternate' and link.media_type == 'application/ld+json' %}
-                            <a href="{{ link.href }}">{% trans %}jsonld{% endtrans %}</a>
-                        {% endif %}
-                    {% endfor %}
-                </span>
-            </div>
+            {% if request.user.is_authenticated %}
+                <div class="dropdown">
+                    <button class="btn btn-secondary btn-sm dropdown-toggle border border-dark-subtle"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                        {{ request.user.username }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end border border-secondary shadow-sm">
+                        <li><a class="dropdown-item" href="{{ url_for('admin:index') }}">Configuration area</a></li>
+                    </ul>
+                </div>
+            {% else %}
+                <a href="{{ url_for('admin:login') }}" class="btn btn-outline-primary btn-sm">Login</a>
+            {% endif %}
         </div>
-    </div>
+    </header>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            {% block breadcrumbs %}
+                <li class="breadcrumb-item">Home</li>
+            {% endblock %}
+        </ol>
+    </nav>
+    <main>
+        {% block body %}
+        {% endblock %}
+    </main>
 </div>
-<main>
-    <div class="container">
-        <div class="row">
-            <div class="col-sm-12">
-                <br/>
-                {% block body %}
-                {% endblock %}
-            </div>
-        </div>
-    </div>
-</main>
 <footer class="sticky-bottom bg-light d-flex justify-content-center align-items-center py-3 px-3 border-top">
     <div class="text-center w-100">
         {% trans %}Powered by {% endtrans %}
-        <a title="pygeoapi" href="https://pygeoapi.io">
-            <img
-                    src="{{ url_for('static', path='/img/pygeoapi.png') }}"
-                    class="mx-1"
-                    title="pygeoapi logo"
-                    style="height:24px;vertical-align: middle;"
-            />
-        </a>
-        {{ pygeoapi_version }}
+        <a href="https://github.com/ricardogsilva/potto">Potto</a>
     </div>
 </footer>
 {% block extrafoot %}

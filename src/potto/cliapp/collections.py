@@ -66,7 +66,6 @@ async def import_collections_from_pygeoapi(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Import collections from pygeoapi."""
-    user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
     if not pygeoapi_configuration.is_file():
         collections_app.error_console.print(f"Error: pygeoapi configuration file not found.")
         sys.exit(1)
@@ -85,8 +84,8 @@ async def import_collections_from_pygeoapi(
             )
             sys.exit(1)
         collection_owner = existing_admins[0]
-        existing_collections = await collection_ops.collect_all_collections(
-            session, user, settings.get_authorization_backend())
+        existing_collections = await collection_queries.collect_all_user_collections(
+            session)
         relevant_collections = {
             id_: res for id_, res in pygeoapi_config.get("resources", {}).items()
             if res.get("type") == "collection"
@@ -122,12 +121,9 @@ async def list_collections(
         settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """List collections."""
-    user = PottoUser(id="cli", username="cli", is_active=True, scopes=[PottoScope.ADMIN.value])
     async with settings.get_db_session_maker()() as session:
-        collections, total = await collection_ops.paginated_list_collections(
+        collections, total = await collection_queries.paginated_list_user_collections(
             session,
-            user,
-            settings.get_authorization_backend(),
             page=page,
             page_size=page_size,
             include_total=True,

@@ -15,12 +15,12 @@ from ..config import (
     get_settings,
     PottoSettings,
 )
+from ..db.commands import auth as auth_commands
 from ..operations import auth as auth_ops
 from ..schemas.auth import UserCreate
 from ..schemas import cli as cli_schemas
 
 import cyclopts
-from starlette.authentication import UnauthenticatedUser
 
 user_app = cyclopts.App()
 logger = logging.getLogger(__name__)
@@ -101,7 +101,10 @@ async def create_user(
 ) -> None:
     """Create a new user when using the local auth provider."""
     if settings.oidc is not None:
-        raise SystemExit("Error: user creation is not supported when using an OIDC auth provider. Users are provisioned automatically on first login.")
+        raise SystemExit(
+            "Error: user creation is not supported when using an OIDC auth "
+            "provider. Users are provisioned automatically on first login."
+        )
     password = getpass.getpass("Password (at least 8 characters): ")
     password_confirm = getpass.getpass("Confirm password: ")
     if password != password_confirm:
@@ -115,7 +118,6 @@ async def create_user(
         )
     except Exception as err:
         raise SystemExit(f"Error: {err}") from err
-    user = UnauthenticatedUser()
     async with settings.get_db_session_maker()() as session:
-        db_user = await auth_ops.create_user(session, user, to_create)
+        db_user = await auth_commands.create_user(session, to_create)
     user_app.console.print(f"User {db_user.username!r} created (id: {db_user.id})")

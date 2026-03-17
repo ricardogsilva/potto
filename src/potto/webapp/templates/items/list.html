@@ -1,4 +1,4 @@
-{% extends "_base.html" %}
+{% extends "_old_base.html" %}
 {% block title %}{{ super() }} {{ data.resource.title }} {% endblock %}
 {% block crumbs %}{{ super() }}
     / <a href="{{ url_for('list-collections') }}">{% trans %}Collections{% endtrans %}</a>

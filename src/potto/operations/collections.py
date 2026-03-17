@@ -48,18 +48,17 @@ async def collect_all_collections(
         collection_type_filter: list[CollectionType] | None = None,
 ) -> list[Collection]:
     """List all collections that the user has access to."""
-    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(user)
-    if accessible_ids is None:
-        return await collection_queries.collect_all_collections(
+    if user is None:
+        return await collection_queries.collect_all_public_collections(
             session,
             collection_type_filter=collection_type_filter,
-            is_public_filter=None,
         )
-    return await collection_queries.collect_all_collections(
+    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(user)
+    return await collection_queries.collect_all_user_collections(
         session,
-        collection_type_filter=collection_type_filter,
-        user_id=user.id if user is not None else None,
+        user_id=user.id,
         accessible_identifiers=accessible_ids,
+        collection_type_filter=collection_type_filter,
     )
 
 
@@ -76,25 +75,24 @@ async def paginated_list_collections(
         spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
     """Produce a paginated list of all collections that the user has access to."""
-    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(user)
-    if accessible_ids is None:
-        return await collection_queries.paginated_list_collections(
+    if user is None:
+        return await collection_queries.paginated_list_public_collections(
             session,
             page=page,
             page_size=page_size,
             include_total=include_total,
             identifier_filter=identifier_filter,
-            is_public_filter=None,
             collection_type_filter=collection_type_filter,
             spatial_intersect=spatial_intersect,
         )
-    return await collection_queries.paginated_list_collections(
+    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(user)
+    return await collection_queries.paginated_list_user_collections(
         session,
         page=page,
         page_size=page_size,
         include_total=include_total,
         identifier_filter=identifier_filter,
-        user_id=user.id if user is not None else None,
+        user_id=user.id,
         accessible_identifiers=accessible_ids,
         collection_type_filter=collection_type_filter,
         spatial_intersect=spatial_intersect,
