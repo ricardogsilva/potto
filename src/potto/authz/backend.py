@@ -87,3 +87,13 @@ class LocalAuthorizationBackend:
 
     async def can_create_collection(self, user: PottoUser | None) -> bool:
         return user is not None
+
+    async def can_edit_server_metadata(self, user: PottoUser | None) -> bool:
+        if user is None:
+            return False
+        return PottoScope.ADMIN.value in user.scopes
+
+    async def can_create_user(self, user: PottoUser | None) -> bool:
+        if user is None:
+            return False
+        return PottoScope.ADMIN.value in user.scopes

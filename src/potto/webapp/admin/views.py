@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import (
     Any,
@@ -28,13 +29,16 @@ from ...config import PottoSettings
 from ...exceptions import (
     PottoCannotChangeCollectionOwnerException,
     PottoCannotCreateCollectionException,
+    PottoCannotCreateUserException,
     PottoCannotEditCollectionException,
+    PottoCannotEditServerMetadataException,
     PottoCannotSetAdminScopeException,
     PottoCannotSetScopesException,
     PottoException,
 )
 from ...operations import collections as collection_operations
 from ...operations import auth as auth_operations
+from ...operations import metadata as metadata_operations
 from ...db.models import (
     Collection,
     User,
@@ -53,6 +57,12 @@ from ...schemas.auth import (
     UserCreate,
     UserUpdate,
 )
+from ...schemas.metadata import (
+    DataProviderInformation,
+    LicenseInformation,
+    PointOfContact,
+    ServerMetadataUpdate,
+)
 from .fields import SpatialExtentField
 
 logger = logging.getLogger(__name__)
@@ -69,6 +79,10 @@ class _PottoAdminModelView(ModelView):
             raise FormValidationError({"resource_identifier": str(exc)})
         if isinstance(exc, PottoCannotCreateCollectionException):
             raise FormValidationError({"resource_identifier": str(exc)})
+        if isinstance(exc, PottoCannotEditServerMetadataException):
+            raise FormValidationError({"title": str(exc)})
+        if isinstance(exc, PottoCannotCreateUserException):
+            raise FormValidationError({"username": str(exc)})
         logger.exception("An error occurred", exc)
         return super().handle_exception(exc)
 
@@ -79,7 +93,15 @@ class UserView(_PottoAdminModelView):
     This view overrides both the `create` and `edit` methods in order to ensure they
     use our own db commands, thus ensuring a consistent schema is preserved whether modifications
     are done via the admin UI, the web API or the CLI.
+
+    User creation is restricted to admins and only available when using the local
+    authorization backend (not supported with OPA).
     """
+
+    async def async_can_create(self, request: Request) -> bool:
+        user = cast(PottoUser, request.user)
+        settings = cast(PottoSettings, request.app.state.SETTINGS)
+        return await settings.get_authorization_backend().can_create_user(user)
     fields = (
         User.username,
         User.email,
@@ -385,3 +407,124 @@ class CollectionItemView(_PottoAdminModelView):
         for sent_provider in request_providers:
             new_providers[sent_provider.pop("type")] = sent_provider
         return new_providers
+
+
+class ServerMetadataModelView(_PottoAdminModelView):
+    """Custom starlette-admin view for managing server metadata.
+
+    The server can only have a single ServerMetadata instance, so this view skips
+    the list page entirely (redirecting straight to edit) and disables create/delete.
+    Starlette-admin's field and form machinery is reused for the edit form.
+    """
+
+    skip_list = True
+
+    def can_create(self, request: Request) -> bool:
+        return False
+
+    def can_delete(self, request: Request) -> bool:
+        return False
+
+    async def async_can_edit(self, request: Request) -> bool:
+        user = cast(PottoUser, request.user)
+        settings = cast(PottoSettings, request.app.state.SETTINGS)
+        return await settings.get_authorization_backend().can_edit_server_metadata(user)
+
+    async def is_row_action_allowed(self, request: Request, name: str) -> bool:
+        if name == "edit":
+            return await self.async_can_edit(request)
+        return await super().is_row_action_allowed(request, name)
+
+    fields = (
+        StringField("title", required=True),
+        StringField("description"),
+        JSONField("keywords"),
+        StringField("keywords_type"),
+        StringField("terms_of_service"),
+        URLField("url"),
+        CollectionField("license", fields=(
+            StringField("name"),
+            URLField("url"),
+        )),
+        CollectionField("data_provider", fields=(
+            StringField("name"),
+            URLField("url"),
+        )),
+        CollectionField("point_of_contact", fields=(
+            StringField("name"),
+            StringField("position"),
+            StringField("address"),
+            StringField("city"),
+            StringField("state_or_province"),
+            StringField("postal_code"),
+            StringField("country"),
+            StringField("phone"),
+            StringField("fax"),
+            StringField("email"),
+            URLField("url"),
+            StringField("contact_hours"),
+            StringField("contact_instructions"),
+        )),
+    )
+
+    async def find_all(
+        self,
+        request: Request,
+        skip: int = 0,
+        limit: int = 100,
+        where: Any = None,
+        order_by: list[str] | None = None,
+    ) -> list[Any]:
+        settings = cast(PottoSettings, request.app.state.SETTINGS)
+        async with settings.get_db_session_maker()() as session:
+            return [await metadata_operations.get_server_metadata(session)]
+
+    async def count(self, request: Request, where: Any = None) -> int:
+        return 1
+
+    async def find_by_pk(self, request: Request, pk: Any) -> Any:
+        settings = cast(PottoSettings, request.app.state.SETTINGS)
+        async with settings.get_db_session_maker()() as session:
+            return await metadata_operations.get_server_metadata(session)
+
+    async def serialize_field_value(
+        self, value: Any, field: BaseField, action: RequestAction, request: Request
+    ) -> Any:
+        if field.name in ("title", "description", "terms_of_service") and isinstance(value, dict):
+            return json.dumps(value)
+        return await super().serialize_field_value(value, field, action, request)
+
+    async def edit(self, request: Request, pk: Any, data: dict[str, Any]) -> Any:
+        user = cast(PottoUser, request.user)
+        settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
+        lic_data = data.get("license") or {}
+        dp_data = data.get("data_provider") or {}
+        poc_data = data.get("point_of_contact") or {}
+        poc_values = {k: v or None for k, v in poc_data.items()}
+        try:
+            async with settings.get_db_session_maker()() as session:
+                return await metadata_operations.update_server_metadata(
+                    session,
+                    user,
+                    auth_backend,
+                    ServerMetadataUpdate(
+                        title=data.get("title") or None,
+                        description=data.get("description") or None,
+                        keywords=data.get("keywords"),
+                        keywords_type=data.get("keywords_type") or None,
+                        terms_of_service=data.get("terms_of_service") or None,
+                        url=data.get("url") or None,
+                        license=LicenseInformation(
+                            name=lic_data["name"],
+                            url=lic_data.get("url") or None,
+                        ) if lic_data.get("name") else None,
+                        data_provider=DataProviderInformation(
+                            name=dp_data["name"],
+                            url=dp_data.get("url") or None,
+                        ) if dp_data.get("name") else None,
+                        point_of_contact=PointOfContact(**poc_values) if any(poc_values.values()) else None,
+                    ),
+                )
+        except PottoException as err:
+            self.handle_exception(err)

@@ -9,6 +9,7 @@ from ..db.queries import auth as auth_queries
 from ..db.queries import collections as collection_queries
 from ..db.models import User
 from ..exceptions import (
+    PottoCannotCreateUserException,
     PottoCannotSetAdminScopeException,
     PottoCannotSetScopesException,
 )
@@ -30,6 +31,10 @@ async def create_user(
         authorization_backend: AuthorizationBackendProtocol,
         to_create: UserCreate,
 ) -> User:
+    if not await authorization_backend.can_create_user(requesting_user):
+        raise PottoCannotCreateUserException(
+            "User does not have permission to create new users."
+        )
     if to_create.scopes:
         await _check_scope_assignment(
             session, requesting_user, authorization_backend, to_create.scopes

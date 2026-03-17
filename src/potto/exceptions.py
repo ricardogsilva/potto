@@ -24,3 +24,11 @@ class PottoCannotCreateCollectionException(PottoException):
 
 class PottoCannotDeleteCollectionException(PottoException):
     ...
+
+
+class PottoCannotEditServerMetadataException(PottoException):
+    ...
+
+
+class PottoCannotCreateUserException(PottoException):
+    ...

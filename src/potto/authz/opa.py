@@ -112,3 +112,13 @@ class OPAAuthorizationBackend:
             {"user": self._user_input(user)},
         )
         return bool(result)
+
+    async def can_edit_server_metadata(self, user: PottoUser | None) -> bool:
+        result = await self._query(
+            "can_edit_server_metadata",
+            {"user": self._user_input(user)},
+        )
+        return bool(result)
+
+    async def can_create_user(self, user: PottoUser | None) -> bool:
+        return False

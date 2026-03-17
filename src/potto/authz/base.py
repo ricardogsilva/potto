@@ -56,3 +56,11 @@ class AuthorizationBackendProtocol(Protocol):
     async def can_create_collection(self, user: PottoUser | None) -> bool:
         """Return True if user is allowed to create a new collection."""
         ...
+
+    async def can_edit_server_metadata(self, user: PottoUser | None) -> bool:
+        """Return True if user is allowed to edit the server metadata."""
+        ...
+
+    async def can_create_user(self, user: PottoUser | None) -> bool:
+        """Return True if user is allowed to create new local users."""
+        ...
