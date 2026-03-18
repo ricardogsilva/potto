@@ -1,6 +1,7 @@
 import datetime as dt
 import logging
 import uuid
+from functools import partial
 from typing import Any
 
 import pydantic
@@ -11,9 +12,12 @@ from jinja2 import Template
 from geoalchemy2.shape import to_shape
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import (
+    Column,
+    DateTime,
     Field,
     Relationship,
     SQLModel,
+    func,
 )
 from starlette.requests import Request
 
@@ -29,6 +33,7 @@ from ..schemas.base import (
 )
 
 logger = logging.getLogger(__name__)
+now_ = partial(dt.datetime.now, tz=dt.timezone.utc)
 
 
 class ShapelyGeometryAdapter(geoalchemy2.Geometry):
@@ -100,6 +105,10 @@ class Collection(SQLModel, table=True):
         default=None,
         sa_type=JSONB(),
         nullable=True
+    )
+    created_at: dt.datetime | None = Field(default_factory=now_)
+    updated_at: dt.datetime | None = Field(
+        sa_column=Column(DateTime(), onupdate=func.now())
     )
 
     owner: "User" = Relationship(back_populates="owned_collections")

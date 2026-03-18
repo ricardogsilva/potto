@@ -132,7 +132,10 @@ async def list_public_collections(
     statement = _apply_common_filters(
         statement, identifier_filter, collection_type_filter, spatial_intersect
     )
-    statement = statement.order_by(Collection.resource_identifier.desc().nullslast())
+    statement = statement.order_by(
+        Collection.created_at,
+        Collection.resource_identifier.desc().nullslast()
+    )
     items = (await session.exec(statement.offset(offset).limit(limit))).all()
     num_total = (
         await _get_total_num_records(session, statement) if include_total else None
@@ -171,7 +174,10 @@ async def list_user_collections(
     statement = _apply_common_filters(
         statement, identifier_filter, collection_type_filter, spatial_intersect
     )
-    statement = statement.order_by(Collection.resource_identifier.desc().nullslast())
+    statement = statement.order_by(
+        Collection.created_at,
+        Collection.resource_identifier.desc().nullslast()
+    )
     items = (await session.exec(statement.offset(offset).limit(limit))).all()
     num_total = (
         await _get_total_num_records(session, statement) if include_total else None

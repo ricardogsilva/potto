@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pydantic
 
 from ...schemas.base import CollectionType
@@ -21,6 +23,8 @@ class CollectionListItem(pydantic.BaseModel):
 class CollectionDetail(CollectionListItem):
     editors: list[str] = []
     viewers: list[str] = []
+    created_at: dt.datetime
+    updated_at: dt.datetime | None
 
     @classmethod
     def from_db_item(

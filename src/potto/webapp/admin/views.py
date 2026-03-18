@@ -175,7 +175,7 @@ class UserView(_PottoAdminModelView):
                 self.handle_exception(err)
 
 
-class CollectionItemView(_PottoAdminModelView):
+class CollectionView(_PottoAdminModelView):
     """Custom starlette-admin view for managing collections
 
     This view overrides both the `create` and `edit` methods in order to ensure they
@@ -188,6 +188,8 @@ class CollectionItemView(_PottoAdminModelView):
         Collection.is_public,
         Collection.title,
         Collection.description,
+        Collection.created_at,
+        Collection.updated_at,
         HasOne("owner", identity="user"),
         HasMany("editors", identity="user"),
         HasMany("viewers", identity="user"),
@@ -234,7 +236,16 @@ class CollectionItemView(_PottoAdminModelView):
         "editors",
         "viewers",
     )
-    exclude_fields_from_create = ("editors", "viewers")
+    exclude_fields_from_create = (
+        "created_at",
+        "updated_at",
+        "editors",
+        "viewers",
+    )
+    exclude_fields_from_edit = (
+        "created_at",
+        "updated_at",
+    )
 
     async def is_row_action_allowed(self, request: Request, name: str) -> bool:
         if name in ("edit", "delete"):

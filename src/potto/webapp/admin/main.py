@@ -151,7 +151,7 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
         )
     )
     app.add_view(
-        views.CollectionItemView(
+        views.CollectionView(
             Collection,
             icon="fa fa-database",
             label="Collections",
