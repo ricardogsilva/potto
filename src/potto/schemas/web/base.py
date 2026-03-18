@@ -46,7 +46,7 @@ class JsonLanding(pydantic.BaseModel):
                 title="OpenAPI document"
             ),
             Link(
-                type=constants.MEDIA_TYPE_JSON,
+                type=constants.MEDIA_TYPE_HTML,
                 rel=constants.REL_SERVICE_DOC,
                 href=str(url_resolver("api:swagger_ui_html")),
                 title="API documentation"
@@ -57,19 +57,13 @@ class JsonLanding(pydantic.BaseModel):
                 href=str(url_resolver("api:conformance-page")),
                 title="API conformance declaration"
             ),
+            Link(
+                type=constants.MEDIA_TYPE_JSON,
+                rel=constants.REL_COLLECTIONS,
+                href=str(url_resolver("api:list-collections")),
+                title="Collections exposed by this server"
+            ),
         ]
-        if any(
-                c for c in potto_response.collections.collections
-                if c.type_ == CollectionType.FEATURE_COLLECTION
-        ):
-            links.extend([
-                Link(
-                    type=constants.MEDIA_TYPE_JSON,
-                    rel=constants.REL_COLLECTIONS,
-                    href=str(url_resolver("api:list-collections")),
-                    title="Collections exposed by this server"
-                ),
-            ])
         return cls(
             title=potto_response.metadata.title,
             description=potto_response.metadata.description,

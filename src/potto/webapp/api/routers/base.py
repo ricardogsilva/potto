@@ -20,8 +20,7 @@ async def landing_page(
         potto: PottoDependency,
         user: UserDependency
 ) -> base.JsonLanding:
-    result = await potto.api_get_landing_page(
-        user=user, language=request.state.locale.language)
+    result = await potto.api_get_landing_page(user=user)
     return base.JsonLanding.from_potto(result, request.url_for)
 
 
