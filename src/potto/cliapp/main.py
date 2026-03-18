@@ -119,6 +119,7 @@ def run_uvicorn_server(
             [
                 "--reload",
                 f"--reload-dir={str(Path(__file__).parents[1])}",
+                "--reload-include=*.html",
                 "--log-level=debug",
             ]
         )

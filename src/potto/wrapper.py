@@ -119,7 +119,6 @@ class Potto:
             self,
             *,
             user: auth.PottoUser | None,
-            language: str | None = None,
     ) -> potto_schemas.LandingPage:
         """Return overview information.
 
@@ -197,7 +196,6 @@ class Potto:
             )
         )
 
-
     async def api_get_collection(
             self,
             collection_id: str,
@@ -205,7 +203,19 @@ class Potto:
             user: BaseUser,
             locale: babel.Locale
     ) -> potto_schemas.Collection:
-        ...
+        pygeoapi_api = await self._get_pygeoapi(
+            user, collection_identifier=collection_id)
+        pygeoapi_response = await asyncio.to_thread(
+            _describe_collections,
+            pygeoapi_api,
+            PottoRequest(locale=locale, output_format="json"),
+            collection_id,
+        )
+        pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
+        parsed_pygeoapi_content = json.loads(pygeoapi_content)
+        return potto_schemas.Collection.from_pygeoapi(
+            parsed_pygeoapi_content, pygeoapi_api
+        )
 
     async def api_list_collection_items(
             self,

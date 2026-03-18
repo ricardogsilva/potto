@@ -7,6 +7,7 @@ from starlette.responses import Response
 
 from ...operations import collections as collection_operations
 from ...schemas.web import items
+from ...schemas import auth as auth_schemas
 
 from ...config import PottoSettings
 from ...wrapper import Potto
@@ -15,32 +16,44 @@ logger = logging.getLogger(__name__)
 
 
 async def list_collections(request: Request) -> Response:
-    # current_locale = babel.Locale.parse(request.state.language)
-    settings: PottoSettings = request.state.settings
-    async with settings.get_db_session_maker()() as session:
-        db_collections, total = await collection_operations.paginated_list_collections(
-            session, include_total=True)
+    user = (
+        potto_user
+        if isinstance(
+            (potto_user := request.user), auth_schemas.PottoUser)
+        else None
+    )
+    potto: Potto = request.state.potto
     return request.state.templates.TemplateResponse(
         request,
         "collections/list.html",
         context={
-            "items": db_collections,
+            "contents": await potto.api_list_collections(
+                user=user,
+                locale=babel.Locale.parse(request.state.language),
+                page=int(request.query_params.get("page", 1)),
+                page_size=int(request.query_params.get("page_size", 20)),
+            ),
         }
     )
 
 
 async def get_collection_details(request: Request) -> Response:
-    # current_locale = babel.Locale.parse(request.state.language)
-    settings: PottoSettings = request.state.settings
-    collection_id = request.path_params["collection_id"]
-    async with settings.get_db_session_maker()() as session:
-        db_collection = await collection_operations.get_collection_by_resource_identifier(
-            session, collection_id)
+    user = (
+        potto_user
+        if isinstance(
+            (potto_user := request.user), auth_schemas.PottoUser)
+        else None
+    )
+    potto: Potto = request.state.potto
     return request.state.templates.TemplateResponse(
         request,
         "collections/detail.html",
         context={
-            "item": db_collection,
+            "contents": await potto.api_get_collection(
+                request.path_params["collection_id"],
+                user=user,
+                locale=babel.Locale.parse(request.state.language),
+            ),
         }
     )
 

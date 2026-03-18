@@ -47,7 +47,7 @@ async def get_pygeoapi_config(
     pygeoapi_config = {
         "server": {
             "admin": server_conf.get("admin", False),  # we don't use pygeoapi's admin, but rather provide our own
-            "languages": settings.locales,
+            "languages": settings.languages,
             "limits": server_conf["limits"],
             "map": server_conf["map"],
             "locale_dir": server_conf.get("locale_dir"),

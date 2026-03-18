@@ -1,3 +1,7 @@
+import logging
+from typing import Any
+
+from jinja2 import pass_context
 from pygeoapi.util import (
     DATETIME_FORMAT,
     to_json as _to_json,
@@ -8,6 +12,57 @@ from pygeoapi.util import (
     get_breadcrumbs as _get_breadcrumbs,
     filter_dict_by_key_value as _filter_dict_by_key_value,
 )
+
+logger = logging.getLogger(__name__)
+
+COLORS: dict[str, str] = {
+    # collection type badge colors (Bootstrap text-bg-* classes)
+    "collection_type_feature": "text-bg-primary",
+    "collection_type_record": "text-bg-success",
+    "collection_type_coverage": "text-bg-info",
+}
+
+ICONS: dict[str, str] = {
+    # collection types
+    "collection_type_feature": "bi bi-layers",
+    "collection_type_record": "bi bi-archive",
+    "collection_type_coverage": "bi bi-grid-3x3-gap",
+    # user / auth
+    "user": "bi bi-person",
+    "login": "bi bi-box-arrow-in-right",
+    "logout": "bi bi-box-arrow-right",
+    # navigation / actions
+    "settings": "bi bi-gear",
+    "search": "bi bi-search",
+    "chevron_left": "bi bi-chevron-left",
+    "chevron_right": "bi bi-chevron-right",
+    # content
+    "collections": "bi bi-collection",
+    "warning": "bi bi-exclamation-triangle-fill",
+}
+
+
+@pass_context
+def get_translatable_string(
+        context: dict[str, Any],
+        value: str | dict[str, str] | None
+) -> str | None:
+    logger.debug(f"{value=}")
+    request = context['request']
+    logger.debug(f"{request.state.language=}")
+    if value is None:
+        return None
+    try:
+        result = value.get(
+            request.state.language,
+            list(value.values())[0]
+        )
+        logger.debug(f"{result=}")
+        return result
+    except AttributeError:
+        return str(value) or None
+    except IndexError:
+        return None
 
 
 def to_json(data_: dict, pretty: bool = False) -> str:

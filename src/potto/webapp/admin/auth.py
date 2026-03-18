@@ -53,6 +53,10 @@ class LocalAdminAuthProvider(AuthProvider):
         request.session.clear()
         return response
 
+    async def render_logout(self, request: Request, admin) -> Response:
+        await self.logout(request, Response())
+        return RedirectResponse(request.url_for("landing-page"), status_code=303)
+
 
 class OIDCAdminAuthProvider(AuthProvider):
 
@@ -63,7 +67,7 @@ class OIDCAdminAuthProvider(AuthProvider):
     async def render_login(self, request: Request, admin) -> Response:
         """Skip the login form and redirect straight to the OIDC provider."""
         base_url = str(request.base_url).rstrip("/")
-        next_url = base_url + "/admin"
+        next_url = str(request.url_for("landing-page"))
         return RedirectResponse(f"{base_url}/auth/oidc/login?next={next_url}")
 
     async def login(
@@ -90,12 +94,18 @@ class OIDCAdminAuthProvider(AuthProvider):
             discovery = await oidc_provider.get_discovery()
             end_session_endpoint = discovery.get("end_session_endpoint")
             if end_session_endpoint:
-                post_logout_redirect_uri = str(request.base_url).rstrip("/") + "/admin"
+                post_logout_redirect_uri = str(request.url_for("landing-page"))
                 params = {"post_logout_redirect_uri": post_logout_redirect_uri}
                 if id_token:
                     params["id_token_hint"] = id_token
                 return RedirectResponse(f"{end_session_endpoint}?{urlencode(params)}")
         return response
+
+    async def render_logout(self, request: Request, admin) -> Response:
+        redirect = await self.logout(request, Response())
+        if isinstance(redirect, RedirectResponse):
+            return redirect
+        return RedirectResponse(request.url_for("landing-page"), status_code=303)
 
 
 async def _check_session(request: Request, settings: PottoSettings) -> bool:

@@ -132,11 +132,14 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
         title="Potto admin",
     )
     app.add_view(
-        views.CollectionItemView(
-            Collection,
-            icon="fa fa-database",
-            label="Collections",
-            identity="collection_item",
+        Link(label="Back to front page", url="/", icon="fa fa-home")
+    )
+    app.add_view(
+        views.ServerMetadataModelView(
+            ServerMetadata,
+            icon="fa fa-server",
+            label="Server Metadata",
+            identity="server_metadata",
         )
     )
     app.add_view(
@@ -148,14 +151,11 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
         )
     )
     app.add_view(
-        views.ServerMetadataModelView(
-            ServerMetadata,
-            icon="fa fa-server",
-            label="Server Metadata",
-            identity="server_metadata",
+        views.CollectionItemView(
+            Collection,
+            icon="fa fa-database",
+            label="Collections",
+            identity="collection_item",
         )
-    )
-    app.add_view(
-        Link(label="Back to front page", url="/", icon="fa fa-home")
     )
     return app

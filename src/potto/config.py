@@ -66,7 +66,7 @@ class PottoSettings(pydantic_settings.BaseSettings):
     templates_dir: Path | None = None
     admin_templates_dir: Path | None = None
     translations_dir: Path | None = None
-    locales: list[str] = ["en"]
+    languages: list[str] = ["en"]
     reload_dirs: str | list[str] | None = None
     session_secret_key: pydantic.SecretStr = "somesecretkey"
     static_dir: Path | None = None
@@ -162,6 +162,7 @@ def _get_jinja_env(settings: PottoSettings) -> jinja2.Environment:
         ]
     )
     jinja_env.filters.update({
+        "get_translatable_string": jinjafilters.get_translatable_string,
         "to_json": jinjafilters.to_json,
         "format_datetime": jinjafilters.format_datetime,
         "format_duration": jinjafilters.format_duration,
@@ -173,6 +174,8 @@ def _get_jinja_env(settings: PottoSettings) -> jinja2.Environment:
     jinja_env.globals.update({
         "settings": settings,
         "pygeoapi_version": pygeoapi_version,
+        "icons": jinjafilters.ICONS,
+        "colors": jinjafilters.COLORS,
     })
     configure_jinja_env(jinja_env)
     return jinja_env

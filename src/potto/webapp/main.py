@@ -72,8 +72,8 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
         middleware=[
             Middleware(
                 LocaleMiddleware,
-                locales=settings.locales,
-                default_locale=settings.locales[0]
+                locales=settings.languages,
+                default_locale=settings.languages[0]
             ),
             Middleware(
                 SessionMiddleware,
@@ -108,6 +108,7 @@ def get_routes(
     routes += [
         # Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
         Route("/", landing_routes.get_landing_page, name="landing-page"),
+        Route("/set-language/{lang}", landing_routes.set_language, name="set_language"),
         Route(
             "/conformance",
             ogc_api_common_routes.get_conformance_details,
