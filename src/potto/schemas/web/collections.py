@@ -81,7 +81,19 @@ class JsonCollection(pydantic.BaseModel):
             item_type=potto_collection.type_.value,
             title=potto_collection.title,
             description=potto_collection.description,
-            links=[],
+            links=[
+                # link to self
+                base.Link(
+                    type=constants.MEDIA_TYPE_JSON,
+                    rel=constants.REL_SELF,
+                    href=str(url_resolver("get_collection_details")),
+                    title="Collection details"
+                )
+                # link to self in html
+                # link to items
+                # link to collection schema
+                # link to collection queryables
+            ],
             extent=base.Extent(
                 spatial=spatial_extent,
                 temporal=temporal_extent,
