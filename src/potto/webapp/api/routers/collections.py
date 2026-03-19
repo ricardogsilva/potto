@@ -28,7 +28,9 @@ router = APIRouter()
 
 @router.get(
     "/collections",
-    name="list-collections",
+    name="collection-list",
+    response_model_exclude_none=True,
+    response_model=JsonCollectionList
 )
 async def list_collections(
         request: Request,
@@ -43,7 +45,7 @@ async def list_collections(
 
 @router.get(
     "/collections/{collection_id}",
-    name="get-collection",
+    name="collection-get",
     response_model=JsonCollection,
 )
 async def get_collection_details(

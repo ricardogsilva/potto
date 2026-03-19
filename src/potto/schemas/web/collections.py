@@ -82,14 +82,28 @@ class JsonCollection(pydantic.BaseModel):
             title=potto_collection.title,
             description=potto_collection.description,
             links=[
-                # link to self
                 base.Link(
                     type=constants.MEDIA_TYPE_JSON,
                     rel=constants.REL_SELF,
-                    href=str(url_resolver("get_collection_details")),
+                    href=str(
+                        url_resolver(
+                            "api:collection-get",
+                            collection_id=potto_collection.identifier
+                        )
+                    ),
                     title="Collection details"
-                )
-                # link to self in html
+                ),
+                base.Link(
+                    type=constants.MEDIA_TYPE_HTML,
+                    rel=constants.REL_ALTERNATE,
+                    href=str(
+                        url_resolver(
+                            "collection-get",
+                            collection_id=potto_collection.identifier
+                        )
+                    ),
+                    title="Collection details"
+                ),
                 # link to items
                 # link to collection schema
                 # link to collection queryables
