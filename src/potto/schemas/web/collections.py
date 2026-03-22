@@ -104,9 +104,23 @@ class JsonCollection(pydantic.BaseModel):
                     ),
                     title="Collection details"
                 ),
-                # link to items
+                base.Link(
+                    type=constants.MEDIA_TYPE_GEO_JSON,
+                    rel=constants.REL_ITEMS,
+                    href=str(
+                        url_resolver(
+                            "api:collection-item-list",
+                            collection_id=potto_collection.identifier
+                        )
+                    )
+                ),
                 # link to collection schema
                 # link to collection queryables
+                *[
+                    base.Link(
+                        **li
+                    ) for li in potto_collection.additional_links
+                ]
             ],
             extent=base.Extent(
                 spatial=spatial_extent,

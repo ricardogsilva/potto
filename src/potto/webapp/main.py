@@ -66,9 +66,71 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
         if oidc_provider is not None
         else LocalAuthBackend(settings)
     )
+    api_app = create_api_app_from_settings(settings)
+    routes = []
+    if settings.oidc is not None:
+        routes += [
+            Route("/auth/oidc/login", auth_routes.oidc_login, name="oidc-login"),
+            Route("/auth/oidc/callback", auth_routes.oidc_callback, name="oidc-callback"),
+        ]
+    routes += [
+        Route("/", landing_routes.get_landing_page, name="landing-page"),
+        Route("/set-language/{lang}", landing_routes.set_language, name="set_language"),
+        Route(
+            "/conformance",
+            ogc_api_common_routes.get_conformance_details,
+            name="conformance-document"
+        ),
+        Route(
+            "/openapi",
+            ogc_api_common_routes.get_openapi_document,
+            name="openapi-document"
+        ),
+    ]
+    if True:  # whether to enable ogc api features routes: let's make this controllable via server metadata
+        routes.extend([
+            Route(
+                "/collections/{collection_id}/items/{item_id}",
+                ogc_api_features_routes.get_item_details,
+                name="get-item"
+            ),
+            Route(
+                "/collections/{collection_id}/items",
+                ogc_api_features_routes.list_collection_items,
+                name="collection-list-items"
+            ),
+            Route(
+                "/collections/{collection_id}",
+                ogc_api_features_routes.get_collection_details,
+                name="collection-get"
+            ),
+            Route(
+                "/collections",
+                ogc_api_features_routes.list_collections,
+                name="collection-list"
+            ),
+        ])
+    routes.extend([
+        Mount(
+            "/api",
+            app=api_app,
+            name="api"
+        ),
+        Mount(
+            "/static",
+            app=StaticFiles(
+                directory=settings.static_dir,
+                packages=[
+                    ("potto", "webapp/static"),
+                    ("pygeoapi", "static")
+                ]
+            ),
+            name="static"
+        ),
+    ])
     app = Starlette(
         debug=settings.debug,
-        routes=get_routes(settings, enable_ogcapi_features=True),
+        routes=routes,
         middleware=[
             Middleware(
                 LocaleMiddleware,
@@ -93,73 +155,3 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
     admin_app = create_admin_app_from_settings(settings)
     admin_app.mount_to(app)
     return app
-
-
-def get_routes(
-        settings: config.PottoSettings,
-        enable_ogcapi_features: bool = False,
-) -> list[Route | Mount]:
-    routes: list[Route | Mount] = []
-    if settings.oidc is not None:
-        routes += [
-            Route("/auth/oidc/login", auth_routes.oidc_login, name="oidc-login"),
-            Route("/auth/oidc/callback", auth_routes.oidc_callback, name="oidc-callback"),
-        ]
-    routes += [
-        # Route("/", ogc_api_common_routes.get_landing_page, name="landing-page"),
-        Route("/", landing_routes.get_landing_page, name="landing-page"),
-        Route("/set-language/{lang}", landing_routes.set_language, name="set_language"),
-        Route(
-            "/conformance",
-            ogc_api_common_routes.get_conformance_details,
-            name="conformance-document"
-        ),
-        Route(
-            "/openapi",
-            ogc_api_common_routes.get_openapi_document,
-            name="openapi-document"
-        ),
-    ]
-    if enable_ogcapi_features:
-        routes.extend([
-            Route(
-                "/collections/{collection_id}/items/{item_id}",
-                ogc_api_features_routes.get_item_details,
-                name="get-item"
-            ),
-            Route(
-                "/collections/{collection_id}/items",
-                ogc_api_features_routes.list_collection_items,
-                name="collection-list-items"
-            ),
-            Route(
-                "/collections/{collection_id}",
-                ogc_api_features_routes.get_collection_details,
-                name="collection-get"
-            ),
-            Route(
-                "/collections",
-                ogc_api_features_routes.list_collections,
-                name="collection-list"
-            ),
-        ])
-    api_app = create_api_app_from_settings(settings)
-    routes.extend([
-        Mount(
-            "/api",
-            app=api_app,
-            name="api"
-        ),
-        Mount(
-            "/static",
-            app=StaticFiles(
-                directory=settings.static_dir,
-                packages=[
-                    ("potto", "webapp/static"),
-                    ("pygeoapi", "static")
-                ]
-            ),
-            name="static"
-        ),
-    ])
-    return routes

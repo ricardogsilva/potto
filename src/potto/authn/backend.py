@@ -25,15 +25,14 @@ class LocalAuthBackend(AuthenticationBackend):
     async def authenticate(
             self, conn: HTTPConnection
     ) -> tuple[AuthCredentials, PottoUser] | None:
-        # Try session first
-        user_id = conn.session.get("user_id")
-        if user_id:
+        logger.debug(f"Inside LocalAuthBackend.authenticate")
+        if user_id := conn.session.get("user_id"):
+            logger.debug(f"{user_id=} found in the session")
             if (potto_user := await self._get_user_from_db(user_id)) is not None:
                 return AuthCredentials(potto_user.scopes), potto_user
             logger.warning(
                 f"Session contains user_id {user_id!r} but user not found or inactive"
             )
-
         # Try local HS256 Bearer JWT
         if (
                 (auth_header := conn.headers.get("Authorization"))
@@ -46,6 +45,7 @@ class LocalAuthBackend(AuthenticationBackend):
                     self._settings.session_secret_key.get_secret_value(),
                 )
             except jwt.InvalidTokenError:
+                logger.warning(f"Was sent invalid token {token!r}")
                 return None
             if (potto_user := await self._get_user_from_db(payload["sub"])) is not None:
                 return AuthCredentials(potto_user.scopes), potto_user

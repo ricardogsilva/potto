@@ -24,7 +24,7 @@ router = APIRouter()
 
 @router.get(
     "/collections/{collection_id}/items",
-    name="list-collection-items"
+    name="collection-item-list"
 )
 async def list_collection_items(
         request: Request,
