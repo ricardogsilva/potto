@@ -1,5 +1,9 @@
+import dataclasses
 import logging
-from typing import Annotated
+from typing import (
+    Annotated,
+    Any,
+)
 
 import pydantic
 
@@ -106,7 +110,7 @@ class JsonCollection(pydantic.BaseModel):
                 ),
                 base.Link(
                     type=constants.MEDIA_TYPE_GEO_JSON,
-                    rel=constants.REL_ITEMS,
+                    rel=constants.REL_COLLECTION_ITEMS,
                     href=str(
                         url_resolver(
                             "api:collection-item-list",
@@ -115,7 +119,16 @@ class JsonCollection(pydantic.BaseModel):
                     )
                 ),
                 # link to collection schema
-                # link to collection queryables
+                base.Link(
+                    type=constants.MEDIA_TYPE_JSON_SCHEMA,
+                    rel=constants.REL_COLLECTION_QUERYABLES,
+                    href=str(
+                        url_resolver(
+                            "api:collection-get-queryables",
+                            collection_id=potto_collection.identifier
+                        )
+                    )
+                ),
                 *[
                     base.Link(
                         **li
@@ -157,5 +170,3 @@ class JsonCollectionList(pydantic.BaseModel):
             ],
             links=[],
         )
-
-

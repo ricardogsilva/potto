@@ -24,14 +24,18 @@ from ..base import Link
 class ItemFilter(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(extra="allow")
 
+    # bbox, datetime are specified in oapif-part1
     bbox: str | None = None
+    datetime_: Annotated[str | None, pydantic.Field(alias="datetime")] = None
+
     bbox_crs: Annotated[str | None, pydantic.Field(alias="bbox-crs")] = None
     cql_text: str | None = None
-    datetime_: Annotated[str | None, pydantic.Field(alias="datetime")] = None
     extra_properties: dict[str, str] | None = None
+    # filter, filter-lang, filter-crs are specified in oapif-part3
     filter_: Annotated[str | None, pydantic.Field(alias="filter")] = None
     filter_lang: str | None = None
     filter_crs_uri: str | None = None
+
     limit: int = 20
     locale: Annotated[str | None, pydantic.Field(alias="language")] = None
     offset: int = 0

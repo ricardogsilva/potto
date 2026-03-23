@@ -1,8 +1,11 @@
 """Schemas used for responses of the Potto wrapper."""
 
+import copy
 import dataclasses
 import datetime as dt
 import json
+from typing import Any
+
 import shapely
 from pygeoapi.api import API as _PygeoapiApi
 
@@ -76,12 +79,17 @@ class Collection:
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
     providers: dict[str, base.CollectionProvider] | None = None
+    queryables: dict[str, Any] | None = None
+    schema: dict[str, Any] | None = None
 
     @classmethod
     def from_pygeoapi(
             cls,
             pygeoapi_collection: dict,
             pygeoapi_api: _PygeoapiApi,
+            *,
+            pygeoapi_collection_queryables: dict | None = None,
+            pygeoapi_collection_schema: dict | None = None,
     ) -> "Collection":
         raw_bbox = (
             pygeoapi_collection
@@ -119,6 +127,10 @@ class Collection:
                 )
             )
         additional_links = pygeoapi_collection_conf.get("links")
+        queryables = None
+        if pygeoapi_collection_queryables is not None:
+            queryables = copy.deepcopy(pygeoapi_collection_queryables)
+            del queryables["$id"]
         return cls(
             type_=util.get_collection_type(pygeoapi_collection_conf),
             identifier=collection_id,
@@ -131,6 +143,7 @@ class Collection:
             temporal_extent_end=temporal_end,
             additional_links=additional_links,
             providers=parsed_providers,
+            queryables=queryables
         )
 
 

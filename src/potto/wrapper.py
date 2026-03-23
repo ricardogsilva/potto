@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from http import HTTPStatus
 from typing import (
     Literal,
     Sequence,
@@ -19,6 +20,7 @@ from pygeoapi.api import (
 from pygeoapi.api.itemtypes import (
     get_collection_items as _get_collection_items,
     get_collection_item as _get_collection_item,
+    get_collection_queryables as _get_collection_queryables,
 )
 from pygeoapi.openapi import get_oas_30
 from pygeoapi.l10n import translate_struct
@@ -201,8 +203,10 @@ class Potto:
             collection_id: str,
             *,
             user: BaseUser,
-            locale: babel.Locale
-    ) -> potto_schemas.Collection:
+            locale: babel.Locale,
+            include_queryables: bool = False,
+            include_schema: bool = False,
+    ) -> potto_schemas.Collection | None:
         pygeoapi_api = await self._get_pygeoapi(
             user, collection_identifier=collection_id)
         pygeoapi_response = await asyncio.to_thread(
@@ -213,8 +217,28 @@ class Potto:
         )
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
+        logger.debug(f"{parsed_pygeoapi_content=}")
+        logger.debug(f"{pygeoapi_status_code=}")
+        if pygeoapi_status_code == HTTPStatus.NOT_FOUND:
+            return None
+        collection_queryables = None
+        if include_queryables:
+            queryables_response = await asyncio.to_thread(
+                _get_collection_queryables,
+                pygeoapi_api,
+                PottoRequest(locale=locale, output_format="json"),
+                collection_id
+            )
+            pygeoapi_queryables_content = queryables_response[-1]
+            collection_queryables = json.loads(pygeoapi_queryables_content)
+        collection_schema = None
+        if include_schema:
+            pass  # TODO
         return potto_schemas.Collection.from_pygeoapi(
-            parsed_pygeoapi_content, pygeoapi_api
+            parsed_pygeoapi_content,
+            pygeoapi_api,
+            pygeoapi_collection_queryables=collection_queryables,
+            pygeoapi_collection_schema=collection_schema,
         )
 
     async def api_list_collection_items(

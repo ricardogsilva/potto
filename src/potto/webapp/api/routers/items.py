@@ -43,7 +43,7 @@ async def list_collection_items(
 
 @router.get(
     "/collections/{collection_id}/items/{item_id}",
-    name="get-item"
+    name="collection-item-get"
 )
 async def get_item_details(
         request: Request,

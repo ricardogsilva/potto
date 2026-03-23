@@ -1,7 +1,9 @@
+import copy
 import logging
 
 from fastapi import (
     APIRouter,
+    HTTPException,
     Request,
 )
 
@@ -48,6 +50,7 @@ async def list_collections(
     "/collections/{collection_id}",
     name="collection-get",
     response_model=JsonCollection,
+    response_model_exclude_none=True
 )
 async def get_collection_details(
         request: Request,
@@ -56,9 +59,30 @@ async def get_collection_details(
         user: UserDependency,
         locale: LocaleDependency,
 ) -> JsonCollection:
-    potto_collection = await potto.api_get_collection(
-        collection_id, user=user, locale=locale)
+    if (
+            potto_collection := await potto.api_get_collection(
+                collection_id, user=user, locale=locale)
+    ) is None:
+        raise HTTPException(status_code=404, detail="Collection not found.")
     return JsonCollection.from_potto(potto_collection, request.url_for)
+
+
+@router.get(
+    "/collections/{collection_id}/queryables",
+    name="collection-get-queryables",
+)
+async def get_collection_queryables(
+        request: Request,
+        collection_id: str,
+        potto: PottoDependency,
+        user: UserDependency,
+        locale: LocaleDependency,
+):
+    potto_collection = await potto.api_get_collection(
+        collection_id, user=user, locale=locale, include_queryables=True)
+    queryables = copy.deepcopy(potto_collection.queryables)
+    queryables["$id"] = request.url_for("api:collection-get", collection_id=collection_id)
+    return queryables
 
 
 @router.post(
