@@ -13,6 +13,7 @@ from starlette.authentication import BaseUser
 from pygeoapi.api import (
     API as _API,
     describe_collections as _describe_collections,
+    get_collection_schema as _get_collection_schema,
     evaluate_limit as _evaluate_limit,
     F_JSON,
     FORMAT_TYPES as _FORMAT_TYPES,
@@ -217,8 +218,6 @@ class Potto:
         )
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
-        logger.debug(f"{parsed_pygeoapi_content=}")
-        logger.debug(f"{pygeoapi_status_code=}")
         if pygeoapi_status_code == HTTPStatus.NOT_FOUND:
             return None
         collection_queryables = None
@@ -233,7 +232,14 @@ class Potto:
             collection_queryables = json.loads(pygeoapi_queryables_content)
         collection_schema = None
         if include_schema:
-            pass  # TODO
+            schema_response = await asyncio.to_thread(
+                _get_collection_schema,
+                pygeoapi_api,
+                PottoRequest(locale=locale, output_format="json"),
+                collection_id
+            )
+            pygeoapi_schema_content = schema_response[-1]
+            collection_schema = json.loads(pygeoapi_schema_content)
         return potto_schemas.Collection.from_pygeoapi(
             parsed_pygeoapi_content,
             pygeoapi_api,

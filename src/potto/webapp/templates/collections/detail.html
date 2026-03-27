@@ -1,5 +1,9 @@
 {% extends "_base.html" %}
 
+{% block extrahead %}
+<style>{{ pygments_css }}</style>
+{% endblock %}
+
 {% block page_title %}{{ contents.title | get_translatable_string }}{% endblock %}
 {% block page_description %}{{ contents.description | get_translatable_string }}{% endblock %}
 
@@ -121,6 +125,18 @@
         </li>
         {% endfor %}
     </ul>
+    {% endif %}
+
+    {# ── Schema ────────────────────────────────────────────────────────────── #}
+    {% if schema_html %}
+    <h2 class="h5 mt-4 mb-2">Schema</h2>
+    {{ schema_html | safe }}
+    {% endif %}
+
+    {# ── Queryables ────────────────────────────────────────────────────────── #}
+    {% if queryables_html %}
+    <h2 class="h5 mt-4 mb-2">Queryables</h2>
+    {{ queryables_html | safe }}
     {% endif %}
 
     {# ── API access ───────────────────────────────────────────────────────── #}

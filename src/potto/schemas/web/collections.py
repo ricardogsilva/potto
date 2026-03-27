@@ -118,7 +118,16 @@ class JsonCollection(pydantic.BaseModel):
                         )
                     )
                 ),
-                # link to collection schema
+                base.Link(
+                    type=constants.MEDIA_TYPE_JSON_SCHEMA,
+                    rel=constants.REL_COLLECTION_SCHEMA,
+                    href=str(
+                        url_resolver(
+                            "api:collection-get-schema",
+                            collection_id=potto_collection.identifier
+                        )
+                    )
+                ),
                 base.Link(
                     type=constants.MEDIA_TYPE_JSON_SCHEMA,
                     rel=constants.REL_COLLECTION_QUERYABLES,

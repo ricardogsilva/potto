@@ -131,6 +131,10 @@ class Collection:
         if pygeoapi_collection_queryables is not None:
             queryables = copy.deepcopy(pygeoapi_collection_queryables)
             del queryables["$id"]
+        schema = None
+        if pygeoapi_collection_schema is not None:
+            schema = copy.deepcopy(pygeoapi_collection_schema)
+            del schema["$id"]
         return cls(
             type_=util.get_collection_type(pygeoapi_collection_conf),
             identifier=collection_id,
@@ -143,7 +147,8 @@ class Collection:
             temporal_extent_end=temporal_end,
             additional_links=additional_links,
             providers=parsed_providers,
-            queryables=queryables
+            queryables=queryables,
+            schema=schema,
         )
 
 

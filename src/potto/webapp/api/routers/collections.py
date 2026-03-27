@@ -6,7 +6,9 @@ from fastapi import (
     HTTPException,
     Request,
 )
+from fastapi.responses import JSONResponse
 
+from ....constants import MEDIA_TYPE_JSON_SCHEMA
 from ....exceptions import PottoException
 from ....operations import collections as collection_operations
 from ....schemas import (
@@ -77,12 +79,34 @@ async def get_collection_queryables(
         potto: PottoDependency,
         user: UserDependency,
         locale: LocaleDependency,
-):
+) -> JSONResponse:
     potto_collection = await potto.api_get_collection(
         collection_id, user=user, locale=locale, include_queryables=True)
     queryables = copy.deepcopy(potto_collection.queryables)
-    queryables["$id"] = request.url_for("api:collection-get", collection_id=collection_id)
-    return queryables
+    queryables["$id"] = str(
+        request.url_for("api:collection-get", collection_id=collection_id)
+    )
+    return JSONResponse(content=queryables, media_type=MEDIA_TYPE_JSON_SCHEMA)
+
+
+@router.get(
+    "/collections/{collection_id}/schema",
+    name="collection-get-schema",
+)
+async def get_collection_schema(
+        request: Request,
+        collection_id: str,
+        potto: PottoDependency,
+        user: UserDependency,
+        locale: LocaleDependency,
+) -> JSONResponse:
+    potto_collection = await potto.api_get_collection(
+        collection_id, user=user, locale=locale, include_schema=True)
+    schema = copy.deepcopy(potto_collection.schema)
+    schema["$id"] = str(
+        request.url_for("api:collection-get", collection_id=collection_id)
+    )
+    return JSONResponse(content=schema, media_type=MEDIA_TYPE_JSON_SCHEMA)
 
 
 @router.post(

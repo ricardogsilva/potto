@@ -1,7 +1,11 @@
+import json
 import logging
 
 import babel
 from jinja2 import TemplateNotFound
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import JsonLexer
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -13,6 +17,8 @@ from ...config import PottoSettings
 from ...wrapper import Potto
 
 logger = logging.getLogger(__name__)
+
+_PYGMENTS_FORMATTER = HtmlFormatter(style="friendly")
 
 
 async def list_collections(request: Request) -> Response:
@@ -45,15 +51,29 @@ async def get_collection_details(request: Request) -> Response:
         else None
     )
     potto: Potto = request.state.potto
+    contents = await potto.api_get_collection(
+        request.path_params["collection_id"],
+        user=user,
+        locale=babel.Locale.parse(request.state.language),
+        include_queryables=True,
+        include_schema=True,
+    )
+    queryables_html = (
+        highlight(json.dumps(contents.queryables, indent=2), JsonLexer(), _PYGMENTS_FORMATTER)
+        if contents.queryables else None
+    )
+    schema_html = (
+        highlight(json.dumps(contents.schema, indent=2), JsonLexer(), _PYGMENTS_FORMATTER)
+        if contents.schema else None
+    )
     return request.state.templates.TemplateResponse(
         request,
         "collections/detail.html",
         context={
-            "contents": await potto.api_get_collection(
-                request.path_params["collection_id"],
-                user=user,
-                locale=babel.Locale.parse(request.state.language),
-            ),
+            "contents": contents,
+            "queryables_html": queryables_html,
+            "schema_html": schema_html,
+            "pygments_css": _PYGMENTS_FORMATTER.get_style_defs(".highlight"),
         }
     )
 
