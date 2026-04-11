@@ -91,6 +91,17 @@ class Link(pydantic.BaseModel):
     href_lang: str | None = None
     length: int | None = None
 
+    def serialize_as_http_header(self) -> str:
+        result = f'<{self.href}>; rel="{self.rel}"; type="{self.media_type}"'
+        extra = [
+            ("title", self.title),
+            ("hreflang", self.href_lang),
+            ("length", self.length)
+        ]
+        if suffix := "; ".join(f'{k}="{v}"' for k, v in extra if v):
+            result = "; ".join((result, suffix))
+        return result
+
 
 class TwoDimensionalSpatialExtent(pydantic.BaseModel):
     bbox: list[tuple[float, float, float, float]]
