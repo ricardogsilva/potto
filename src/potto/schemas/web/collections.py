@@ -10,6 +10,7 @@ import pydantic
 from ... import constants
 from ...db import models
 from ...webapp.protocols import UrlResolver
+from ...webapp.util import get_base_links
 from .. import (
     base,
     potto as potto_schemas,
@@ -104,6 +105,7 @@ class JsonCollection(pydantic.BaseModel):
             additional_links: list[dict] | None = None
     ) -> list[base.Link]:
         return [
+            *get_base_links(url_resolver),
             base.Link(
                 type=constants.MEDIA_TYPE_JSON,
                 rel=constants.REL_SELF,
@@ -190,5 +192,31 @@ class JsonCollectionList(pydantic.BaseModel):
                 JsonCollection.from_potto(col, url_resolver)
                 for col in potto_result.collections
             ],
-            links=[],
+            links=cls.get_links(url_resolver),
         )
+
+    @classmethod
+    def get_links(cls, url_resolver: UrlResolver) -> list[base.Link]:
+        return [
+            *get_base_links(url_resolver),
+            base.Link(
+                type=constants.MEDIA_TYPE_JSON,
+                rel=constants.REL_SELF,
+                href=str(
+                    url_resolver(
+                        "api:collection-list",
+                    )
+                ),
+                title="Collection list"
+            ),
+            base.Link(
+                type=constants.MEDIA_TYPE_HTML,
+                rel=constants.REL_ALTERNATE,
+                href=str(
+                    url_resolver(
+                        "collection-list",
+                    )
+                ),
+                title="Collection list"
+            ),
+        ]
