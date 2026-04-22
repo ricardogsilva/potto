@@ -4,7 +4,26 @@ import pygeoapi.api
 import pygeoapi.l10n
 from starlette.requests import Request
 
+from .. import constants
+from ..schemas.base import Link
+from .protocols import UrlResolver
+
 logger = logging.getLogger(__name__)
+
+
+def get_base_links(url_resolver: UrlResolver) -> list[Link]:
+    return [
+        Link(
+            type=constants.MEDIA_TYPE_JSON,
+            rel=constants.REL_HOME,
+            href=str(
+                url_resolver(
+                    "api:landing-page",
+                )
+            ),
+            title="API landing page"
+        ),
+    ]
 
 
 def set_html_link_self_relation(original_links: list[dict]) -> list[dict]:

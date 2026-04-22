@@ -10,6 +10,7 @@ import pydantic
 from ... import constants
 from ...db import models
 from ...webapp.protocols import UrlResolver
+from ...webapp.util import get_base_links
 from .. import (
     base,
     potto as potto_schemas,
@@ -85,70 +86,84 @@ class JsonCollection(pydantic.BaseModel):
             item_type=potto_collection.type_.value,
             title=potto_collection.title,
             description=potto_collection.description,
-            links=[
-                base.Link(
-                    type=constants.MEDIA_TYPE_JSON,
-                    rel=constants.REL_SELF,
-                    href=str(
-                        url_resolver(
-                            "api:collection-get",
-                            collection_id=potto_collection.identifier
-                        )
-                    ),
-                    title="Collection details"
-                ),
-                base.Link(
-                    type=constants.MEDIA_TYPE_HTML,
-                    rel=constants.REL_ALTERNATE,
-                    href=str(
-                        url_resolver(
-                            "collection-get",
-                            collection_id=potto_collection.identifier
-                        )
-                    ),
-                    title="Collection details"
-                ),
-                base.Link(
-                    type=constants.MEDIA_TYPE_GEO_JSON,
-                    rel=constants.REL_COLLECTION_ITEMS,
-                    href=str(
-                        url_resolver(
-                            "api:collection-item-list",
-                            collection_id=potto_collection.identifier
-                        )
-                    )
-                ),
-                base.Link(
-                    type=constants.MEDIA_TYPE_JSON_SCHEMA,
-                    rel=constants.REL_COLLECTION_SCHEMA,
-                    href=str(
-                        url_resolver(
-                            "api:collection-get-schema",
-                            collection_id=potto_collection.identifier
-                        )
-                    )
-                ),
-                base.Link(
-                    type=constants.MEDIA_TYPE_JSON_SCHEMA,
-                    rel=constants.REL_COLLECTION_QUERYABLES,
-                    href=str(
-                        url_resolver(
-                            "api:collection-get-queryables",
-                            collection_id=potto_collection.identifier
-                        )
-                    )
-                ),
-                *[
-                    base.Link(
-                        **li
-                    ) for li in potto_collection.additional_links
-                ]
-            ],
+            links=cls.get_links(
+                potto_collection.identifier,
+                url_resolver,
+                additional_links=potto_collection.additional_links
+            ),
             extent=base.Extent(
                 spatial=spatial_extent,
                 temporal=temporal_extent,
             )
         )
+
+    @classmethod
+    def get_links(
+            cls,
+            collection_identifier: str,
+            url_resolver: UrlResolver,
+            additional_links: list[dict] | None = None
+    ) -> list[base.Link]:
+        return [
+            *get_base_links(url_resolver),
+            base.Link(
+                type=constants.MEDIA_TYPE_JSON,
+                rel=constants.REL_SELF,
+                href=str(
+                    url_resolver(
+                        "api:collection-get",
+                        collection_id=collection_identifier,
+                    )
+                ),
+                title="Collection details"
+            ),
+            base.Link(
+                type=constants.MEDIA_TYPE_HTML,
+                rel=constants.REL_ALTERNATE,
+                href=str(
+                    url_resolver(
+                        "collection-get",
+                        collection_id=collection_identifier,
+                    )
+                ),
+                title="Collection details"
+            ),
+            base.Link(
+                type=constants.MEDIA_TYPE_GEO_JSON,
+                rel=constants.REL_COLLECTION_ITEMS,
+                href=str(
+                    url_resolver(
+                        "api:collection-item-list",
+                        collection_id=collection_identifier,
+                    )
+                )
+            ),
+            base.Link(
+                type=constants.MEDIA_TYPE_JSON_SCHEMA,
+                rel=constants.REL_COLLECTION_SCHEMA,
+                href=str(
+                    url_resolver(
+                        "api:collection-get-schema",
+                        collection_id=collection_identifier,
+                    )
+                )
+            ),
+            base.Link(
+                type=constants.MEDIA_TYPE_JSON_SCHEMA,
+                rel=constants.REL_COLLECTION_QUERYABLES,
+                href=str(
+                    url_resolver(
+                        "api:collection-get-queryables",
+                        collection_id=collection_identifier,
+                    )
+                )
+            ),
+            *[
+                base.Link(
+                    **li
+                ) for li in additional_links or []
+            ]
+        ]
 
 
 class JsonCollectionList(pydantic.BaseModel):
@@ -177,5 +192,31 @@ class JsonCollectionList(pydantic.BaseModel):
                 JsonCollection.from_potto(col, url_resolver)
                 for col in potto_result.collections
             ],
-            links=[],
+            links=cls.get_links(url_resolver),
         )
+
+    @classmethod
+    def get_links(cls, url_resolver: UrlResolver) -> list[base.Link]:
+        return [
+            *get_base_links(url_resolver),
+            base.Link(
+                type=constants.MEDIA_TYPE_JSON,
+                rel=constants.REL_SELF,
+                href=str(
+                    url_resolver(
+                        "api:collection-list",
+                    )
+                ),
+                title="Collection list"
+            ),
+            base.Link(
+                type=constants.MEDIA_TYPE_HTML,
+                rel=constants.REL_ALTERNATE,
+                href=str(
+                    url_resolver(
+                        "collection-list",
+                    )
+                ),
+                title="Collection list"
+            ),
+        ]
