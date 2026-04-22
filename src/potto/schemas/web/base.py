@@ -24,7 +24,8 @@ class JsonLanding(pydantic.BaseModel):
     def from_potto(
             cls,
             potto_response: LandingPage,
-            url_resolver: UrlResolver
+            url_resolver: UrlResolver,
+            oidc_configured: bool = False,
     ) -> "JsonLanding":
         links = [
             Link(
@@ -60,8 +61,20 @@ class JsonLanding(pydantic.BaseModel):
             Link(
                 type=constants.MEDIA_TYPE_JSON,
                 rel=constants.REL_COLLECTIONS,
-                href=str(url_resolver("api:list-collections")),
+                href=str(url_resolver("api:collection-list")),
                 title="Collections exposed by this server"
+            ),
+            Link(
+                type=constants.MEDIA_TYPE_HTML if oidc_configured else constants.MEDIA_TYPE_JSON,
+                rel=constants.REL_LOGIN,
+                href=str(
+                    url_resolver("oidc-login") if oidc_configured else url_resolver("api:login")
+                ),
+                title=(
+                    "Authenticate via OIDC provider"
+                    if oidc_configured else
+                    "Obtain a bearer token"
+                ),
             ),
         ]
         return cls(

@@ -55,16 +55,14 @@ def launcher(
         cyclopts.Parameter(show=False, allow_leading_hyphen=True)
     ],
 ):
-    """Potto
+    """Potto, the OGC API server."""
+    # Custom cli launcher that injects potto's settings if needed.
 
-    Custom cli launcher that injects potto's settings if needed.
+    # This custom launcher detects if access to the potto settings is
+    # being requested by the underlying CLI command and injects them if needed.
 
-    This custom launcher detects if access to the potto settings is
-    being requested by the underlying CLI command and injects them if needed.
-
-    Note that this strategy is used because we do not use cyclopts builtin
-    configuration facilities, but rather pydantic-settings.
-    """
+    # Note that this strategy is used because we do not use cyclopts builtin
+    # configuration facilities, but rather pydantic-settings.
     settings = get_settings()
     rich_log_handler = RichHandler(console=potto_app.error_console)
     if (log_config_file := settings.uvicorn_log_config_file) and log_config_file.exists():

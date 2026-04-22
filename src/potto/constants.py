@@ -13,6 +13,7 @@ MEDIA_TYPE_GEO_JSON: typing.Final[str] = "application/geo+json"
 MEDIA_TYPE_JSON_SCHEMA: typing.Final[str] = "application/schema+json"
 
 REL_ALTERNATE: typing.Final[str] = "alternate"
+REL_LOGIN: typing.Final[str] = "login"
 REL_COLLECTION_ITEMS: typing.Final[str] = "items"
 REL_COLLECTIONS: typing.Final[str] = "data"
 REL_COLLECTION_SCHEMA: typing.Final[str] = "http://www.opengis.net/def/rel/ogc/1.0/schema"
