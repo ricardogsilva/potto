@@ -45,7 +45,6 @@ async def list_collections(
         locale: LocaleDependency,
         limit: PaginationLimitDependency
 ) -> JSONResponse:
-    logger.debug(f"{locals()=}")
     potto_collections = await potto.api_list_collections(
         user=user, locale=locale, page_size=limit)
     result = JsonCollectionList.from_potto(potto_collections, request.url_for)

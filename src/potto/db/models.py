@@ -97,6 +97,9 @@ class Collection(SQLModel, table=True):
         sa_type=ShapelyGeometryAdapter(),
         nullable=True,
     )
+    crs: list[str] | None = Field(sa_type=JSONB(), nullable=True)
+    storage_crs: str | None = Field(default=None, nullable=True)
+    storage_crs_coordinate_epoch: float | None = Field(default=None, nullable=True)
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
@@ -122,6 +125,9 @@ class Collection(SQLModel, table=True):
             owner=self.owner.to_potto(),
             keywords=self.keywords,
             spatial_extent=self.spatial_extent,
+            crs=self.crs,
+            storage_crs=self.storage_crs,
+            storage_crs_coordinate_epoch=self.storage_crs_coordinate_epoch,
             temporal_extent_begin=self.temporal_extent_begin,
             temporal_extent_end=self.temporal_extent_end,
             additional_links=self.additional_links,

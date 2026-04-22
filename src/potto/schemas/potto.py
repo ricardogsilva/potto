@@ -10,6 +10,7 @@ import shapely
 from pygeoapi.api import API as _PygeoapiApi
 
 from .. import util
+from ..constants import CRS_84
 from . import (
     auth,
     base,
@@ -75,6 +76,9 @@ class Collection:
     description: base.MaybeDescription = None
     keywords: base.MaybeKeywords = None
     spatial_extent: base.MaybeShapelyGeometry = None
+    crs: list[str] | None = dataclasses.field(default_factory=lambda : [CRS_84])
+    storage_crs: str | None = CRS_84
+    storage_crs_coordinate_epoch: float | None = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
@@ -135,6 +139,8 @@ class Collection:
         if pygeoapi_collection_schema is not None:
             schema = copy.deepcopy(pygeoapi_collection_schema)
             del schema["$id"]
+        crs = set(pygeoapi_collection_conf.get("crs", []))
+        crs.add(CRS_84)
         return cls(
             type_=util.get_collection_type(pygeoapi_collection_conf),
             identifier=collection_id,
@@ -143,6 +149,15 @@ class Collection:
             description=pygeoapi_collection.get("description", ""),
             keywords=pygeoapi_collection.get("keywords", []),
             spatial_extent=spatial_extent,
+            crs=list(crs) if spatial_extent else None,
+            storage_crs=pygeoapi_collection_conf.get("storage_crs", CRS_84) if spatial_extent else None,
+            storage_crs_coordinate_epoch=(
+                float(coord_epoch)
+                if spatial_extent and (
+                    coord_epoch:=pygeoapi_collection_conf.get("storage_crs_coordinate_epoch")
+                ) is not None
+                else None
+            ),
             temporal_extent_begin=temporal_begin,
             temporal_extent_end=temporal_end,
             additional_links=additional_links,
