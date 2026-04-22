@@ -4,18 +4,22 @@ from typing import (
 )
 
 import babel
-import pydantic
 from fastapi import (
     Depends,
     Query,
     Request,
 )
+from fastapi.security import OAuth2PasswordBearer
 
 from ... import config
 from ...authz.base import AuthorizationBackendProtocol
 from ...schemas.auth import PottoUser
-from ...schemas.potto import Pagination
 from ...wrapper import Potto
+
+# Local-auth default. In OIDC mode, get_current_user is replaced via
+# dependency_overrides in create_api_app_from_settings so that both the
+# runtime path and the OpenAPI security scheme are correct.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 
 
 def get_settings() -> Iterator[config.PottoSettings]:
@@ -28,7 +32,10 @@ def get_potto(
     yield Potto(settings)
 
 
-def get_current_user(request: Request) -> PottoUser | None:
+async def get_current_user(
+    request: Request,
+    _token: Annotated[str | None, Depends(oauth2_scheme)],
+) -> PottoUser | None:
     return request.user if isinstance(request.user, PottoUser) else None
 
 

@@ -1,8 +1,14 @@
 import logging
+from typing import Annotated
 
 import bcrypt
 import pydantic
-from fastapi import APIRouter, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+)
+from fastapi.security import OAuth2PasswordRequestForm
 
 from ....authn.jwt import create_access_token
 from ....db.queries.auth import get_user_by_username
@@ -13,11 +19,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class LoginRequest(pydantic.BaseModel):
-    username: str
-    password: str
-
-
 class LoginResponse(pydantic.BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -25,23 +26,22 @@ class LoginResponse(pydantic.BaseModel):
 
 @router.post("/login", name="login")
 async def login(
-        credentials: LoginRequest,
+        form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
         settings: SettingsDependency,
 ) -> LoginResponse:
     """Authenticate with username and password, receive a JWT access token."""
     async with settings.get_db_session_maker()() as session:
-        db_user = await get_user_by_username(session, credentials.username)
-    if db_user is None:
-        logger.debug(f"Login failed: user {credentials.username!r} not found")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        if (db_user := await get_user_by_username(session, form_data.username)) is None:
+            logger.debug(f"Login failed: user {form_data.username!r} not found")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
     if not db_user.is_active:
-        logger.warning(f"Login failed: user {credentials.username!r} is inactive")
+        logger.warning(f"Login failed: user {form_data.username!r} is inactive")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if db_user.hashed_password is None:
-        logger.warning(f"Login failed: user {credentials.username!r} has no local password")
+        logger.warning(f"Login failed: user {form_data.username!r} has no local password")
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not bcrypt.checkpw(credentials.password.encode(), db_user.hashed_password.encode()):
-        logger.debug(f"Login failed: wrong password for user {credentials.username!r}")
+    if not bcrypt.checkpw(form_data.password.encode(), db_user.hashed_password.encode()):
+        logger.debug(f"Login failed: wrong password for user {form_data.username!r}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     potto_user = PottoUser(
         id=db_user.id,

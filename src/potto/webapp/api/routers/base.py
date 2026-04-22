@@ -7,6 +7,7 @@ from ....schemas.web import base
 
 from ..dependencies import (
     PottoDependency,
+    SettingsDependency,
     UserDependency,
 )
 
@@ -18,10 +19,13 @@ router = APIRouter()
 async def landing_page(
         request: Request,
         potto: PottoDependency,
-        user: UserDependency
+        settings: SettingsDependency,
+        user: UserDependency,
 ) -> base.JsonLanding:
     result = await potto.api_get_landing_page(user=user)
-    return base.JsonLanding.from_potto(result, request.url_for)
+    return base.JsonLanding.from_potto(
+        result, request.url_for, oidc_configured=settings.oidc is not None
+    )
 
 
 @router.get("/conformance", name="conformance-page")
