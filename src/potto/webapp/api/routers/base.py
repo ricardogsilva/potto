@@ -2,6 +2,8 @@ from fastapi import (
     APIRouter,
     Request,
 )
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse
 
 from ....schemas.web import base
 
@@ -12,6 +14,15 @@ from ..dependencies import (
 )
 
 router = APIRouter()
+
+
+@router.get("/docs", include_in_schema=False, response_class=HTMLResponse)
+async def swagger_ui_html(request: Request) -> HTMLResponse:
+    return get_swagger_ui_html(
+        openapi_url=request.scope.get("root_path", "") + request.app.openapi_url,
+        title=f"{request.app.title} - Swagger UI",
+        swagger_favicon_url=str(request.url_for("static", path="/img/potto-favicon.png")),
+    )
 
 
 

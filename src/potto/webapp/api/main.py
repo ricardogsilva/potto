@@ -10,6 +10,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.security import OAuth2AuthorizationCodeBearer
+from starlette.staticfiles import StaticFiles
 
 from ... import config
 from ...schemas.auth import PottoUser
@@ -31,6 +32,15 @@ def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
     app = FastAPI(
         title="Potto",
         summary="OGC API server",
+        docs_url=None,
+    )
+    app.mount(
+        "/static",
+        StaticFiles(
+            directory=settings.static_dir,
+            packages=[("potto", "webapp/static")],
+        ),
+        name="static",
     )
     if settings.oidc is None:
         app.include_router(auth.router)
