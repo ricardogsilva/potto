@@ -27,6 +27,9 @@ class CollectionCreate(pydantic.BaseModel):
     description: MaybeDescription = None
     keywords: MaybeKeywords = None
     spatial_extent: MaybeShapelyGeometry = None
+    crs: list[str] | None = None
+    storage_crs: str | None = None
+    storage_crs_coordinate_epoch: str | None = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
@@ -46,6 +49,9 @@ class CollectionUpdate(pydantic.BaseModel):
     description: MaybeDescription = None
     keywords: MaybeKeywords = None
     spatial_extent: MaybeShapelyGeometry = None
+    crs: list[str] | None = None
+    storage_crs: str | None = None
+    storage_crs_coordinate_epoch: str | None = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
