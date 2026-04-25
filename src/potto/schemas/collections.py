@@ -8,7 +8,6 @@ from .base import (
     CollectionProvider,
     CollectionType,
     MaybeDescription,
-    Extent,
     MaybeKeywords,
     MaybeShapelyGeometry,
     Title,
@@ -27,6 +26,7 @@ class CollectionCreate(pydantic.BaseModel):
     description: MaybeDescription = None
     keywords: MaybeKeywords = None
     spatial_extent: MaybeShapelyGeometry = None
+    spatial_extent_crs: str | None = None
     crs: list[str] | None = None
     storage_crs: str | None = None
     storage_crs_coordinate_epoch: str | None = None
@@ -49,6 +49,7 @@ class CollectionUpdate(pydantic.BaseModel):
     description: MaybeDescription = None
     keywords: MaybeKeywords = None
     spatial_extent: MaybeShapelyGeometry = None
+    spatial_extent_crs: str | None = None
     crs: list[str] | None = None
     storage_crs: str | None = None
     storage_crs_coordinate_epoch: str | None = None

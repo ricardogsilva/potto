@@ -221,7 +221,7 @@ async def revoke_collection_access(
 
 
 def _get_crs_info(pygeoapi_collection: dict) -> tuple[list[str], str | None, str | None]:
-    supported_crs = set(constants.CRS_84)
+    supported_crs = {constants.CRS_84}
     storage_crs = None
     storage_crs_coordinate_epoch = None
     for provider_conf in pygeoapi_collection.get("providers", []):
@@ -251,13 +251,16 @@ async def import_pygeoapi_collection(
         raise PottoException(f"Collection {identifier!r} already exists!")
     resource_spatial_extents = pygeoapi_collection.get(
         "extents", {}).get("spatial", {})
-    crs = None
     spatial_extent = None
+    spatial_extent_crs = None
     try:
-        # TODO: support inspecting the CRS and convert the bbox to CRS84
         if (raw_bbox := resource_spatial_extents.get("bbox")) is not None:
-            spatial_extent = shapely.box(*resource_spatial_extents.get("bbox"))
-            crs = resource_spatial_extents.get("crs", constants.CRS_84)
+            spatial_extent = shapely.box(*raw_bbox)
+            spatial_extent_crs = resource_spatial_extents.get(
+                "crs",
+                constants.CRS_84h if spatial_extent.has_z else constants.CRS_84
+            )
+            # TODO: convert the bbox to either CRS84 or CRS84h, if given something else
     except TypeError:
         logger.exception(
             f"Could not extract bbox from collection {identifier!r}, setting "
@@ -293,6 +296,7 @@ async def import_pygeoapi_collection(
             description=pygeoapi_collection.get("description"),
             keywords=pygeoapi_collection.get("keywords"),
             spatial_extent=spatial_extent,
+            spatial_extent_crs=spatial_extent_crs,
             crs=supported_crs,
             storage_crs=storage_crs,
             storage_crs_coordinate_epoch=storage_crs_coordinate_epoch,
@@ -311,6 +315,7 @@ async def import_pygeoapi_collection(
             description=pygeoapi_collection.get("description"),
             keywords=pygeoapi_collection.get("keywords"),
             spatial_extent=spatial_extent,
+            spatial_extent_crs=spatial_extent_crs,
             crs=supported_crs,
             storage_crs=storage_crs,
             storage_crs_coordinate_epoch=storage_crs_coordinate_epoch,

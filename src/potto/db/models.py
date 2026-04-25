@@ -97,9 +97,10 @@ class Collection(SQLModel, table=True):
         sa_type=ShapelyGeometryAdapter(),
         nullable=True,
     )
-    crs: list[str] | None = Field(sa_type=JSONB(), nullable=True)
-    storage_crs: str | None = Field(default=None, nullable=True)
-    storage_crs_coordinate_epoch: float | None = Field(default=None, nullable=True)
+    spatial_extent_crs: str | None = None  # part 1 - CRS of the spatial extent
+    crs: list[str] | None = Field(sa_type=JSONB(), nullable=True)  # part 2 - list of supported CRS
+    storage_crs: str | None = Field(default=None, nullable=True)  # part 2 - CRS of the dataset
+    storage_crs_coordinate_epoch: float | None = Field(default=None, nullable=True)  # part 3 - epoch of the dataset CRS
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
