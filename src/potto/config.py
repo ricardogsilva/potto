@@ -74,7 +74,8 @@ class PottoSettings(pydantic_settings.BaseSettings):
     uvicorn_log_config_file: Path | None = None
     oidc: OIDCSettings | None = None
     opa: OPASettings | None = None
-    max_page_size: int = 100
+    page_size: int = 20
+    page_size_max: int = 100
 
     _jinja_env: jinja2.Environment | None = None
     _db_engine: AsyncEngine | None = None

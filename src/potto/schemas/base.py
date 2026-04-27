@@ -146,6 +146,13 @@ class Extent(pydantic.BaseModel):
         )
 
 
+class AdditionalExtent(pydantic.BaseModel):
+    name: str
+    begin: int | float | str | None = None
+    end: int | float | str | None = None
+    unit_name: str | None = None
+
+
 class CollectionProviderConfiguration(pydantic.BaseModel):
     data: str | dict
     options: dict[str, typing.Any]

@@ -4,10 +4,10 @@ import re
 
 import shapely
 from sqlmodel.ext.asyncio.session import AsyncSession
-from starlette.authentication import BaseUser
 
 from ..config import PottoSettings
 from ..db.models import Collection
+from ..schemas.auth import PottoUser
 from . import metadata as metadata_ops
 from . import collections as collection_ops
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 async def get_pygeoapi_config(
         session: AsyncSession,
         settings: PottoSettings,
-        user: BaseUser,
+        user: PottoUser | None,
         *,
         collection_identifier: str | None = None,
         collection_page: int = 1,
@@ -137,36 +137,52 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
             }
         )
 
-    return {
+    extents = {}
+    # add any custom extents to the collection - this is done before the
+    # adding the 'spatial' and 'temporal' extents to disallow overriding them
+    for name, info in (db_collection.additional_extents or {}).items():
+        extents[name] = info
+    extents = {
+        "spatial": {
+            "bbox": (
+                db_collection.spatial_extent.bounds
+                if db_collection.spatial_extent
+                else shapely.box(-180, -90, 180, 90).bounds
+            ),
+            "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+        },
+        "temporal": {
+            "begin": (
+                db_collection.temporal_extent_begin.isoformat()
+                if db_collection.temporal_extent_begin else None
+            ),
+            "end": (
+                db_collection.temporal_extent_end.isoformat()
+                if db_collection.temporal_extent_end else None
+            ),
+        }
+    }
+    pygeoapi_collection = {
         "type": "collection",
         "title": db_collection.title,
         "description": db_collection.description or "",
         "keywords": db_collection.keywords or [],
         "linked-data": None,
         "links": links,
-        "extents": {
-            "spatial": {
-                "bbox": (
-                    db_collection.spatial_extent.bounds
-                    if db_collection.spatial_extent
-                    else shapely.box(-180, -90, 180, 90).bounds
-                ),
-                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-            },
-            "temporal": {
-                "begin": (
-                    db_collection.temporal_extent_begin.isoformat()
-                    if db_collection.temporal_extent_begin else None
-                ),
-                "end": (
-                    db_collection.temporal_extent_end.isoformat()
-                    if db_collection.temporal_extent_end else None
-                ),
-            }
-        },
+        "extents": extents,
         "providers": converted_providers,
         # owner is not a property recognized by pygeoapi but we require it in
         # potto.Adding it here takes advantage of the fact that pygeoapi
         # allows additional configuration properties on collections
-        "owner": db_collection.owner.to_potto()
+        "owner": db_collection.owner.to_potto(),
     }
+    limits = {
+        k: v for k, v in
+        {
+            "default_items": db_collection.custom_page_size,
+            "max_items": db_collection.custom_page_size_max,
+        } if v is not None
+    }
+    if limits:
+        pygeoapi_collection["limits"] = limits
+    return pygeoapi_collection

@@ -103,6 +103,11 @@ class Collection(SQLModel, table=True):
     storage_crs_coordinate_epoch: float | None = Field(default=None, nullable=True)  # part 3 - epoch of the dataset CRS
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
+    # this can be used for configuring additional extents, as mentioned in
+    # OAPIF - Part 1
+    additional_extents: dict[str, dict[str, str | int | float | None]] | None = Field(default=None, sa_type=JSONB(), nullable=True)
+    custom_page_size: int | None = Field(default=None, ge=1)
+    custom_page_size_max: int | None = Field(default=None, ge=1)
     additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
         default=None, sa_type=JSONB(), nullable=True)
     providers: dict[str, CollectionProvider] | None = Field(

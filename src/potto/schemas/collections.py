@@ -1,10 +1,14 @@
 import datetime as dt
 import logging
-from typing import Literal
+from typing import (
+    Annotated,
+    Literal,
+)
 
 import pydantic
 
 from .base import (
+    AdditionalExtent,
     CollectionProvider,
     CollectionType,
     MaybeDescription,
@@ -32,6 +36,9 @@ class CollectionCreate(pydantic.BaseModel):
     storage_crs_coordinate_epoch: str | None = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
+    additional_extents: list[AdditionalExtent] | None = None
+    custom_page_size: Annotated[int | None, pydantic.Field(ge=1)] = None
+    custom_page_size_max: Annotated[int | None, pydantic.Field(ge=1)] = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
     providers: dict[str, CollectionProvider] | None = None
 
@@ -55,5 +62,8 @@ class CollectionUpdate(pydantic.BaseModel):
     storage_crs_coordinate_epoch: str | None = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
+    additional_extents: list[AdditionalExtent] | None = None
+    custom_page_size: Annotated[int | None, pydantic.Field(ge=1)] = None
+    custom_page_size_max: Annotated[int | None, pydantic.Field(ge=1)] = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
     providers: dict[str, CollectionProvider] | None = None

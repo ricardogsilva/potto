@@ -36,7 +36,8 @@ router = APIRouter()
     "/collections",
     name="collection-list",
     response_model_exclude_none=True,
-    response_model=JsonCollectionList
+    response_model=JsonCollectionList,
+    tags=["collections"],
 )
 async def list_collections(
         request: Request,
@@ -60,6 +61,7 @@ async def list_collections(
     "/collections/{collection_id}",
     name="collection-get",
     response_model=JsonCollection,
+    tags=["collections"],
 )
 async def get_collection_details(
         request: Request,
@@ -85,6 +87,7 @@ async def get_collection_details(
 @router.get(
     "/collections/{collection_id}/queryables",
     name="collection-get-queryables",
+    tags=["collections"],
 )
 async def get_collection_queryables(
         request: Request,
@@ -107,6 +110,7 @@ async def get_collection_queryables(
 @router.get(
     "/collections/{collection_id}/schema",
     name="collection-get-schema",
+    tags=["collections"],
 )
 async def get_collection_schema(
         request: Request,
@@ -127,7 +131,8 @@ async def get_collection_schema(
 @router.post(
     "/collections",
     name="create-collection",
-    response_model=JsonCollection
+    response_model=JsonCollection,
+    tags=["collections"],
 )
 async def create_collection(
         request: Request,
@@ -146,6 +151,7 @@ async def create_collection(
 @router.delete(
     "/collections/{collection_id}",
     name="delete-collection",
+    tags=["collections"],
 )
 async def delete_collection(
         collection_id: str,
@@ -163,6 +169,7 @@ async def delete_collection(
     "/collections/{collection_id}/access/{user_id}",
     name="grant-collection-access",
     status_code=204,
+    tags=["collections"],
 )
 async def grant_collection_access(
         collection_id: str,
@@ -187,6 +194,7 @@ async def grant_collection_access(
     "/collections/{collection_id}/access/{user_id}",
     name="revoke-collection-access",
     status_code=204,
+    tags=["collections"],
 )
 async def revoke_collection_access(
         collection_id: str,
