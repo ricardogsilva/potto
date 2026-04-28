@@ -40,6 +40,7 @@ from .schemas import (
 )
 from .schemas.web.items import FeatureFilter
 from .webapp.requests import PottoRequest
+from .util import get_collection_pagination_limit
 
 logger = logging.getLogger(__name__)
 
@@ -100,14 +101,18 @@ class Potto:
             self,
             collection_id: str,
             user: auth.PottoUser | None,
-    ) -> potto_schemas.Collection | None:
+    ) -> potto_schemas.Collection:
         async with self._settings.get_db_session_maker()() as session:
-            db_collection = await collection_ops.get_collection_by_resource_identifier(
-                session, user, self._settings.get_authorization_backend(), collection_id)
-        return (
-            potto_schemas.Collection(**db_collection.model_dump())
-            if db_collection else None
-        )
+            if (
+                db_collection := await collection_ops.get_collection_by_resource_identifier(
+                    session,
+                    user,
+                    self._settings.get_authorization_backend(),
+                    collection_id
+                )
+            ) is None:
+                raise PottoException(f"Collection {collection_id} not found")
+        return db_collection.to_potto()
 
     async def get_localized_config(self, locale: babel.Locale) -> dict:
         pygeoapi_api = await self._get_pygeoapi()
@@ -254,12 +259,7 @@ class Potto:
             user: auth.PottoUser | None = None,
             filter_: FeatureFilter | None = None,
     ) -> potto_schemas.FeatureListResponse:
-        async with self._settings.get_db_session_maker()() as session:
-            if not (
-                db_collection := await collection_ops.get_collection_by_resource_identifier(
-                    session, user, self._settings.get_authorization_backend(), collection_id)
-            ):
-                raise PottoException(f"Collection {collection_id} not found")
+        collection = await self._get_collection(collection_id, user)
         pygeoapi_api = await self._get_pygeoapi(
             user,
             collection_identifier=collection_id,
@@ -278,29 +278,20 @@ class Potto:
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
         logger.debug(f"{parsed_pygeoapi_content=}")
-        collection_config = await self.get_item_collection_config(collection_id)
         features=[
             potto_schemas.Feature.from_pygeoapi_feature(feat)
             for feat in parsed_pygeoapi_content["features"]
         ]
-
-        # requested_pagination_limit = (filter_.limit if filter_ else self._settings.page_size)
-        # effective_pagination_limit = None
-
+        effective_pagination_limit = get_collection_pagination_limit(
+            filter_.limit if filter_ else None, collection, self._settings)
         return potto_schemas.FeatureListResponse(
-            collection=db_collection,
+            collection=collection,
             features=features,
             pagination=base.PaginationContext(
-                limit=_evaluate_limit(
-                    requested=filter_.limit if filter_ else None,
-                    server_limits=pygeoapi_api.config["server"].get("limits", {}),
-                    collection_limits=(
-                        col_limits.as_pygeoapi_config
-                        if (col_limits := collection_config.limits) else {}
-                    ),
-                ),
+                limit=effective_pagination_limit,
                 number_matched=parsed_pygeoapi_content.get("numberMatched", 0),
-                number_returned=parsed_pygeoapi_content.get("numberReturned", len(features)),
+                number_returned=parsed_pygeoapi_content.get(
+                    "numberReturned", len(features)),
                 offset=parsed_pygeoapi_content.get("offset", 0),
             ),
             filter_=filter_,

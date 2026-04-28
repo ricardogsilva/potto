@@ -10,7 +10,6 @@ from typing import (
 import pydantic
 import shapely
 
-from ...db import models
 from ... import constants
 from ...webapp.protocols import UrlResolver
 from .. import (
@@ -77,8 +76,8 @@ class FeatureFilter(ItemFilter):
 
 
 class GeoJsonItem(pydantic.BaseModel):
-    id_: str = pydantic.Field(alias="id")
-    type_: Annotated[str, pydantic.Field(alias="type")] = "feature"
+    id_: str = pydantic.Field(serialization_alias="id")
+    type_: Annotated[str, pydantic.Field(serialization_alias="type")] = "feature"
     properties: dict
     geometry: dict
     links: list[Link]
@@ -87,7 +86,7 @@ class GeoJsonItem(pydantic.BaseModel):
     def from_potto(
             cls,
             feature: potto_schemas.Feature,
-            collection: models.Collection,
+            collection: potto_schemas.Collection,
             url_resolver: UrlResolver,
             exclude_link_relations: Sequence[str] | None = None
     ) -> "GeoJsonItem":
@@ -97,8 +96,8 @@ class GeoJsonItem(pydantic.BaseModel):
                 rel="self",
                 href=str(
                     url_resolver(
-                        "api:get-item",
-                        collection_id=collection.resource_identifier,
+                        "api:collection-item-get",
+                        collection_id=collection.identifier,
                         item_id=feature.id_
                     )
                 ),
@@ -109,8 +108,8 @@ class GeoJsonItem(pydantic.BaseModel):
                 rel="alternate",
                 href=str(
                     url_resolver(
-                        "get-item",
-                        collection_id=collection.resource_identifier,
+                        "collection-item-get",
+                        collection_id=collection.identifier,
                         item_id=feature.id_
                     )
                 ),
@@ -121,8 +120,8 @@ class GeoJsonItem(pydantic.BaseModel):
                 rel="collection",
                 href=str(
                     url_resolver(
-                        "api:get-collection",
-                        collection_id=collection.resource_identifier,
+                        "api:collection-get",
+                        collection_id=collection.identifier,
                     )
                 ),
                 title="This feature's collection",
@@ -132,18 +131,23 @@ class GeoJsonItem(pydantic.BaseModel):
                 rel="collection",
                 href=str(
                     url_resolver(
-                        "get-collection",
-                        collection_id=collection.resource_identifier,
+                        "collection-get",
+                        collection_id=collection.identifier,
                     )
                 ),
                 title="This feature's collection as HTML",
             ),
         ]
         return cls(
-            **feature.model_dump(exclude={"geometry"}, by_alias=True),
+            id_=feature.id_,
+            properties=feature.properties,
             type_="Feature",
             geometry=json.loads(shapely.to_geojson(feature.geometry)),
-            links=[link for link in all_links if link.rel not in (exclude_link_relations or [])]
+            links=[
+                link
+                for link in all_links
+                if link.rel not in (exclude_link_relations or [])
+            ]
         )
 
 
@@ -164,12 +168,18 @@ class GeoJsonItemCollection(pydantic.BaseModel):
         pagination_links = potto_response.pagination.get_links(
             str(
                 url_resolver(
-                    "list-collection-items",
-                    collection_id=potto_response.collection.resource_identifier
+                    "api:collection-item-list",
+                    collection_id=potto_response.collection.identifier
                 )
             ),
-            additional_query_params=potto_response.filter_.model_dump(
-                by_alias=True, exclude_none=True, exclude={"offset"})
+            additional_query_params=(
+                potto_response.filter_.model_dump(
+                    by_alias=True,
+                    exclude_none=True,
+                    exclude={"offset"}
+                )
+                if potto_response.filter_ else None
+            )
         )
         return cls(
             type="FeatureCollection",
@@ -186,8 +196,8 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     rel="self",
                     href=str(
                         url_resolver(
-                            "api:list-collection-items",
-                            collection_id=potto_response.collection.resource_identifier
+                            "api:collection-item-list",
+                            collection_id=potto_response.collection.identifier
                         )
                     ),
                     title="This document"
@@ -197,8 +207,8 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     rel="alternate",
                     href=str(
                         url_resolver(
-                            "list-collection-items",
-                            collection_id=potto_response.collection.resource_identifier
+                            "collection-item-list",
+                            collection_id=potto_response.collection.identifier
                         )
                     ),
                     title="This document as HTML"
@@ -208,8 +218,8 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     rel="collection",
                     href=str(
                         url_resolver(
-                            "get-collection",
-                            collection_id=potto_response.collection.resource_identifier
+                            "collection-get",
+                            collection_id=potto_response.collection.identifier
                         )
                     ),
                     # TODO: localize this

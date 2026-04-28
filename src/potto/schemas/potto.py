@@ -79,6 +79,8 @@ class Collection:
     crs: list[str] | None = dataclasses.field(default_factory=lambda : [CRS_84])
     storage_crs: str | None = CRS_84
     storage_crs_coordinate_epoch: float | None = None
+    custom_page_size: int | None = None
+    custom_page_size_max: int | None = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
@@ -177,7 +179,7 @@ class Feature:
     @classmethod
     def from_pygeoapi_feature(cls, pygeoapi_feature: dict) -> "Feature":
         return cls(
-            id=str(pygeoapi_feature["id"]),
+            id_=str(pygeoapi_feature["id"]),
             properties={k: v for k, v in pygeoapi_feature["properties"].items() if k != "id"},
             geometry=shapely.from_geojson(json.dumps(pygeoapi_feature["geometry"]))
         )

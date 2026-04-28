@@ -122,7 +122,7 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
         )
     converted_providers = []
     for type_, provider in (db_collection.providers or {}).items():
-        raw_data_value = provider.get("config", {}).pop("data", "")
+        raw_data_value = (provider.get("config", {}) or {}).pop("data", "")
         interpolated_data_value = re.sub(
             r"\${?(\w+)}?",
             lambda re_match: os.getenv(re_match.group(1), "ENV_VAR_NOT_FOUND"),
@@ -133,7 +133,7 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
                 "type": type_,
                 "data": interpolated_data_value,
                 "name": provider.get("python_callable"),
-                **provider.get("config", {}).get("options", {})
+                **(provider.get("config", {}) or {}).get("options", {})
             }
         )
 
@@ -181,7 +181,7 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
         {
             "default_items": db_collection.custom_page_size,
             "max_items": db_collection.custom_page_size_max,
-        } if v is not None
+        }.items() if v is not None
     }
     if limits:
         pygeoapi_collection["limits"] = limits

@@ -138,6 +138,8 @@ class Collection(SQLModel, table=True):
             temporal_extent_end=self.temporal_extent_end,
             additional_links=self.additional_links,
             providers=self.providers,
+            custom_page_size=self.custom_page_size,
+            custom_page_size_max=self.custom_page_size_max,
         )
 
 

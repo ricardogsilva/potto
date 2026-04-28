@@ -60,6 +60,9 @@ class PottoSettings(pydantic_settings.BaseSettings):
     database_dsn: PostgresDsn = PostgresDsn(
         "postgresql+psycopg://potto:pottopass@localhost/potto"
     )
+    test_database_dsn: PostgresDsn = PostgresDsn(
+        "postgresql+psycopg://potto:pottopass@localhost/potto_test"
+    )
     debug: bool = False
     public_url: str = "http://localhost:3001"
     pygeoapi_config_file: Path = Path.home() / "pygeoapi-config.yml"
