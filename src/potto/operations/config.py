@@ -123,11 +123,14 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
     converted_providers = []
     for type_, provider in (db_collection.providers or {}).items():
         raw_data_value = (provider.get("config", {}) or {}).pop("data", "")
-        interpolated_data_value = re.sub(
-            r"\${?(\w+)}?",
-            lambda re_match: os.getenv(re_match.group(1), "ENV_VAR_NOT_FOUND"),
-            raw_data_value,
-        )
+        if isinstance(raw_data_value, str):
+            interpolated_data_value = re.sub(
+                r"\${?(\w+)}?",
+                lambda re_match: os.getenv(re_match.group(1), "ENV_VAR_NOT_FOUND"),
+                raw_data_value,
+            )
+        else:
+            interpolated_data_value = raw_data_value
         converted_providers.append(
             {
                 "type": type_,

@@ -200,6 +200,8 @@ class CollectionView(_PottoAdminModelView):
         Collection.storage_crs_coordinate_epoch,
         Collection.temporal_extent_begin,
         Collection.temporal_extent_end,
+        Collection.custom_page_size,
+        Collection.custom_page_size_max,
         Collection.keywords,
         # JSONField(name="providers"),
         ListField(
@@ -243,6 +245,8 @@ class CollectionView(_PottoAdminModelView):
         "providers",
         "editors",
         "viewers",
+        "custom_page_size",
+        "custom_page_size_max",
     )
     exclude_fields_from_create = (
         "created_at",
