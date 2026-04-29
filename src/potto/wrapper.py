@@ -14,7 +14,6 @@ from pygeoapi.api import (
     API as _API,
     describe_collections as _describe_collections,
     get_collection_schema as _get_collection_schema,
-    evaluate_limit as _evaluate_limit,
     F_JSON,
     FORMAT_TYPES as _FORMAT_TYPES,
 )

@@ -22,48 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
-class ServerMetadataPointOfContact:
-    name: str | None = None
-    position: str | None = None
-    address: str | None = None
-    city: str | None = None
-    state_or_province: str | None = None
-    postal_code: str | None = None
-    country: str | None = None
-    phone: str | None = None
-    fax: str | None = None
-    email: str | None = None
-    url: str | None = None
-    contact_hours: str | None = None
-    contact_instructions: str | None = None
-
-
-@dataclasses.dataclass(frozen=True)
-class ServerMetadataLicense:
-    name: str
-    url: str
-
-
-@dataclasses.dataclass(frozen=True)
-class ServerMetadataDataProvider:
-    name: str
-    url: str
-
-
-@dataclasses.dataclass(frozen=True)
-class ServerMetadata:
-    title: base.Title
-    description: base.MaybeDescription = None
-    keywords: base.MaybeKeywords = None
-    keywords_type: str | None = None
-    terms_of_service: base.MaybeDescription = None
-    url: str | None = None
-    license: ServerMetadataLicense | None = None
-    data_provider: ServerMetadataDataProvider | None = None
-    point_of_contact: ServerMetadataPointOfContact | None = None
-
-
-@dataclasses.dataclass(frozen=True)
 class Pagination:
     page: int
     page_size: int

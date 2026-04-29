@@ -17,8 +17,6 @@ from starlette_babel import gettext_lazy as _
 from ...config import PottoSettings
 from ...operations.metadata import get_server_metadata
 from ...operations import collections as collection_operations
-from ...schemas.web.base import HtmlLanding
-from ...schemas.pygeoapi_config import ItemCollectionConfig
 from ...wrapper import Potto
 from .. import util
 
@@ -57,9 +55,6 @@ async def get_conformance_details(request: Request) -> Response:
     potto: Potto = request.state.potto
     current_locale = babel.Locale.parse(request.state.language)
     requested_format = util.get_accepted_info(request)[1]
-    format_to_process = (
-        requested_format if requested_format != F_HTML else F_JSON
-    ) or F_JSON
     result = await potto.api_get_conformance_details()
     if requested_format == F_HTML:
         content = result.content

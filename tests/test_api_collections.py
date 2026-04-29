@@ -41,7 +41,7 @@ def test_api_collection_list_links(
     links = payload["links"]
     home_link = [li for li in links if li["rel"] == "home"][0]
     assert home_link["type"] == "application/json"
-    assert home_link["href"].endswith(f"/api/")
+    assert home_link["href"].endswith("/api/")
     self_link = [li for li in links if li["rel"] == "self"][0]
     assert self_link["type"] == "application/json"
     assert self_link["href"].endswith("/api/collections")
@@ -107,7 +107,7 @@ def test_api_collection_get_links(
     links = payload["links"]
     home_link = [li for li in links if li["rel"] == "home"][0]
     assert home_link["type"] == "application/json"
-    assert home_link["href"].endswith(f"/api/")
+    assert home_link["href"].endswith("/api/")
     self_link = [li for li in links if li["rel"] == "self"][0]
     assert self_link["type"] == "application/json"
     assert self_link["href"].endswith(

@@ -127,7 +127,7 @@ async def list_public_collections(
     statement = (
         select(Collection)
         .options(selectinload(Collection.owner))
-        .where(Collection.is_public == True)
+        .where(Collection.is_public)
     )
     statement = _apply_common_filters(
         statement, identifier_filter, collection_type_filter, spatial_intersect
@@ -165,7 +165,7 @@ async def list_user_collections(
     if accessible_identifiers is not None:
         statement = statement.where(
             or_(
-                Collection.is_public == True,
+                Collection.is_public,
                 Collection.owner_id == user_id,
                 Collection.resource_identifier.in_(accessible_identifiers),
             )

@@ -23,6 +23,7 @@ from starlette.requests import Request
 
 from ..schemas.auth import PottoUser
 from ..schemas import potto as potto_schemas
+from ..schemas import metadata as metadata_schemas
 from ..schemas.base import (
     CollectionProvider,
     CollectionType,
@@ -215,15 +216,15 @@ class ServerMetadata(SQLModel, table=True):
             keywords_type=self.keywords_type,
             terms_of_service=self.terms_of_service,
             url=self.url,
-            license=potto_schemas.ServerMetadataLicense(
+            license=metadata_schemas.LicenseInformation(
                 name=self.license.get("name"),
                 url=self.license.get("url"),
             ),
-            data_provider=potto_schemas.ServerMetadataDataProvider(
+            data_provider=metadata_schemas.DataProviderInformation(
                 name=self.data_provider.get("name"),
                 url=self.data_provider.get("url"),
             ),
-            point_of_contact=potto_schemas.ServerMetadataPointOfContact(
+            point_of_contact=metadata_schemas.PointOfContact(
                 name=self.point_of_contact.get("name"),
                 position=self.point_of_contact.get("position"),
                 address=self.point_of_contact.get("address"),

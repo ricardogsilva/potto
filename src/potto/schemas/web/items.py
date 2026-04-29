@@ -145,21 +145,6 @@ class GeoJsonItemCollection(pydantic.BaseModel):
         potto_response: potto_schemas.FeatureListResponse,
         url_resolver: UrlResolver,
     ) -> "GeoJsonItemCollection":
-        pagination_links = potto_response.pagination.get_links(
-            str(
-                url_resolver(
-                    "api:collection-item-list",
-                    collection_id=potto_response.collection.identifier,
-                )
-            ),
-            additional_query_params=(
-                potto_response.filter_.model_dump(
-                    by_alias=True, exclude_none=True, exclude={"offset"}
-                )
-                if potto_response.filter_
-                else None
-            ),
-        )
         return cls(
             type="FeatureCollection",
             features=[

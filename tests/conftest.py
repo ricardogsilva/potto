@@ -1,5 +1,3 @@
-import datetime as dt
-
 import pytest
 import pytest_asyncio
 import sqlmodel

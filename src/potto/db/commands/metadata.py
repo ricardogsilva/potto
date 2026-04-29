@@ -118,4 +118,4 @@ async def delete_metadata(
         await session.delete(instance)
         await session.commit()
     else:
-        raise PottoException(f"Server metadata not found.")
+        raise PottoException("Server metadata not found.")

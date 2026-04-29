@@ -67,7 +67,7 @@ async def import_collections_from_pygeoapi(
     """Import collections from pygeoapi."""
     if not pygeoapi_configuration.is_file():
         collections_app.error_console.print(
-            f"Error: pygeoapi configuration file not found."
+            "Error: pygeoapi configuration file not found."
         )
         sys.exit(1)
 
@@ -81,8 +81,8 @@ async def import_collections_from_pygeoapi(
         )
         if not total_admins:
             collections_app.error_console.print(
-                f"Cannot import collections without there being at least one user with 'admin' "
-                f"scope to inherit them."
+                "Cannot import collections without there being at least one user with 'admin' "
+                "scope to inherit them."
             )
             sys.exit(1)
         collection_owner = existing_admins[0]

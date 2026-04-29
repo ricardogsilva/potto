@@ -1,5 +1,4 @@
 import asyncio
-import getpass
 import inspect
 import logging
 import logging.config
@@ -20,7 +19,6 @@ from ..config import (
     get_settings,
     PottoSettings,
 )
-from starlette.authentication import UnauthenticatedUser
 
 from .db import db_app
 from .collections import collections_app

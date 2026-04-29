@@ -9,11 +9,9 @@ from pygments.lexers import JsonLexer
 from starlette.requests import Request
 from starlette.responses import Response
 
-from ...operations import collections as collection_operations
 from ...schemas.web import items
 from ...schemas import auth as auth_schemas
 
-from ...config import PottoSettings
 from ...wrapper import Potto
 
 logger = logging.getLogger(__name__)
@@ -100,7 +98,7 @@ async def list_collection_items(request: Request) -> Response:
         template_path = f"items/{result.resource.identifier}-list.html"
         request.state.templates.get_template(template_path)
     except TemplateNotFound:
-        template_path = f"items/list.html"
+        template_path = "items/list.html"
     response_content = items.HtmlItemCollection.from_potto(result, request.url_for)
     return request.state.templates.TemplateResponse(
         request,
@@ -135,7 +133,7 @@ async def get_item_details(request: Request) -> Response:
         template_path = f"items/{result.resource.identifier}-item-feature.html"
         request.state.templates.get_template(template_path)
     except TemplateNotFound:
-        template_path = f"items/item-feature.html"
+        template_path = "items/item-feature.html"
 
     response_content = items.HtmlItemFeature.from_potto(result, request.url_for)
     return request.state.templates.TemplateResponse(

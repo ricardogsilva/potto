@@ -5,10 +5,7 @@ import pydantic
 
 from ... import constants
 from ...webapp.protocols import UrlResolver
-from ..base import (
-    CollectionType,
-    Link,
-)
+from ..base import Link
 from ..potto import LandingPage
 
 logger = logging.getLogger(__name__)

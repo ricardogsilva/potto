@@ -5,11 +5,6 @@ import pydantic
 import shapely
 
 from ..db.models import Collection
-from .base import (
-    Title,
-    MaybeDescription,
-    MaybeKeywords,
-)
 
 
 class LocalizableConfigString(pydantic.RootModel):
