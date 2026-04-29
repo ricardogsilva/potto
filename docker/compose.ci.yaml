@@ -1,0 +1,24 @@
+# docker compose file to be used for CI - do not use this in production!
+
+name: potto
+
+
+x-db-image: &db-image "postgis/postgis:17-3.5-alpine"
+
+services:
+
+  db:
+    image: *db-image
+    environment:
+      POSTGRES_DB: potto
+      POSTGRES_USER: potto
+      POSTGRES_PASSWORD: pottopass
+    ports:
+      - target: 5432
+        published: 55432
+    healthcheck:
+      test: "pg_isready -d potto -U potto"
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
