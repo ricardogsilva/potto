@@ -62,4 +62,3 @@ root:
   level: WARNING
   handlers:
     - default
-
