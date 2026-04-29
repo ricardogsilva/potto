@@ -7,6 +7,8 @@ from potto.schemas import (
     collections as collection_schemas,
 )
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_bare_collection_create(db_session_maker, admin_user):

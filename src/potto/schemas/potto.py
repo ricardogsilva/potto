@@ -4,6 +4,7 @@ import copy
 import dataclasses
 import datetime as dt
 import json
+import logging
 from typing import Any
 
 import shapely
@@ -16,6 +17,8 @@ from . import (
     base,
     metadata,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -178,6 +181,7 @@ class Feature:
 
     @classmethod
     def from_pygeoapi_feature(cls, pygeoapi_feature: dict) -> "Feature":
+        logger.debug(f"{pygeoapi_feature=}")
         return cls(
             id_=str(pygeoapi_feature["id"]),
             properties={k: v for k, v in pygeoapi_feature["properties"].items() if k != "id"},

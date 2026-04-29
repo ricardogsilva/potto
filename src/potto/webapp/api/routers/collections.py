@@ -8,10 +8,11 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 
-from ....constants import MEDIA_TYPE_JSON_SCHEMA
+from .... import constants
 from ....exceptions import PottoException
 from ....operations import collections as collection_operations
 from ....schemas import (
+    base as base_schemas,
     collections as collections_schemas,
 )
 from ....schemas.web.collections import (
@@ -104,7 +105,25 @@ async def get_collection_queryables(
     queryables["$id"] = str(
         request.url_for("api:collection-get", collection_id=collection_id)
     )
-    return JSONResponse(content=queryables, media_type=MEDIA_TYPE_JSON_SCHEMA)
+    links = [
+        base_schemas.Link(
+            type=constants.MEDIA_TYPE_JSON,
+            rel=constants.REL_HOME,
+            href=str(request.url_for("api:landing-page")),
+        ),
+        base_schemas.Link(
+            type=constants.MEDIA_TYPE_JSON,
+            rel=constants.REL_COLLECTION,
+            href=str(request.url_for("api:collection-get", collection_id=collection_id)),
+        ),
+    ]
+    return JSONResponse(
+        headers={
+            "Content-Type": constants.MEDIA_TYPE_JSON_SCHEMA,
+            "Link": ",".join((li.serialize_as_http_header() for li in links))
+        },
+        content=queryables,
+    )
 
 
 @router.get(
@@ -125,7 +144,25 @@ async def get_collection_schema(
     schema["$id"] = str(
         request.url_for("api:collection-get", collection_id=collection_id)
     )
-    return JSONResponse(content=schema, media_type=MEDIA_TYPE_JSON_SCHEMA)
+    links = [
+        base_schemas.Link(
+            type=constants.MEDIA_TYPE_JSON,
+            rel=constants.REL_HOME,
+            href=str(request.url_for("api:landing-page")),
+        ),
+        base_schemas.Link(
+            type=constants.MEDIA_TYPE_JSON,
+            rel=constants.REL_COLLECTION,
+            href=str(request.url_for("api:collection-get", collection_id=collection_id)),
+        ),
+    ]
+    return JSONResponse(
+        headers={
+            "Content-Type": constants.MEDIA_TYPE_JSON_SCHEMA,
+            "Link": ",".join((li.serialize_as_http_header() for li in links))
+        },
+        content=schema,
+    )
 
 
 @router.post(

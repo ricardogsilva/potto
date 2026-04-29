@@ -87,23 +87,74 @@ async def admin_user(db, db_session_maker):
 
 
 @pytest_asyncio.fixture
-async def sample_feature_collection(db, db_session_maker, admin_user):
+async def obs_feature_collection(db, db_session_maker, admin_user):
     async with db_session_maker() as session:
         yield await create_collection(
             session,
             collections_schemas.CollectionCreate(
-                resource_identifier="sample-collection1",
+                resource_identifier="obs-test",
                 owner_id=admin_user.id,
                 is_public=False,
                 collection_type=base_schemas.CollectionType.FEATURE_COLLECTION,
-                title="Fake collection title",
-                spatial_extent="POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))",
+                title="Testing obs feature collection",
+                spatial_extent="POLYGON ((-122 43, -122 49, -75 49, -75 43, -122 43))",
                 spatial_extent_crs="http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                temporal_extent_begin=dt.datetime(
-                    2026, 1, 1, 12, 23, tzinfo=dt.UTC),
                 providers={
                     "feature": base_schemas.CollectionProvider(
-                        python_callable="fake",
+                        python_callable="potto.pygeoapi_providers.PygeoapiConfigWktFeatureProvider",
+                        config=base_schemas.CollectionProviderConfiguration(
+                            options={},
+                            data={
+                                "features": [
+                                    {
+                                        "id": 371,
+                                        "geometry": "POINT (-75 45)",
+                                        "properties": {
+                                            "stn_id": 35,
+                                            "datetime": "2001-10-30T14:24:55Z",
+                                            "value": 89.9,
+                                        }
+                                    },
+                                    {
+                                        "id": 377,
+                                        "geometry": "POINT (-75 45)",
+                                        "properties": {
+                                            "stn_id": 35,
+                                            "datetime": "2002-10-30T18:31:38Z",
+                                            "value": 93.9,
+                                        }
+                                    },
+                                    {
+                                        "id": 238,
+                                        "geometry": "POINT (-79 43)",
+                                        "properties": {
+                                            "stn_id": 2147,
+                                            "datetime": "2007-10-30T08:57:29Z",
+                                            "value": 103.5,
+                                        }
+                                    },
+                                    {
+                                        "id": 297,
+                                        "geometry": "POINT (-79 43)",
+                                        "properties": {
+                                            "stn_id": 2147,
+                                            "datetime": "2003-10-30T07:37:29Z",
+                                            "value": 93.5,
+                                        }
+                                    },
+                                    {
+                                        "id": 964,
+                                        "geometry": "POINT (-122 49)",
+                                        "properties": {
+                                            "stn_id": 604,
+                                            "datetime": "2000-10-30T18:24:39Z",
+                                            "value": 99.9,
+
+                                        }
+                                    },
+                                ]
+                            }
+                        )
                     )
                 }
 

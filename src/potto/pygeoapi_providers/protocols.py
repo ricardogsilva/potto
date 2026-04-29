@@ -1,10 +1,33 @@
-from typing import Protocol
+from typing import (
+    Literal,
+    Protocol,
+    TYPE_CHECKING,
+)
+
+if TYPE_CHECKING:
+    from pygeoapi.crs import CrsTransformSpec
+
+from .base import (
+    CqlQueryText,
+    EqualityFilterableProperty,
+    GeoJsonFeature,
+    GeoJsonFeatureCollection,
+    RawBbox,
+    RawDateTimeOrRange,
+    RawFullTextSearchQuery,
+    ReturnableProperty,
+    SortByEntry,
+)
 
 
-class PygeoapiFeatureProviderProtocol(Protocol):
+class PygeoapiReadOnlyFeatureProviderProtocol(Protocol):
+    editable: Literal[False]
     storage_crs: str
-    editable: bool
-    type: str = "feature"
+    type: Literal["feature"]
+    include_extra_query_parameters: bool
+    id_field: str | None
+    time_field: str | None
+    uri_field: str | None
 
     def __init__(self, provider_definition: dict) -> None: ...
 
@@ -15,15 +38,6 @@ class PygeoapiFeatureProviderProtocol(Protocol):
     @property
     def properties(self) -> list[ReturnableProperty] | None: ...
 
-    @property
-    def id_field(self) -> str | None: ...
-
-    @property
-    def time_field(self) -> str | None: ...
-
-    # def get_fields(self) -> dict:
-    #     """Return schema of public fields."""
-
     def query(
             self,
             offset: int = 0,
@@ -33,11 +47,12 @@ class PygeoapiFeatureProviderProtocol(Protocol):
             datetime_: RawDateTimeOrRange | None = None,
             properties: list[EqualityFilterableProperty] | None = None,
             sortby: list[SortByEntry] | None = None,
-            select_properties: list[ReturnableProperty] | None = None,
             skip_geometry: bool = False,
-            q: RawFullTextSearchQuery | None = None,
-            filterq: CqlQueryText | None = None,
+            select_properties: list[ReturnableProperty] | None = None,
             crs_transform_spec: "CrsTransformSpec | None" = None,
+            q: RawFullTextSearchQuery | None = None,
+            language: str | None = None,
+            filterq: CqlQueryText | None = None,
     ) -> GeoJsonFeatureCollection:
         ...
 

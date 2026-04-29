@@ -27,7 +27,10 @@ from .routers import (
 )
 
 
-def _handle_potto_exception(request: Request, err: potto_exceptions.PottoException) -> JSONResponse:
+def _handle_potto_not_found_exception(
+        request: Request,
+        err: potto_exceptions.PottoNotFoundException
+) -> JSONResponse:
     return JSONResponse(
         status_code=404,
         content={"detail": str(err)},
@@ -45,7 +48,10 @@ def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
         summary="OGC API server",
         docs_url=None,
     )
-    app.add_exception_handler(potto_exceptions.PottoException, _handle_potto_exception)
+    app.add_exception_handler(
+        potto_exceptions.PottoNotFoundException,
+        _handle_potto_not_found_exception
+    )
 
 
     app.mount(

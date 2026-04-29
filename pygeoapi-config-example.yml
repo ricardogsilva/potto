@@ -2,6 +2,49 @@
 #
 
 resources:
+    simplest-obs:
+      type: collection
+      title: Simplest observations
+      description: Coolest observations
+      extents:
+        spatial:
+          bbox: [-122, 43, -75, 49]
+      providers:
+        - type: feature
+          name: potto.pygeoapi_providers.PygeoapiConfigWktFeatureProvider
+          data:
+            features:
+              - id: 371
+                geometry: "POINT (-75 45)"
+                properties:
+                  stn_id: 35
+                  datetime: "2001-10-30T14:24:55Z"
+                  value: 89.9
+              - id: 377
+                geometry: "POINT (-75 45)"
+                properties:
+                  stn_id: 35
+                  datetime: "2002-10-30T18:31:38Z"
+                  value: 93.9
+              - id: 238
+                geometry: "POINT (-79 43)"
+                properties:
+                  stn_id: 2147
+                  datetime: "2007-10-30T08:57:29Z"
+                  value: 103.5
+              - id: 297
+                geometry: "POINT (-79 43)"
+                properties:
+                  stn_id: 2147
+                  datetime: "2003-10-30T07:37:29Z"
+                  value: 93.5
+              - id: 964
+                geometry: "POINT (-122 49)"
+                properties:
+                  stn_id: 604
+                  datetime: "2000-10-30T18:24:39Z"
+                  value: 99.9
+
     simple-obs:
       type: collection
       title: Simple observations
@@ -11,7 +54,7 @@ resources:
           bbox: [-122, 43, -75, 49]
       providers:
         - type: feature
-          name: potto.pygeoapi_providers.config.PygeoapiConfigGeoJsonProvider
+          name: potto.pygeoapi_providers.PygeoapiConfigGeoJsonFeatureProvider
           data:
             # this was generated with ogr2ogr, from the obs.csv dataset:
             # ogr2ogr \

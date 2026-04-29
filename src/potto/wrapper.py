@@ -3,6 +3,7 @@ import json
 import logging
 from http import HTTPStatus
 from typing import (
+    cast,
     Literal,
     Sequence,
     TypeAlias,
@@ -25,9 +26,11 @@ from pygeoapi.api.itemtypes import (
 from pygeoapi.openapi import get_oas_30
 from pygeoapi.l10n import translate_struct
 
-from . import constants
+from . import (
+    constants,
+    exceptions as potto_exceptions,
+)
 from .config import PottoSettings
-from .exceptions import PottoException
 from .operations.config import get_pygeoapi_config
 from .operations import (
     collections as collection_ops,
@@ -111,7 +114,8 @@ class Potto:
                     collection_id
                 )
             ) is None:
-                raise PottoException(f"Collection {collection_id} not found")
+                raise potto_exceptions.PottoCollectionNotFoundException(
+                    f"Collection {collection_id} not found")
         return db_collection.to_potto()
 
     async def get_localized_config(self, locale: babel.Locale) -> dict:
@@ -324,6 +328,9 @@ class Potto:
             identifier=item_id,
         )
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
+        if cast(HTTPStatus, pygeoapi_status_code).value != 200:
+            raise potto_exceptions.PottoCollectionItemNotFoundException(
+                f"Item {item_id} not found")
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
         return potto_schemas.FeatureResponse(
             collection=collection,
