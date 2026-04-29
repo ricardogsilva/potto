@@ -1,49 +1,117 @@
 # Bare pygeoapi configuration file that only contains the fields required by Potto
 #
-# Also supported but commented out in order to use the defaults:
-#metadata:
-#    identification:
-#        title:
-#            en: pygeoapi default instance
-#            fr: instance par défaut de pygeoapi
-#        description:
-#            en: pygeoapi provides an API to geospatial data
-#            fr: pygeoapi fournit une API aux données géospatiales
-#        keywords:
-#            en:
-#                - geospatial
-#                - data
-#                - api
-#            fr:
-#                - géospatiale
-#                - données
-#                - api
-#        keywords_type: theme
-#        terms_of_service: https://creativecommons.org/licenses/by/4.0/
-#        url: https://example.org
-#    license:
-#        name: CC-BY 4.0 license
-#        url: https://creativecommons.org/licenses/by/4.0/
-#    provider:
-#        name: Organization Name
-#        url: https://pygeoapi.io
-#    contact:
-#        name: Lastname, Firstname
-#        position: Position Title
-#        address: Mailing Address
-#        city: City
-#        stateorprovince: Administrative Area
-#        postalcode: Zip or Postal Code
-#        country: Country
-#        phone: +xx-xxx-xxx-xxxx
-#        fax: +xx-xxx-xxx-xxxx
-#        email: you@example.org
-#        url: Contact URL
-#        hours: Mo-Fr 08:00-17:00
-#        instructions: During hours of service. Off on weekends.
-#        role: pointOfContact
 
 resources:
+    simplest-obs:
+      type: collection
+      title: Simplest observations
+      description: Coolest observations
+      extents:
+        spatial:
+          bbox: [-122, 43, -75, 49]
+      providers:
+        - type: feature
+          name: potto.pygeoapi_providers.PygeoapiConfigWktFeatureProvider
+          data:
+            features:
+              - id: 371
+                geometry: "POINT (-75 45)"
+                properties:
+                  stn_id: 35
+                  datetime: "2001-10-30T14:24:55Z"
+                  value: 89.9
+              - id: 377
+                geometry: "POINT (-75 45)"
+                properties:
+                  stn_id: 35
+                  datetime: "2002-10-30T18:31:38Z"
+                  value: 93.9
+              - id: 238
+                geometry: "POINT (-79 43)"
+                properties:
+                  stn_id: 2147
+                  datetime: "2007-10-30T08:57:29Z"
+                  value: 103.5
+              - id: 297
+                geometry: "POINT (-79 43)"
+                properties:
+                  stn_id: 2147
+                  datetime: "2003-10-30T07:37:29Z"
+                  value: 93.5
+              - id: 964
+                geometry: "POINT (-122 49)"
+                properties:
+                  stn_id: 604
+                  datetime: "2000-10-30T18:24:39Z"
+                  value: 99.9
+
+    simple-obs:
+      type: collection
+      title: Simple observations
+      description: Even cooler observations
+      extents:
+        spatial:
+          bbox: [-122, 43, -75, 49]
+      providers:
+        - type: feature
+          name: potto.pygeoapi_providers.PygeoapiConfigGeoJsonFeatureProvider
+          data:
+            # this was generated with ogr2ogr, from the obs.csv dataset:
+            # ogr2ogr \
+            #   -of GeoJSON \
+            #   /vsistdout/  obs.csv \
+            #   -lco ID_FIELD=id \
+            #   -oo X_POSSIBLE_NAMES=long \
+            #   -oo Y_POSSIBLE_NAMES=lat \
+            #   -oo KEEP_GEOM_COLUMNS=no \
+            #   -oo AUTODETECT_TYPE=yes
+            features:
+              - type: "Feature"
+                id: 371
+                properties:
+                  stn_id: 35
+                  datetime: "2001-10-30T14:24:55Z"
+                  value: 89.9
+                geometry:
+                  type: "Point"
+                  coordinates: [ -75.0, 45.0 ]
+              - type: "Feature"
+                id: 377
+                properties:
+                  stn_id: 35
+                  datetime: "2002-10-30T18:31:38Z"
+                  value: 93.9
+                geometry:
+                  type: "Point"
+                  coordinates: [ -75.0, 45.0 ]
+              - type: "Feature"
+                id: 238
+                properties:
+                  stn_id: 2147
+                  datetime: "2007-10-30T08:57:29Z"
+                  value: 103.5
+                geometry:
+                  type: "Point"
+                  coordinates: [ -79.0, 43.0 ]
+              - type: "Feature"
+                id: 297
+                properties:
+                  stn_id: 2147
+                  datetime: "2003-10-30T07:37:29Z"
+                  value: 93.5
+                geometry:
+                  type: "Point"
+                  coordinates: [ -79.0, 43.0 ]
+              - type: "Feature"
+                id: 964
+                properties:
+                  stn_id: 604
+                  datetime: "2000-10-30T18:24:39Z"
+                  value: 99.9
+                geometry:
+                  type: "Point"
+                  coordinates: [ -122.0, 49.0 ]
+
     obs:
         type: collection
         title: Observations

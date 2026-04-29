@@ -26,7 +26,9 @@ class JsonCollection(pydantic.BaseModel):
     links: list[base.Link]
     extent: base.Extent | None = None
     item_type: Annotated[str | None, pydantic.Field(serialization_alias="itemType")] = constants.FEATURE_COLLECTION_ITEM_TYPE
-    crs: list[str] = pydantic.Field(default_factory=lambda : [constants.CRS_84])
+    crs: list[str] | None = pydantic.Field(default_factory=lambda : [constants.CRS_84])
+    storage_crs: Annotated[str | None, pydantic.Field(serialization_alias="storageCrs")] = None
+    storage_crs_coordinate_epoch: float | None = None
 
     @classmethod
     def from_db_item(
@@ -94,7 +96,10 @@ class JsonCollection(pydantic.BaseModel):
             extent=base.Extent(
                 spatial=spatial_extent,
                 temporal=temporal_extent,
-            )
+            ),
+            crs=potto_collection.crs,
+            storage_crs=potto_collection.storage_crs,
+            storage_crs_coordinate_epoch=potto_collection.storage_crs_coordinate_epoch,
         )
 
     @classmethod

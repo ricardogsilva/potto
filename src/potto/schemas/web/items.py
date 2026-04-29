@@ -10,9 +10,9 @@ from typing import (
 import pydantic
 import shapely
 
-from ...db import models
 from ... import constants
 from ...webapp.protocols import UrlResolver
+from ...webapp.util import get_base_links
 from .. import (
     base,
     pygeoapi_config,
@@ -77,8 +77,8 @@ class FeatureFilter(ItemFilter):
 
 
 class GeoJsonItem(pydantic.BaseModel):
-    id_: str = pydantic.Field(alias="id")
-    type_: Annotated[str, pydantic.Field(alias="type")] = "feature"
+    id_: str = pydantic.Field(serialization_alias="id")
+    type_: Annotated[str, pydantic.Field(serialization_alias="type")] = "feature"
     properties: dict
     geometry: dict
     links: list[Link]
@@ -86,64 +86,45 @@ class GeoJsonItem(pydantic.BaseModel):
     @classmethod
     def from_potto(
             cls,
-            feature: potto_schemas.Feature,
-            collection: models.Collection,
+            potto_response: potto_schemas.FeatureResponse,
             url_resolver: UrlResolver,
             exclude_link_relations: Sequence[str] | None = None
     ) -> "GeoJsonItem":
         all_links = [
             Link(
-                type="application/geo+json",
-                rel="self",
+                type=constants.MEDIA_TYPE_GEO_JSON,
+                rel=constants.REL_SELF,
                 href=str(
                     url_resolver(
-                        "api:get-item",
-                        collection_id=collection.resource_identifier,
-                        item_id=feature.id_
+                        "api:collection-item-get",
+                        collection_id=potto_response.collection.identifier,
+                        item_id=potto_response.feature.id_
                     )
                 ),
                 title="Details about this feature",
             ),
             Link(
-                type=constants.MEDIA_TYPE_HTML,
-                rel="alternate",
-                href=str(
-                    url_resolver(
-                        "get-item",
-                        collection_id=collection.resource_identifier,
-                        item_id=feature.id_
-                    )
-                ),
-                title="Details about this feature as HTML",
-            ),
-            Link(
                 type=constants.MEDIA_TYPE_JSON,
-                rel="collection",
+                rel=constants.REL_COLLECTION,
                 href=str(
                     url_resolver(
-                        "api:get-collection",
-                        collection_id=collection.resource_identifier,
+                        "api:collection-get",
+                        collection_id=potto_response.collection.identifier,
                     )
                 ),
                 title="This feature's collection",
             ),
-            Link(
-                type=constants.MEDIA_TYPE_HTML,
-                rel="collection",
-                href=str(
-                    url_resolver(
-                        "get-collection",
-                        collection_id=collection.resource_identifier,
-                    )
-                ),
-                title="This feature's collection as HTML",
-            ),
         ]
         return cls(
-            **feature.model_dump(exclude={"geometry"}, by_alias=True),
+            id_=potto_response.feature.id_,
+            properties=potto_response.feature.properties,
             type_="Feature",
-            geometry=json.loads(shapely.to_geojson(feature.geometry)),
-            links=[link for link in all_links if link.rel not in (exclude_link_relations or [])]
+            geometry=json.loads(shapely.to_geojson(potto_response.feature.geometry)),
+            links=[
+                link
+                for link in all_links
+                if link.rel not in (exclude_link_relations or [])
+            ]
         )
 
 
@@ -151,9 +132,9 @@ class GeoJsonItemCollection(pydantic.BaseModel):
     type: str
     features: list[GeoJsonItem]
     links: list[Link]
-    number_matched: int = pydantic.Field(alias="numberMatched")
-    number_returned: int = pydantic.Field(alias="numberReturned")
-    timestamp: str = pydantic.Field(alias="timeStamp")
+    number_matched: int = pydantic.Field(serialization_alias="numberMatched")
+    number_returned: int = pydantic.Field(serialization_alias="numberReturned")
+    time_stamp: str = pydantic.Field(serialization_alias="timeStamp")
 
     @classmethod
     def from_potto(
@@ -164,64 +145,85 @@ class GeoJsonItemCollection(pydantic.BaseModel):
         pagination_links = potto_response.pagination.get_links(
             str(
                 url_resolver(
-                    "list-collection-items",
-                    collection_id=potto_response.collection.resource_identifier
+                    "api:collection-item-list",
+                    collection_id=potto_response.collection.identifier
                 )
             ),
-            additional_query_params=potto_response.filter_.model_dump(
-                by_alias=True, exclude_none=True, exclude={"offset"})
+            additional_query_params=(
+                potto_response.filter_.model_dump(
+                    by_alias=True,
+                    exclude_none=True,
+                    exclude={"offset"}
+                )
+                if potto_response.filter_ else None
+            )
         )
         return cls(
             type="FeatureCollection",
             features=[
                 GeoJsonItem.from_potto(
-                    feat, potto_response.collection, url_resolver,
+                    potto_schemas.FeatureResponse(potto_response.collection, feat),
+                    url_resolver,
                     exclude_link_relations=("collection",)
                 )
                 for feat in potto_response.features
             ],
-            links=[
-                Link(
-                    type=constants.MEDIA_TYPE_JSON,
-                    rel="self",
-                    href=str(
-                        url_resolver(
-                            "api:list-collection-items",
-                            collection_id=potto_response.collection.resource_identifier
-                        )
-                    ),
-                    title="This document"
-                ),
-                Link(
-                    type=constants.MEDIA_TYPE_HTML,
-                    rel="alternate",
-                    href=str(
-                        url_resolver(
-                            "list-collection-items",
-                            collection_id=potto_response.collection.resource_identifier
-                        )
-                    ),
-                    title="This document as HTML"
-                ),
-                Link(
-                    type=constants.MEDIA_TYPE_HTML,
-                    rel="collection",
-                    href=str(
-                        url_resolver(
-                            "get-collection",
-                            collection_id=potto_response.collection.resource_identifier
-                        )
-                    ),
-                    # TODO: localize this
-                    title=potto_response.collection.title
-                ),
-                *pagination_links,
-            ],
-            numberMatched=potto_response.pagination.number_matched,
-            numberReturned=potto_response.pagination.number_returned,
-            timeStamp=potto_response.metadata.get(
+            links=cls.get_links(url_resolver, potto_response),
+            number_matched=potto_response.pagination.number_matched,
+            number_returned=potto_response.pagination.number_returned,
+            time_stamp=potto_response.metadata.get(
                 "timestamp", dt.datetime.now(tz=dt.timezone.utc).isoformat()),
         )
+
+    @classmethod
+    def get_links(
+            cls,
+            url_resolver: UrlResolver,
+            potto_response: potto_schemas.FeatureListResponse
+    ) -> list[Link]:
+        pagination_links = potto_response.pagination.get_links(
+            str(
+                url_resolver(
+                    "api:collection-item-list",
+                    collection_id=potto_response.collection.identifier
+                )
+            ),
+            additional_query_params=(
+                potto_response.filter_.model_dump(
+                    by_alias=True,
+                    exclude_none=True,
+                    exclude={"offset"}
+                )
+                if potto_response.filter_ else None
+            )
+        )
+        return [
+            *get_base_links(url_resolver),
+            Link(
+                type=constants.MEDIA_TYPE_GEO_JSON,
+                rel=constants.REL_SELF,
+                href=str(
+                    url_resolver(
+                        "api:collection-item-list",
+                        collection_id=potto_response.collection.identifier
+                    )
+                ),
+                title="This document"
+            ),
+            Link(
+                type=constants.MEDIA_TYPE_JSON,
+                rel=constants.REL_COLLECTION,
+                href=str(
+                    url_resolver(
+                        "api:collection-get",
+                        collection_id=potto_response.collection.identifier
+                    )
+                ),
+                # TODO: localize this
+                title=potto_response.collection.title
+            ),
+            *pagination_links,
+        ]
 
 
 class HtmlItemCollection(pydantic.BaseModel):

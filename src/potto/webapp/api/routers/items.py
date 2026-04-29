@@ -7,7 +7,9 @@ from fastapi import (
     Query,
     Request,
 )
+from fastapi.responses import JSONResponse
 
+from .... import constants
 from ....schemas.base import (
     ItemFilter,
     FeatureFilter,
@@ -16,7 +18,11 @@ from ....schemas.web.items import (
     GeoJsonItem,
     GeoJsonItemCollection,
 )
-from ..dependencies import PottoDependency
+from ..dependencies import (
+    LocaleDependency,
+    PottoDependency,
+    UserDependency,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -24,37 +30,57 @@ router = APIRouter()
 
 @router.get(
     "/collections/{collection_id}/items",
-    name="collection-item-list"
+    name="collection-item-list",
+    tags=["items"],
 )
 async def list_collection_items(
         request: Request,
-        potto: PottoDependency,
         collection_id: str,
         filter_: Annotated[ItemFilter, Query()],
-) -> GeoJsonItemCollection:
-    current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.api_list_collection_items(
+        potto: PottoDependency,
+        user: UserDependency,
+        locale: LocaleDependency,
+):
+    collection_items = await potto.api_list_collection_items(
         collection_id,
-        locale=current_locale,
+        user=user,
+        locale=locale,
         filter_=FeatureFilter(**filter_.model_dump()),
     )
-    return GeoJsonItemCollection.from_potto(result, request.url_for)
+    result = GeoJsonItemCollection.from_potto(collection_items, request.url_for)
+    return JSONResponse(
+        result.model_dump(exclude_none=True, by_alias=True),
+        headers={
+            "Content-Type": constants.MEDIA_TYPE_GEO_JSON,
+            "Link": ",".join((li.serialize_as_http_header() for li in result.links)),
+        }
+    )
 
 
 @router.get(
     "/collections/{collection_id}/items/{item_id}",
-    name="collection-item-get"
+    name="collection-item-get",
+    tags=["items"],
 )
 async def get_item_details(
         request: Request,
         potto: PottoDependency,
+        user: UserDependency,
         collection_id: str,
         item_id: str,
-) -> GeoJsonItem:
+):
     current_locale = babel.Locale.parse(request.state.language)
-    result = await potto.api_get_collection_item(
+    collection_item = await potto.api_get_collection_item(
+        user,
         collection_id=collection_id,
         item_id=item_id,
         locale=current_locale,
     )
-    return GeoJsonItem.from_potto(result.feature, result.resource, request.url_for)
+    result = GeoJsonItem.from_potto(collection_item, request.url_for)
+    return JSONResponse(
+        result.model_dump(exclude_none=True, by_alias=True),
+        headers={
+            "Content-Type": constants.MEDIA_TYPE_GEO_JSON,
+            "Link": ",".join((li.serialize_as_http_header() for li in result.links)),
+        }
+    )

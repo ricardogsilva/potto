@@ -9,10 +9,14 @@ in the starlette app.
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from starlette.staticfiles import StaticFiles
 
-from ... import config
+from ... import (
+    config,
+    exceptions as potto_exceptions,
+)
 from ...schemas.auth import PottoUser
 from . import dependencies
 from .routers import (
@@ -21,6 +25,16 @@ from .routers import (
     collections,
     items,
 )
+
+
+def _handle_potto_not_found_exception(
+        request: Request,
+        err: potto_exceptions.PottoNotFoundException
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(err)},
+    )
 
 
 def create_api_app() -> FastAPI:
@@ -34,6 +48,12 @@ def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
         summary="OGC API server",
         docs_url=None,
     )
+    app.add_exception_handler(
+        potto_exceptions.PottoNotFoundException,
+        _handle_potto_not_found_exception
+    )
+
+
     app.mount(
         "/static",
         StaticFiles(

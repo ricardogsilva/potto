@@ -53,7 +53,7 @@ def get_pagination_limit(
         settings: Annotated[config.PottoSettings, Depends(get_settings)],
         limit: Annotated[int | None, Query(gte=1)] = None
 ) -> int:
-    return min(limit or 1, settings.max_page_size)
+    return min(limit or settings.page_size, settings.page_size_max)
 
 
 SettingsDependency = Annotated[config.PottoSettings, Depends(get_settings)]

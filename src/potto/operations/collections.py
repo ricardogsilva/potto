@@ -3,9 +3,11 @@ import logging
 
 import shapely
 from sqlmodel.ext.asyncio.session import AsyncSession
-from starlette.authentication import BaseUser
 
-from .. import util
+from .. import (
+    constants,
+    util,
+)
 from ..authz.base import AuthorizationBackendProtocol
 from ..db.models import (
     Collection,
@@ -218,6 +220,22 @@ async def revoke_collection_access(
     await auth_commands.update_user(session, target_user, UserUpdate(scopes=new_scopes))
 
 
+def _get_crs_info(pygeoapi_collection: dict) -> tuple[list[str], str | None, str | None]:
+    supported_crs = {constants.CRS_84}
+    storage_crs = None
+    storage_crs_coordinate_epoch = None
+    for provider_conf in pygeoapi_collection.get("providers", []):
+        if (advertised_crs_list := provider_conf.get("crs")) is not None:
+            supported_crs.update(advertised_crs_list)
+        if (provider_storage_crs := provider_conf.get("storage_crs")) is not None:
+            storage_crs = provider_storage_crs
+        if (provider_storage_crs_coordinate_epoch := provider_conf.get("storage_crs_coordinate_epoch")) is not None:
+            storage_crs_coordinate_epoch = provider_storage_crs_coordinate_epoch
+        if all((storage_crs, supported_crs, storage_crs_coordinate_epoch)):
+            break
+    return list(supported_crs), storage_crs, storage_crs_coordinate_epoch
+
+
 async def import_pygeoapi_collection(
         session: AsyncSession,
         user: User,
@@ -233,11 +251,27 @@ async def import_pygeoapi_collection(
         raise PottoException(f"Collection {identifier!r} already exists!")
     resource_spatial_extents = pygeoapi_collection.get(
         "extents", {}).get("spatial", {})
+    spatial_extent = None
+    spatial_extent_crs = None
     try:
-        # TODO: support inspecting the CRS
-        spatial_extent = shapely.box(*resource_spatial_extents.get("bbox"))
+        if (raw_bbox := resource_spatial_extents.get("bbox")) is not None:
+            spatial_extent = shapely.box(*raw_bbox)
+            spatial_extent_crs = resource_spatial_extents.get(
+                "crs",
+                constants.CRS_84h if spatial_extent.has_z else constants.CRS_84
+            )
+            # TODO: convert the bbox to either CRS84 or CRS84h, if given something else
     except TypeError:
-        spatial_extent = None
+        logger.exception(
+            f"Could not extract bbox from collection {identifier!r}, setting "
+            f"spatial_extent to None"
+        )
+    supported_crs = None
+    storage_crs = None
+    storage_crs_coordinate_epoch = None
+    if spatial_extent is not None:
+        supported_crs, storage_crs, storage_crs_coordinate_epoch = _get_crs_info(
+            pygeoapi_collection)
     providers = {}
     for prov in pygeoapi_collection.get("providers", []):
         modifiable_prov = copy.deepcopy(prov)
@@ -262,6 +296,10 @@ async def import_pygeoapi_collection(
             description=pygeoapi_collection.get("description"),
             keywords=pygeoapi_collection.get("keywords"),
             spatial_extent=spatial_extent,
+            spatial_extent_crs=spatial_extent_crs,
+            crs=supported_crs,
+            storage_crs=storage_crs,
+            storage_crs_coordinate_epoch=storage_crs_coordinate_epoch,
             temporal_extent_begin=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("begin"),
             temporal_extent_end=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("end"),
             additional_links=pygeoapi_collection.get("links"),
@@ -277,6 +315,10 @@ async def import_pygeoapi_collection(
             description=pygeoapi_collection.get("description"),
             keywords=pygeoapi_collection.get("keywords"),
             spatial_extent=spatial_extent,
+            spatial_extent_crs=spatial_extent_crs,
+            crs=supported_crs,
+            storage_crs=storage_crs,
+            storage_crs_coordinate_epoch=storage_crs_coordinate_epoch,
             temporal_extent_begin=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("begin"),
             temporal_extent_end=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("end"),
             additional_links=pygeoapi_collection.get("links"),

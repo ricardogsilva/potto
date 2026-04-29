@@ -97,8 +97,17 @@ class Collection(SQLModel, table=True):
         sa_type=ShapelyGeometryAdapter(),
         nullable=True,
     )
+    spatial_extent_crs: str | None = None  # part 1 - CRS of the spatial extent
+    crs: list[str] | None = Field(sa_type=JSONB(), nullable=True)  # part 2 - list of supported CRS
+    storage_crs: str | None = Field(default=None, nullable=True)  # part 2 - CRS of the dataset
+    storage_crs_coordinate_epoch: float | None = Field(default=None, nullable=True)  # part 3 - epoch of the dataset CRS
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
+    # this can be used for configuring additional extents, as mentioned in
+    # OAPIF - Part 1
+    additional_extents: dict[str, dict[str, str | int | float | None]] | None = Field(default=None, sa_type=JSONB(), nullable=True)
+    custom_page_size: int | None = Field(default=None, ge=1)
+    custom_page_size_max: int | None = Field(default=None, ge=1)
     additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
         default=None, sa_type=JSONB(), nullable=True)
     providers: dict[str, CollectionProvider] | None = Field(
@@ -122,10 +131,15 @@ class Collection(SQLModel, table=True):
             owner=self.owner.to_potto(),
             keywords=self.keywords,
             spatial_extent=self.spatial_extent,
+            crs=self.crs,
+            storage_crs=self.storage_crs,
+            storage_crs_coordinate_epoch=self.storage_crs_coordinate_epoch,
             temporal_extent_begin=self.temporal_extent_begin,
             temporal_extent_end=self.temporal_extent_end,
             additional_links=self.additional_links,
             providers=self.providers,
+            custom_page_size=self.custom_page_size,
+            custom_page_size_max=self.custom_page_size_max,
         )
 
 

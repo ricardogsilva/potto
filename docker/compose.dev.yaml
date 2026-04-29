@@ -2,10 +2,13 @@
 
 name: potto
 
+
+x-db-image: &db-image "postgis/postgis:17-3.5-alpine"
+
 services:
 
   db:
-    image: "postgis/postgis:17-3.5-alpine"
+    image: *db-image
     environment:
       POSTGRES_DB: potto
       POSTGRES_USER: potto
@@ -21,6 +24,24 @@ services:
         published: 55432
     volumes:
       - db:/var/lib/postgresql/data
+
+  test-db:
+    image: *db-image
+    environment:
+      POSTGRES_DB: potto_test
+      POSTGRES_USER: potto
+      POSTGRES_PASSWORD: pottopass
+    healthcheck:
+      test: "pg_isready -d potto_test -U potto"
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+    ports:
+      - target: 5432
+        published: 55433
+    volumes:
+      - test-db:/var/lib/postgresql/data
 
   keycloak:
     image: "quay.io/keycloak/keycloak:26.5.5"
@@ -62,4 +83,5 @@ services:
 
 volumes:
   db:
+  test-db:
   keycloak:

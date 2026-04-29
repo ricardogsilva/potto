@@ -16,7 +16,13 @@ logger = logging.getLogger(__name__)
 async def create_collection(
         session: AsyncSession, to_create: CollectionCreate
 ) -> Collection:
-    instance = Collection(**to_create.model_dump())
+    instance = Collection(
+        **to_create.model_dump(exclude={"additional_extents"}),
+    )
+    for additional_extent in (instance.additional_extents or []):
+        instance.additional_extents[additional_extent.name] = additional_extent.model_dump(
+            exclude={"name"}
+        )
     session.add(instance)
     await session.commit()
     await session.refresh(instance)
@@ -28,10 +34,18 @@ async def update_collection(
         db_collection: Collection,
         to_update: CollectionUpdate,
 ) -> Collection:
-    logger.debug(f"{to_update=}")
-    updates = to_update.model_dump(exclude_unset=True)
+    updates = to_update.model_dump(
+        exclude={"additional_extents"},
+        exclude_unset=True,
+    )
     for key, value in updates.items():
         setattr(db_collection, key, value)
+    if to_update.additional_extents is not None:
+        db_collection.additional_extents = {}
+        for additional_extent in (db_collection.additional_extents or []):
+            db_collection.additional_extents[additional_extent.name] = additional_extent.model_dump(
+                exclude={"name"}
+            )
     session.add(db_collection)
     await session.commit()
     await session.refresh(db_collection)

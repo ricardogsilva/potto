@@ -1,14 +1,17 @@
 import datetime as dt
 import logging
-from typing import Literal
+from typing import (
+    Annotated,
+    Literal,
+)
 
 import pydantic
 
 from .base import (
+    AdditionalExtent,
     CollectionProvider,
     CollectionType,
     MaybeDescription,
-    Extent,
     MaybeKeywords,
     MaybeShapelyGeometry,
     Title,
@@ -27,8 +30,15 @@ class CollectionCreate(pydantic.BaseModel):
     description: MaybeDescription = None
     keywords: MaybeKeywords = None
     spatial_extent: MaybeShapelyGeometry = None
+    spatial_extent_crs: str | None = None
+    crs: list[str] | None = None
+    storage_crs: str | None = None
+    storage_crs_coordinate_epoch: str | None = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
+    additional_extents: list[AdditionalExtent] | None = None
+    custom_page_size: Annotated[int | None, pydantic.Field(ge=1)] = None
+    custom_page_size_max: Annotated[int | None, pydantic.Field(ge=1)] = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
     providers: dict[str, CollectionProvider] | None = None
 
@@ -46,7 +56,14 @@ class CollectionUpdate(pydantic.BaseModel):
     description: MaybeDescription = None
     keywords: MaybeKeywords = None
     spatial_extent: MaybeShapelyGeometry = None
+    spatial_extent_crs: str | None = None
+    crs: list[str] | None = None
+    storage_crs: str | None = None
+    storage_crs_coordinate_epoch: str | None = None
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
+    additional_extents: list[AdditionalExtent] | None = None
+    custom_page_size: Annotated[int | None, pydantic.Field(ge=1)] = None
+    custom_page_size_max: Annotated[int | None, pydantic.Field(ge=1)] = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
     providers: dict[str, CollectionProvider] | None = None

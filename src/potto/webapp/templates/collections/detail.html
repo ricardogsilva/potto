@@ -41,7 +41,7 @@
             <code class="text-muted small">{{ contents.identifier }}</code>
         </div>
         {% if type_val in ('feature', 'record') %}
-        <a href="{{ url_for('collection-list-items', collection_id=contents.identifier) }}"
+        <a href="{{ url_for('collection-item-list', collection_id=contents.identifier) }}"
            class="btn btn-primary flex-shrink-0">
             <i class="bi bi-table me-2" aria-hidden="true"></i>Browse items
         </a>

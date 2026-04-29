@@ -60,6 +60,9 @@ class PottoSettings(pydantic_settings.BaseSettings):
     database_dsn: PostgresDsn = PostgresDsn(
         "postgresql+psycopg://potto:pottopass@localhost/potto"
     )
+    test_database_dsn: PostgresDsn = PostgresDsn(
+        "postgresql+psycopg://potto:pottopass@localhost/potto_test"
+    )
     debug: bool = False
     public_url: str = "http://localhost:3001"
     pygeoapi_config_file: Path = Path.home() / "pygeoapi-config.yml"
@@ -74,7 +77,8 @@ class PottoSettings(pydantic_settings.BaseSettings):
     uvicorn_log_config_file: Path | None = None
     oidc: OIDCSettings | None = None
     opa: OPASettings | None = None
-    max_page_size: int = 100
+    page_size: int = 20
+    page_size_max: int = 100
 
     _jinja_env: jinja2.Environment | None = None
     _db_engine: AsyncEngine | None = None

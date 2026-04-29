@@ -2,7 +2,7 @@ import json
 import logging
 from typing import (
     Any,
-    cast,
+    cast, List, Optional,
 )
 
 import pydantic
@@ -194,8 +194,14 @@ class CollectionView(_PottoAdminModelView):
         HasMany("editors", identity="user"),
         HasMany("viewers", identity="user"),
         SpatialExtentField(name="spatial_extent"),
+        Collection.spatial_extent_crs,
+        Collection.crs,
+        Collection.storage_crs,
+        Collection.storage_crs_coordinate_epoch,
         Collection.temporal_extent_begin,
         Collection.temporal_extent_end,
+        Collection.custom_page_size,
+        Collection.custom_page_size_max,
         Collection.keywords,
         # JSONField(name="providers"),
         ListField(
@@ -226,15 +232,21 @@ class CollectionView(_PottoAdminModelView):
     )
 
     exclude_fields_from_list = (
+        "crs",
+        "storage_crs",
+        "storage_crs_coordinate_epoch",
         "description",
         "additional_links",
         "keywords",
         "spatial_extent",
+        "spatial_extent_crs",
         "temporal_extent_begin",
         "temporal_extent_end",
         "providers",
         "editors",
         "viewers",
+        "custom_page_size",
+        "custom_page_size_max",
     )
     exclude_fields_from_create = (
         "created_at",
@@ -248,6 +260,7 @@ class CollectionView(_PottoAdminModelView):
     )
 
     async def is_row_action_allowed(self, request: Request, name: str) -> bool:
+        logger.debug(f"{name=}")
         if name in ("edit", "delete"):
             pk = request.path_params.get("pk")
             if pk is not None:
@@ -342,6 +355,21 @@ class CollectionView(_PottoAdminModelView):
             return result
         else:
             return await super().serialize_field_value(value, field, action, request)
+
+    async def delete(self, request: Request, pks: List[Any]) -> Optional[int]:
+        user = cast(PottoUser, request.user)
+        settings = cast(PottoSettings, request.app.state.SETTINGS)
+        auth_backend = settings.get_authorization_backend()
+        num_deleted = 0
+        async with settings.get_db_session_maker()() as session:
+            for pk in pks:
+                try:
+                    await collection_operations.delete_collection(
+                        session, user, auth_backend, int(pk))
+                except PottoException as err:
+                    return self.handle_exception(err)
+                num_deleted += 1
+        return num_deleted
 
     async def edit(self, request: Request, pk: Any, data: dict[str, Any]) -> Any:
         user = cast(PottoUser, request.user)
