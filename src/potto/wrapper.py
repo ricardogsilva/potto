@@ -74,62 +74,63 @@ class Potto:
       not focus on parsing HTTP Requests but rather whatever input parameters
       were needed for each particular method
     """
+
     _settings: PottoSettings
 
     def __init__(
-            self,
-            settings: PottoSettings,
+        self,
+        settings: PottoSettings,
     ) -> None:
         self._settings = settings
 
     async def _get_pygeoapi(
-            self,
-            user: auth.PottoUser | None,
-            *,
-            collection_identifier: str | None = None,
-            collection_page: int = 1,
-            collection_page_size: int = 20,
+        self,
+        user: auth.PottoUser | None,
+        *,
+        collection_identifier: str | None = None,
+        collection_page: int = 1,
+        collection_page_size: int = 20,
     ) -> _API:
         async with self._settings.get_db_session_maker()() as session:
             pygeoapi_config = await get_pygeoapi_config(
-                session, self._settings, user,
+                session,
+                self._settings,
+                user,
                 collection_identifier=collection_identifier,
                 collection_page=collection_page,
-                collection_page_size=collection_page_size
+                collection_page_size=collection_page_size,
             )
         openapi_document = get_oas_30(pygeoapi_config, fail_on_invalid_collection=True)
         return _API(config=pygeoapi_config, openapi=openapi_document)
 
     async def _get_collection(
-            self,
-            collection_id: str,
-            user: auth.PottoUser | None,
+        self,
+        collection_id: str,
+        user: auth.PottoUser | None,
     ) -> potto_schemas.Collection:
         async with self._settings.get_db_session_maker()() as session:
             if (
-                db_collection := await collection_ops.get_collection_by_resource_identifier(
+                db_collection
+                := await collection_ops.get_collection_by_resource_identifier(
                     session,
                     user,
                     self._settings.get_authorization_backend(),
-                    collection_id
+                    collection_id,
                 )
             ) is None:
                 raise potto_exceptions.PottoCollectionNotFoundException(
-                    f"Collection {collection_id} not found")
+                    f"Collection {collection_id} not found"
+                )
         return db_collection.to_potto()
 
     async def get_localized_config(self, locale: babel.Locale) -> dict:
         pygeoapi_api = await self._get_pygeoapi()
-        return translate_struct(
-            pygeoapi_api.config,
-            locale_=locale,
-            is_config=True
-        )
+        return translate_struct(pygeoapi_api.config, locale_=locale, is_config=True)
 
     async def api_get_landing_page(
-            self,
-            *,
-            user: auth.PottoUser | None,
+        self,
+        *,
+        user: auth.PottoUser | None,
     ) -> potto_schemas.LandingPage:
         """Return overview information.
 
@@ -153,7 +154,7 @@ class Potto:
                     page=page,
                     page_size=len(db_collections),
                     total=total,
-                )
+                ),
             ),
         )
 
@@ -162,33 +163,33 @@ class Potto:
             conforms_to=[
                 constants.CONFORMANCE_CLASS_OGCAPI_FEATURES_CORE,
                 constants.CONFORMANCE_CLASS_OGCAPI_FEATURES_GEOJSON,
-                constants.CONFORMANCE_CLASS_OGCAPI_FEATURES_OPENAPI3
+                constants.CONFORMANCE_CLASS_OGCAPI_FEATURES_OPENAPI3,
             ]
         )
 
     async def api_get_openapi_document(
-            self,
+        self,
     ) -> potto_schemas.PottoResponse:
         pygeoapi_api = await self._get_pygeoapi()
         return potto_schemas.PottoResponse(
-            content_type=_FORMAT_TYPES[F_JSON],
-            content=pygeoapi_api.openapi
+            content_type=_FORMAT_TYPES[F_JSON], content=pygeoapi_api.openapi
         )
 
     async def api_list_collections(
-            self,
-            *,
-            user: auth.PottoUser,
-            locale: babel.Locale,
-            page: int = 1,
-            page_size: int = 20,
+        self,
+        *,
+        user: auth.PottoUser,
+        locale: babel.Locale,
+        page: int = 1,
+        page_size: int = 20,
     ) -> potto_schemas.CollectionList:
         pygeoapi_api = await self._get_pygeoapi(
-            user, collection_page=page, collection_page_size=page_size)
+            user, collection_page=page, collection_page_size=page_size
+        )
         pygeoapi_response = await asyncio.to_thread(
             _describe_collections,
             pygeoapi_api,
-            PottoRequest(locale=locale, output_format="json")
+            PottoRequest(locale=locale, output_format="json"),
         )
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
@@ -196,7 +197,8 @@ class Potto:
         for pygeoapi_collection in parsed_pygeoapi_content.get("collections", []):
             found_collections.append(
                 potto_schemas.Collection.from_pygeoapi(
-                    pygeoapi_collection, pygeoapi_api)
+                    pygeoapi_collection, pygeoapi_api
+                )
             )
         return potto_schemas.CollectionList(
             collections=found_collections,
@@ -204,20 +206,21 @@ class Potto:
                 page=page,
                 page_size=len(found_collections),
                 total=0,  # FIXME
-            )
+            ),
         )
 
     async def api_get_collection(
-            self,
-            collection_id: str,
-            *,
-            user: auth.PottoUser,
-            locale: babel.Locale,
-            include_queryables: bool = False,
-            include_schema: bool = False,
+        self,
+        collection_id: str,
+        *,
+        user: auth.PottoUser,
+        locale: babel.Locale,
+        include_queryables: bool = False,
+        include_schema: bool = False,
     ) -> potto_schemas.Collection | None:
         pygeoapi_api = await self._get_pygeoapi(
-            user, collection_identifier=collection_id)
+            user, collection_identifier=collection_id
+        )
         pygeoapi_response = await asyncio.to_thread(
             _describe_collections,
             pygeoapi_api,
@@ -234,7 +237,7 @@ class Potto:
                 _get_collection_queryables,
                 pygeoapi_api,
                 PottoRequest(locale=locale, output_format="json"),
-                collection_id
+                collection_id,
             )
             pygeoapi_queryables_content = queryables_response[-1]
             collection_queryables = json.loads(pygeoapi_queryables_content)
@@ -244,7 +247,7 @@ class Potto:
                 _get_collection_schema,
                 pygeoapi_api,
                 PottoRequest(locale=locale, output_format="json"),
-                collection_id
+                collection_id,
             )
             pygeoapi_schema_content = schema_response[-1]
             collection_schema = json.loads(pygeoapi_schema_content)
@@ -256,18 +259,16 @@ class Potto:
         )
 
     async def api_list_collection_items(
-            self,
-            collection_id: str,
-            *,
-            locale: babel.Locale,
-            user: auth.PottoUser | None = None,
-            filter_: FeatureFilter | None = None,
+        self,
+        collection_id: str,
+        *,
+        locale: babel.Locale,
+        user: auth.PottoUser | None = None,
+        filter_: FeatureFilter | None = None,
     ) -> potto_schemas.FeatureListResponse:
         collection = await self._get_collection(collection_id, user)
         pygeoapi_api = await self._get_pygeoapi(
-            user,
-            collection_identifier=collection_id,
-            collection_page_size=1
+            user, collection_identifier=collection_id, collection_page_size=1
         )
         pygeoapi_response = await asyncio.to_thread(
             _get_collection_items,
@@ -275,19 +276,24 @@ class Potto:
             PottoRequest(
                 locale=locale,
                 output_format="json",
-                **(filter_.model_dump(by_alias=True, exclude_none=True) if filter_ else {})
+                **(
+                    filter_.model_dump(by_alias=True, exclude_none=True)
+                    if filter_
+                    else {}
+                ),
             ),
-            dataset=collection_id
+            dataset=collection_id,
         )
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
         logger.debug(f"{parsed_pygeoapi_content=}")
-        features=[
+        features = [
             potto_schemas.Feature.from_pygeoapi_feature(feat)
             for feat in parsed_pygeoapi_content["features"]
         ]
         effective_pagination_limit = get_collection_pagination_limit(
-            filter_.limit if filter_ else None, collection, self._settings)
+            filter_.limit if filter_ else None, collection, self._settings
+        )
         return potto_schemas.FeatureListResponse(
             collection=collection,
             features=features,
@@ -295,7 +301,8 @@ class Potto:
                 limit=effective_pagination_limit,
                 number_matched=parsed_pygeoapi_content.get("numberMatched", 0),
                 number_returned=parsed_pygeoapi_content.get(
-                    "numberReturned", len(features)),
+                    "numberReturned", len(features)
+                ),
                 offset=parsed_pygeoapi_content.get("offset", 0),
             ),
             filter_=filter_,
@@ -306,17 +313,18 @@ class Potto:
         )
 
     async def api_get_collection_item(
-            self,
-            user: auth.PottoUser | None,
-            *,
-            item_id: str,
-            collection_id: str,
-            locale: babel.Locale,
-            output_format: Literal["json", "jsonld"] = "json"
+        self,
+        user: auth.PottoUser | None,
+        *,
+        item_id: str,
+        collection_id: str,
+        locale: babel.Locale,
+        output_format: Literal["json", "jsonld"] = "json",
     ) -> potto_schemas.FeatureResponse:
         collection = await self._get_collection(collection_id, user)
         pygeoapi_api = await self._get_pygeoapi(
-            user, collection_identifier=collection_id)
+            user, collection_identifier=collection_id
+        )
         pygeoapi_response = await asyncio.to_thread(
             _get_collection_item,
             pygeoapi_api,
@@ -330,10 +338,13 @@ class Potto:
         pygeoapi_headers, pygeoapi_status_code, pygeoapi_content = pygeoapi_response
         if cast(HTTPStatus, pygeoapi_status_code).value != 200:
             raise potto_exceptions.PottoCollectionItemNotFoundException(
-                f"Item {item_id} not found")
+                f"Item {item_id} not found"
+            )
         parsed_pygeoapi_content = json.loads(pygeoapi_content)
         return potto_schemas.FeatureResponse(
             collection=collection,
-            feature=potto_schemas.Feature.from_pygeoapi_feature(parsed_pygeoapi_content),
-            metadata=pygeoapi_headers
+            feature=potto_schemas.Feature.from_pygeoapi_feature(
+                parsed_pygeoapi_content
+            ),
+            metadata=pygeoapi_headers,
         )

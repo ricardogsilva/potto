@@ -28,8 +28,7 @@ from .routers import (
 
 
 def _handle_potto_not_found_exception(
-        request: Request,
-        err: potto_exceptions.PottoNotFoundException
+    request: Request, err: potto_exceptions.PottoNotFoundException
 ) -> JSONResponse:
     return JSONResponse(
         status_code=404,
@@ -49,10 +48,8 @@ def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
         docs_url=None,
     )
     app.add_exception_handler(
-        potto_exceptions.PottoNotFoundException,
-        _handle_potto_not_found_exception
+        potto_exceptions.PottoNotFoundException, _handle_potto_not_found_exception
     )
-
 
     app.mount(
         "/static",

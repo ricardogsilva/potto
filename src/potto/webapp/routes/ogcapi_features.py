@@ -24,8 +24,7 @@ _PYGMENTS_FORMATTER = HtmlFormatter(style="friendly")
 async def list_collections(request: Request) -> Response:
     user = (
         potto_user
-        if isinstance(
-            (potto_user := request.user), auth_schemas.PottoUser)
+        if isinstance((potto_user := request.user), auth_schemas.PottoUser)
         else None
     )
     potto: Potto = request.state.potto
@@ -39,15 +38,14 @@ async def list_collections(request: Request) -> Response:
                 page=int(request.query_params.get("page", 1)),
                 page_size=int(request.query_params.get("page_size", 20)),
             ),
-        }
+        },
     )
 
 
 async def get_collection_details(request: Request) -> Response:
     user = (
         potto_user
-        if isinstance(
-            (potto_user := request.user), auth_schemas.PottoUser)
+        if isinstance((potto_user := request.user), auth_schemas.PottoUser)
         else None
     )
     potto: Potto = request.state.potto
@@ -59,12 +57,18 @@ async def get_collection_details(request: Request) -> Response:
         include_schema=True,
     )
     queryables_html = (
-        highlight(json.dumps(contents.queryables, indent=2), JsonLexer(), _PYGMENTS_FORMATTER)
-        if contents.queryables else None
+        highlight(
+            json.dumps(contents.queryables, indent=2), JsonLexer(), _PYGMENTS_FORMATTER
+        )
+        if contents.queryables
+        else None
     )
     schema_html = (
-        highlight(json.dumps(contents.schema, indent=2), JsonLexer(), _PYGMENTS_FORMATTER)
-        if contents.schema else None
+        highlight(
+            json.dumps(contents.schema, indent=2), JsonLexer(), _PYGMENTS_FORMATTER
+        )
+        if contents.schema
+        else None
     )
     return request.state.templates.TemplateResponse(
         request,
@@ -74,7 +78,7 @@ async def get_collection_details(request: Request) -> Response:
             "queryables_html": queryables_html,
             "schema_html": schema_html,
             "pygments_css": _PYGMENTS_FORMATTER.get_style_defs(".highlight"),
-        }
+        },
     )
 
 
@@ -84,7 +88,7 @@ async def list_collection_items(request: Request) -> Response:
     result = await potto.api_list_collection_items(
         collection_id=request.path_params["collection_id"],
         locale=current_locale,
-        filter_=items.FeatureFilter.from_query_parameters(request.query_params)
+        filter_=items.FeatureFilter.from_query_parameters(request.query_params),
     )
     # pygeoapi supports looking for templates also in the configuration
     # of the underlying resource being acted upon by looking for
@@ -108,7 +112,7 @@ async def list_collection_items(request: Request) -> Response:
         headers={
             **result.metadata,
             "Content-Type": "text/html; charset=utf-8",
-        }
+        },
     )
 
 
@@ -144,5 +148,5 @@ async def get_item_details(request: Request) -> Response:
         headers={
             **result.metadata,
             "Content-Type": "text/html; charset=utf-8",
-        }
+        },
     )

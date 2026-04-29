@@ -12,7 +12,9 @@ _COLLECTION_SCOPE_RE = re.compile(r"^collection-(.+):(editor|viewer)$")
 class LocalAuthorizationBackend:
     """Authorization backend that evaluates permissions from locally-stored user scopes."""
 
-    async def can_view_collection(self, user: PottoUser | None, collection: Collection) -> bool:
+    async def can_view_collection(
+        self, user: PottoUser | None, collection: Collection
+    ) -> bool:
         if collection.is_public:
             return True
         if user is None:
@@ -27,7 +29,9 @@ class LocalAuthorizationBackend:
             return True
         return False
 
-    async def can_edit_collection(self, user: PottoUser | None, collection: Collection) -> bool:
+    async def can_edit_collection(
+        self, user: PottoUser | None, collection: Collection
+    ) -> bool:
         if user is None:
             return False
         if PottoScope.ADMIN.value in user.scopes:
@@ -39,7 +43,7 @@ class LocalAuthorizationBackend:
         return False
 
     async def get_accessible_collection_identifiers(
-            self, user: PottoUser | None
+        self, user: PottoUser | None
     ) -> list[str] | None:
         if user is None:
             return []
@@ -52,10 +56,10 @@ class LocalAuthorizationBackend:
         ]
 
     async def can_set_user_scopes(
-            self,
-            requesting_user: PottoUser | None,
-            new_scopes: list[str],
-            editable_collection_identifiers: list[str],
+        self,
+        requesting_user: PottoUser | None,
+        new_scopes: list[str],
+        editable_collection_identifiers: list[str],
     ) -> bool:
         if requesting_user is None:
             return False
@@ -77,7 +81,7 @@ class LocalAuthorizationBackend:
         return PottoScope.ADMIN.value in requesting_user.scopes
 
     async def can_change_collection_owner(
-            self, user: PottoUser | None, collection: Collection
+        self, user: PottoUser | None, collection: Collection
     ) -> bool:
         if user is None:
             return False

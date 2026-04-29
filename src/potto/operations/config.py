@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 async def get_pygeoapi_config(
-        session: AsyncSession,
-        settings: PottoSettings,
-        user: PottoUser | None,
-        *,
-        collection_identifier: str | None = None,
-        collection_page: int = 1,
-        collection_page_size: int = 20,
-        debug: bool = False,
+    session: AsyncSession,
+    settings: PottoSettings,
+    user: PottoUser | None,
+    *,
+    collection_identifier: str | None = None,
+    collection_page: int = 1,
+    collection_page_size: int = 20,
+    debug: bool = False,
 ) -> dict:
     metadata = await metadata_ops.get_server_metadata(session)
     server_conf = {
@@ -46,16 +46,16 @@ async def get_pygeoapi_config(
 
     pygeoapi_config = {
         "server": {
-            "admin": server_conf.get("admin", False),  # we don't use pygeoapi's admin, but rather provide our own
+            "admin": server_conf.get(
+                "admin", False
+            ),  # we don't use pygeoapi's admin, but rather provide our own
             "languages": settings.languages,
             "limits": server_conf["limits"],
             "map": server_conf["map"],
             "locale_dir": server_conf.get("locale_dir"),
             "url": settings.public_url,
         },
-        "logging": {
-            "level": "DEBUG" if debug else "WARNING"
-        },
+        "logging": {"level": "DEBUG" if debug else "WARNING"},
         "metadata": {
             "identification": {
                 "title": metadata.title,
@@ -78,7 +78,9 @@ async def get_pygeoapi_config(
                 "position": point_of_contact.get("position", "Position Title"),
                 "address": point_of_contact.get("address", "Mailing Address"),
                 "city": point_of_contact.get("city", "City"),
-                "stateorprovince": point_of_contact.get("stateorprovince", "Administrative Area"),
+                "stateorprovince": point_of_contact.get(
+                    "stateorprovince", "Administrative Area"
+                ),
                 "postalcode": point_of_contact.get("postalcode", "Zip or Postal Code"),
                 "country": point_of_contact.get("country", "Country"),
                 "phone": point_of_contact.get("phone", "+xx-xxx-xxx-xxxx"),
@@ -86,11 +88,13 @@ async def get_pygeoapi_config(
                 "email": point_of_contact.get("email", "you@example.org"),
                 "url": point_of_contact.get("url", "Contact URL"),
                 "hours": point_of_contact.get("hours", "Mo-Fr 08:00-17:00"),
-                "instructions": point_of_contact.get("instructions", "During hours of service. Off on weekends."),
+                "instructions": point_of_contact.get(
+                    "instructions", "During hours of service. Off on weekends."
+                ),
                 "role": point_of_contact.get("role", "pointOfContact"),
             },
         },
-        "resources": {}
+        "resources": {},
     }
     collections, total = await collection_ops.paginated_list_collections(
         session,
@@ -114,12 +118,7 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
     for collection_link in db_collection.additional_links or []:
         link_ = dict(collection_link)
         type_ = link_.pop("media_type", "")
-        links.append(
-            {
-                "type": type_,
-                **link_
-            }
-        )
+        links.append({"type": type_, **link_})
     converted_providers = []
     for type_, provider in (db_collection.providers or {}).items():
         raw_data_value = (provider.get("config", {}) or {}).pop("data", "")
@@ -136,7 +135,7 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
                 "type": type_,
                 "data": interpolated_data_value,
                 "name": provider.get("python_callable"),
-                **(provider.get("config", {}) or {}).get("options", {})
+                **(provider.get("config", {}) or {}).get("options", {}),
             }
         )
 
@@ -157,13 +156,15 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
         "temporal": {
             "begin": (
                 db_collection.temporal_extent_begin.isoformat()
-                if db_collection.temporal_extent_begin else None
+                if db_collection.temporal_extent_begin
+                else None
             ),
             "end": (
                 db_collection.temporal_extent_end.isoformat()
-                if db_collection.temporal_extent_end else None
+                if db_collection.temporal_extent_end
+                else None
             ),
-        }
+        },
     }
     pygeoapi_collection = {
         "type": "collection",
@@ -180,11 +181,12 @@ def _convert_collection_to_pygeoapi_resource(db_collection: Collection) -> dict:
         "owner": db_collection.owner.to_potto(),
     }
     limits = {
-        k: v for k, v in
-        {
+        k: v
+        for k, v in {
             "default_items": db_collection.custom_page_size,
             "max_items": db_collection.custom_page_size_max,
-        }.items() if v is not None
+        }.items()
+        if v is not None
     }
     if limits:
         pygeoapi_collection["limits"] = limits

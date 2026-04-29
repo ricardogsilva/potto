@@ -8,6 +8,7 @@ class SortByEntry(TypedDict):
     property: str
     order: str
 
+
 CqlQueryText = NewType("CqlQueryText", str)
 EqualityFilterableProperty = NewType("EqualityFilterableProperty", tuple[str, str])
 GeoJsonFeature = NewType("GeoJsonFeature", dict)

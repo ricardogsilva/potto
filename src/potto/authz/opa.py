@@ -40,7 +40,9 @@ class OPAAuthorizationBackend:
             "owner_id": collection.owner_id,
         }
 
-    async def can_view_collection(self, user: PottoUser | None, collection: Collection) -> bool:
+    async def can_view_collection(
+        self, user: PottoUser | None, collection: Collection
+    ) -> bool:
         result = await self._query(
             "can_view_collection",
             {
@@ -50,7 +52,9 @@ class OPAAuthorizationBackend:
         )
         return bool(result)
 
-    async def can_edit_collection(self, user: PottoUser | None, collection: Collection) -> bool:
+    async def can_edit_collection(
+        self, user: PottoUser | None, collection: Collection
+    ) -> bool:
         result = await self._query(
             "can_edit_collection",
             {
@@ -61,7 +65,7 @@ class OPAAuthorizationBackend:
         return bool(result)
 
     async def get_accessible_collection_identifiers(
-            self, user: PottoUser | None
+        self, user: PottoUser | None
     ) -> list[str] | None:
         result = await self._query(
             "accessible_collection_identifiers",
@@ -72,10 +76,10 @@ class OPAAuthorizationBackend:
         return list(result)
 
     async def can_set_user_scopes(
-            self,
-            requesting_user: PottoUser | None,
-            new_scopes: list[str],
-            editable_collection_identifiers: list[str],
+        self,
+        requesting_user: PottoUser | None,
+        new_scopes: list[str],
+        editable_collection_identifiers: list[str],
     ) -> bool:
         result = await self._query(
             "can_set_user_scopes",
@@ -95,7 +99,7 @@ class OPAAuthorizationBackend:
         return bool(result)
 
     async def can_change_collection_owner(
-            self, user: PottoUser | None, collection: Collection
+        self, user: PottoUser | None, collection: Collection
     ) -> bool:
         result = await self._query(
             "can_change_collection_owner",

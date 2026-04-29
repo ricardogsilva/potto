@@ -7,6 +7,4 @@ from starlette.datastructures import URL
 
 
 class UrlResolver(Protocol):
-
-    def __call__(self, route: str, /, **path_param: Any) -> URL:
-        ...
+    def __call__(self, route: str, /, **path_param: Any) -> URL: ...

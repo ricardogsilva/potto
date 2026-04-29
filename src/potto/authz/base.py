@@ -5,14 +5,18 @@ from ..schemas.auth import PottoUser
 
 
 class AuthorizationBackendProtocol(Protocol):
-    async def can_view_collection(self, user: PottoUser | None, collection: Collection) -> bool:
+    async def can_view_collection(
+        self, user: PottoUser | None, collection: Collection
+    ) -> bool:
         """Return True if the user is allowed to view the collection.
 
         A None user represents an unauthenticated (anonymous) visitor.
         """
         ...
 
-    async def can_edit_collection(self, user: PottoUser | None, collection: Collection) -> bool:
+    async def can_edit_collection(
+        self, user: PottoUser | None, collection: Collection
+    ) -> bool:
         """Return True if the user is allowed to edit the collection.
 
         A None user represents an unauthenticated (anonymous) visitor.
@@ -20,7 +24,7 @@ class AuthorizationBackendProtocol(Protocol):
         ...
 
     async def get_accessible_collection_identifiers(
-            self, user: PottoUser | None
+        self, user: PottoUser | None
     ) -> list[str] | None:
         """Return identifiers of collections accessible to the user.
 
@@ -31,10 +35,10 @@ class AuthorizationBackendProtocol(Protocol):
         ...
 
     async def can_set_user_scopes(
-            self,
-            requesting_user: PottoUser | None,
-            new_scopes: list[str],
-            editable_collection_identifiers: list[str],
+        self,
+        requesting_user: PottoUser | None,
+        new_scopes: list[str],
+        editable_collection_identifiers: list[str],
     ) -> bool:
         """Return True if requesting_user is allowed to assign new_scopes to a target user.
 
@@ -48,7 +52,7 @@ class AuthorizationBackendProtocol(Protocol):
         ...
 
     async def can_change_collection_owner(
-            self, user: PottoUser | None, collection: Collection
+        self, user: PottoUser | None, collection: Collection
     ) -> bool:
         """Return True if user is allowed to change the owner of the collection."""
         ...

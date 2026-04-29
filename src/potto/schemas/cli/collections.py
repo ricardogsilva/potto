@@ -28,10 +28,10 @@ class CollectionDetail(CollectionListItem):
 
     @classmethod
     def from_db_item(
-            cls,
-            item: Collection,
-            editors: list[User] | None = None,
-            viewers: list[User] | None = None,
+        cls,
+        item: Collection,
+        editors: list[User] | None = None,
+        viewers: list[User] | None = None,
     ) -> "CollectionDetail":
         return cls(
             **item.model_dump(),

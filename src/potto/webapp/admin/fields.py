@@ -21,10 +21,10 @@ class SpatialExtentField(BaseField):
     form_template: str = "forms/spatial-extent.html"
 
     async def parse_form_data(
-            self,
-            request: Request,
-            form_data: FormData,
-            action: RequestAction,
+        self,
+        request: Request,
+        form_data: FormData,
+        action: RequestAction,
     ) -> shapely.Polygon | None:
         min_lon = form_data.get(f"{self.id}-min-lon")
         max_lon = form_data.get(f"{self.id}-max-lon")
@@ -61,14 +61,11 @@ class SpatialExtentField(BaseField):
     def additional_css_links(
         self, request: Request, action: RequestAction
     ) -> list[str]:
-        return [
-            "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css"
-        ]
+        return ["https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css"]
 
     def additional_js_links(self, request: Request, action: RequestAction) -> list[str]:
         return [
             "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js",
             "https://unpkg.com/terra-draw@1.0.0/dist/terra-draw.umd.js",
-            "https://unpkg.com/terra-draw-maplibre-gl-adapter@1.0.0/dist/terra-draw-maplibre-gl-adapter.umd.js"
+            "https://unpkg.com/terra-draw-maplibre-gl-adapter@1.0.0/dist/terra-draw-maplibre-gl-adapter.umd.js",
         ]
-

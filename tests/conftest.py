@@ -50,7 +50,7 @@ def webapp(settings: config.PottoSettings):
     api_webapp = next(
         r.app for r in webapp.routes if isinstance(r, Mount) and r.name == "api"
     )
-    api_webapp.dependency_overrides[dependencies.get_settings] = lambda : settings
+    api_webapp.dependency_overrides[dependencies.get_settings] = lambda: settings
     yield webapp
 
 
@@ -65,7 +65,7 @@ def webapp_test_client_as_admin(webapp, admin_user):
     api_webapp = next(
         r.app for r in webapp.routes if isinstance(r, Mount) and r.name == "api"
     )
-    api_webapp.dependency_overrides[dependencies.get_current_user] = lambda : admin_user
+    api_webapp.dependency_overrides[dependencies.get_current_user] = lambda: admin_user
     with TestClient(webapp) as client:
         yield client
     api_webapp.dependency_overrides.clear()
@@ -81,7 +81,7 @@ async def admin_user(db, db_session_maker):
                 scopes=[auth_schemas.PottoScope.ADMIN],
                 email="test@test.test",
                 password=SecretStr("testpass"),
-            )
+            ),
         )
         yield db_user
 
@@ -113,7 +113,7 @@ async def obs_feature_collection(db, db_session_maker, admin_user):
                                             "stn_id": 35,
                                             "datetime": "2001-10-30T14:24:55Z",
                                             "value": 89.9,
-                                        }
+                                        },
                                     },
                                     {
                                         "id": 377,
@@ -122,7 +122,7 @@ async def obs_feature_collection(db, db_session_maker, admin_user):
                                             "stn_id": 35,
                                             "datetime": "2002-10-30T18:31:38Z",
                                             "value": 93.9,
-                                        }
+                                        },
                                     },
                                     {
                                         "id": 238,
@@ -131,7 +131,7 @@ async def obs_feature_collection(db, db_session_maker, admin_user):
                                             "stn_id": 2147,
                                             "datetime": "2007-10-30T08:57:29Z",
                                             "value": 103.5,
-                                        }
+                                        },
                                     },
                                     {
                                         "id": 297,
@@ -140,7 +140,7 @@ async def obs_feature_collection(db, db_session_maker, admin_user):
                                             "stn_id": 2147,
                                             "datetime": "2003-10-30T07:37:29Z",
                                             "value": 93.5,
-                                        }
+                                        },
                                     },
                                     {
                                         "id": 964,
@@ -149,14 +149,12 @@ async def obs_feature_collection(db, db_session_maker, admin_user):
                                             "stn_id": 604,
                                             "datetime": "2000-10-30T18:24:39Z",
                                             "value": 99.9,
-
-                                        }
+                                        },
                                     },
                                 ]
-                            }
-                        )
+                            },
+                        ),
                     )
-                }
-
-            )
+                },
+            ),
         )

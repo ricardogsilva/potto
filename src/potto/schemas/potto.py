@@ -79,7 +79,7 @@ class Collection:
     description: base.MaybeDescription = None
     keywords: base.MaybeKeywords = None
     spatial_extent: base.MaybeShapelyGeometry = None
-    crs: list[str] | None = dataclasses.field(default_factory=lambda : [CRS_84])
+    crs: list[str] | None = dataclasses.field(default_factory=lambda: [CRS_84])
     storage_crs: str | None = CRS_84
     storage_crs_coordinate_epoch: float | None = None
     custom_page_size: int | None = None
@@ -93,47 +93,41 @@ class Collection:
 
     @classmethod
     def from_pygeoapi(
-            cls,
-            pygeoapi_collection: dict,
-            pygeoapi_api: _PygeoapiApi,
-            *,
-            pygeoapi_collection_queryables: dict | None = None,
-            pygeoapi_collection_schema: dict | None = None,
+        cls,
+        pygeoapi_collection: dict,
+        pygeoapi_api: _PygeoapiApi,
+        *,
+        pygeoapi_collection_queryables: dict | None = None,
+        pygeoapi_collection_schema: dict | None = None,
     ) -> "Collection":
-        raw_bbox = (
-            pygeoapi_collection
-            .get("extent", {})
-            .get("spatial", {})
-            .get("bbox")
-        )
+        raw_bbox = pygeoapi_collection.get("extent", {}).get("spatial", {}).get("bbox")
         spatial_extent = shapely.box(*raw_bbox[0]) if raw_bbox else None
         raw_temporal_interval = (
-            pygeoapi_collection
-            .get("extent", {})
+            pygeoapi_collection.get("extent", {})
             .get("temporal", {})
             .get("interval", [[None, None]])
         )
         temporal_begin = (
             dt.datetime.fromisoformat(raw_begin)
-            if (raw_begin := raw_temporal_interval[0][0]) else None
+            if (raw_begin := raw_temporal_interval[0][0])
+            else None
         )
         temporal_end = (
             dt.datetime.fromisoformat(raw_end)
-            if (raw_end := raw_temporal_interval[0][1]) else None
+            if (raw_end := raw_temporal_interval[0][1])
+            else None
         )
         collection_id = pygeoapi_collection["id"]
         pygeoapi_collection_conf = pygeoapi_api.config["resources"][collection_id]
         parsed_providers = {}
         for raw_provider in pygeoapi_collection_conf.get("providers", []):
             modifiable_provider = dict(raw_provider)
-            provider_type = base.PygeoapiProviderType(
-                modifiable_provider.pop("type"))
+            provider_type = base.PygeoapiProviderType(modifiable_provider.pop("type"))
             parsed_providers[provider_type] = base.CollectionProvider(
                 python_callable=modifiable_provider.pop("name"),
                 config=base.CollectionProviderConfiguration(
-                    data=modifiable_provider.pop("data"),
-                    options=modifiable_provider
-                )
+                    data=modifiable_provider.pop("data"), options=modifiable_provider
+                ),
             )
         additional_links = pygeoapi_collection_conf.get("links")
         queryables = None
@@ -155,12 +149,18 @@ class Collection:
             keywords=pygeoapi_collection.get("keywords", []),
             spatial_extent=spatial_extent,
             crs=list(crs) if spatial_extent else None,
-            storage_crs=pygeoapi_collection_conf.get("storage_crs", CRS_84) if spatial_extent else None,
+            storage_crs=pygeoapi_collection_conf.get("storage_crs", CRS_84)
+            if spatial_extent
+            else None,
             storage_crs_coordinate_epoch=(
                 float(coord_epoch)
-                if spatial_extent and (
-                    coord_epoch:=pygeoapi_collection_conf.get("storage_crs_coordinate_epoch")
-                ) is not None
+                if spatial_extent
+                and (
+                    coord_epoch := pygeoapi_collection_conf.get(
+                        "storage_crs_coordinate_epoch"
+                    )
+                )
+                is not None
                 else None
             ),
             temporal_extent_begin=temporal_begin,
@@ -174,7 +174,6 @@ class Collection:
 
 @dataclasses.dataclass(frozen=True)
 class Feature:
-
     id_: str
     properties: dict[str, str | int | float | bool]
     geometry: shapely.Geometry
@@ -184,8 +183,10 @@ class Feature:
         logger.debug(f"{pygeoapi_feature=}")
         return cls(
             id_=str(pygeoapi_feature["id"]),
-            properties={k: v for k, v in pygeoapi_feature["properties"].items() if k != "id"},
-            geometry=shapely.from_geojson(json.dumps(pygeoapi_feature["geometry"]))
+            properties={
+                k: v for k, v in pygeoapi_feature["properties"].items() if k != "id"
+            },
+            geometry=shapely.from_geojson(json.dumps(pygeoapi_feature["geometry"])),
         )
 
 
@@ -212,7 +213,7 @@ class ServerMetadata:
 class PottoResponse:
     content_type: str
     content: dict | bytes
-    metadata: dict [str, str] | None = None
+    metadata: dict[str, str] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -233,11 +234,11 @@ class FeatureListResponse:
     features: list[Feature]
     pagination: base.PaginationContext
     filter_: base.FeatureFilter | None = None
-    metadata: dict [str, str] | None = None
+    metadata: dict[str, str] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
 class FeatureResponse:
     collection: Collection
     feature: Feature
-    metadata: dict [str, str] | None = None
+    metadata: dict[str, str] | None = None

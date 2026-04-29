@@ -7,8 +7,7 @@ from .common import _get_total_num_records
 
 
 async def collect_all_users(
-        session: AsyncSession,
-        admin_filter: bool = False
+    session: AsyncSession, admin_filter: bool = False
 ) -> list[User]:
     statement = select(User).order_by(User.username)
     if admin_filter:
@@ -17,12 +16,12 @@ async def collect_all_users(
 
 
 async def paginated_list_users(
-        session: AsyncSession,
-        *,
-        admin_filter: bool = False,
-        page: int = 1,
-        page_size: int = 20,
-        include_total: bool = False,
+    session: AsyncSession,
+    *,
+    admin_filter: bool = False,
+    page: int = 1,
+    page_size: int = 20,
+    include_total: bool = False,
 ) -> tuple[list[User], int | None]:
     statement = select(User).order_by(User.username)
     offset = page_size * (page - 1)
@@ -36,17 +35,15 @@ async def paginated_list_users(
 
 
 async def get_user(
-        session: AsyncSession,
-        user_id: str,
+    session: AsyncSession,
+    user_id: str,
 ) -> User | None:
     return await session.get(User, user_id)
 
 
 async def get_user_by_username(
-        session: AsyncSession,
-        username: str,
+    session: AsyncSession,
+    username: str,
 ) -> User | None:
     statement = select(User).where(User.username == username)
     return (await session.exec(statement)).first()
-
-

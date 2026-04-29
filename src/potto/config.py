@@ -94,9 +94,7 @@ class PottoSettings(pydantic_settings.BaseSettings):
 
     def get_db_engine(self) -> AsyncEngine:
         if self._db_engine is None:
-            self._db_engine = create_async_engine(
-                self.database_dsn.unicode_string()
-            )
+            self._db_engine = create_async_engine(self.database_dsn.unicode_string())
         return self._db_engine
 
     def get_sync_db_engine(self) -> Engine:
@@ -137,7 +135,7 @@ class PottoSettings(pydantic_settings.BaseSettings):
                 autoflush=False,
                 bind=self.get_db_engine(),
                 expire_on_commit=False,
-                class_=AsyncSession
+                class_=AsyncSession,
             )
         return self._db_session_maker
 
@@ -164,23 +162,27 @@ def _get_jinja_env(settings: PottoSettings) -> jinja2.Environment:
         autoescape=True,
         extensions=[
             "jinja2.ext.i18n",
-        ]
+        ],
     )
-    jinja_env.filters.update({
-        "get_translatable_string": jinjafilters.get_translatable_string,
-        "to_json": jinjafilters.to_json,
-        "format_datetime": jinjafilters.format_datetime,
-        "format_duration": jinjafilters.format_duration,
-        "human_size": jinjafilters.human_size,
-        "get_path_basename": jinjafilters.get_path_basename,
-        "get_breadcrumbs": jinjafilters.get_breadcrumbs,
-        "filter_dict_by_key_value": jinjafilters.filter_dict_by_key_value,
-    })
-    jinja_env.globals.update({
-        "settings": settings,
-        "pygeoapi_version": pygeoapi_version,
-        "icons": jinjafilters.ICONS,
-        "colors": jinjafilters.COLORS,
-    })
+    jinja_env.filters.update(
+        {
+            "get_translatable_string": jinjafilters.get_translatable_string,
+            "to_json": jinjafilters.to_json,
+            "format_datetime": jinjafilters.format_datetime,
+            "format_duration": jinjafilters.format_duration,
+            "human_size": jinjafilters.human_size,
+            "get_path_basename": jinjafilters.get_path_basename,
+            "get_breadcrumbs": jinjafilters.get_breadcrumbs,
+            "filter_dict_by_key_value": jinjafilters.filter_dict_by_key_value,
+        }
+    )
+    jinja_env.globals.update(
+        {
+            "settings": settings,
+            "pygeoapi_version": pygeoapi_version,
+            "icons": jinjafilters.ICONS,
+            "colors": jinjafilters.COLORS,
+        }
+    )
     configure_jinja_env(jinja_env)
     return jinja_env

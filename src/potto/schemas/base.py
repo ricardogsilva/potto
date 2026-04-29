@@ -31,7 +31,7 @@ def _serialize_localizable_list_field(value: dict[str, list[str]] | list[str], _
 
 
 def to_shapely(
-        value: str | WKBElement | shapely.Geometry | None
+    value: str | WKBElement | shapely.Geometry | None,
 ) -> shapely.Geometry | None:
     if not value:
         return None
@@ -47,8 +47,7 @@ MaybeShapelyGeometry = typing.Annotated[
     shapely.Geometry | None,
     pydantic.BeforeValidator(to_shapely),
     pydantic.PlainSerializer(
-        lambda geom: shapely.to_geojson(geom) if geom else None,
-        return_type=str
+        lambda geom: shapely.to_geojson(geom) if geom else None, return_type=str
     ),
 ]
 
@@ -70,16 +69,14 @@ class PygeoapiProviderType(str, enum.Enum):
 
 
 Title = typing.Annotated[
-    dict[str, str] | str,
-    pydantic.PlainSerializer(_serialize_localizable_field)
+    dict[str, str] | str, pydantic.PlainSerializer(_serialize_localizable_field)
 ]
 MaybeDescription = typing.Annotated[
-    dict[str, str] | str | None,
-    pydantic.PlainSerializer(_serialize_localizable_field)
+    dict[str, str] | str | None, pydantic.PlainSerializer(_serialize_localizable_field)
 ]
 MaybeKeywords = typing.Annotated[
     dict[str, list[str]] | list[str] | None,
-    pydantic.PlainSerializer(_serialize_localizable_list_field)
+    pydantic.PlainSerializer(_serialize_localizable_list_field),
 ]
 
 
@@ -96,7 +93,7 @@ class Link(pydantic.BaseModel):
         extra = [
             ("title", self.title),
             ("hreflang", self.href_lang),
-            ("length", self.length)
+            ("length", self.length),
         ]
         if suffix := "; ".join(f'{k}="{v}"' for k, v in extra if v):
             result = "; ".join((result, suffix))
@@ -120,7 +117,7 @@ class TemporalExtent(pydantic.BaseModel):
 
 class Extent(pydantic.BaseModel):
     spatial: TwoDimensionalSpatialExtent | ThreeDimensionSpatialExtent | None = None
-    temporal : TemporalExtent | None = None
+    temporal: TemporalExtent | None = None
 
     @classmethod
     def from_config(cls, extent_config: "ExtentConfig") -> "Extent":
@@ -128,11 +125,15 @@ class Extent(pydantic.BaseModel):
             temporal_conf = {
                 "interval": [
                     (
-                        begin.strftime("%Y-%m-%DT%H:%M:%SZ") if (begin := extent_config.temporal.begin) else None,
-                        end.strftime("%Y-%m-%DT%H:%M:%SZ") if (end := extent_config.temporal.end) else None
+                        begin.strftime("%Y-%m-%DT%H:%M:%SZ")
+                        if (begin := extent_config.temporal.begin)
+                        else None,
+                        end.strftime("%Y-%m-%DT%H:%M:%SZ")
+                        if (end := extent_config.temporal.end)
+                        else None,
                     )
                 ],
-                "trs": extent_config.temporal.trs
+                "trs": extent_config.temporal.trs,
             }
         else:
             temporal_conf = None
@@ -142,7 +143,7 @@ class Extent(pydantic.BaseModel):
                 "bbox": [extent_config.spatial.bbox],
                 "crs": extent_config.spatial.crs,
             },
-            temporal=temporal_conf
+            temporal=temporal_conf,
         )
 
 
@@ -170,10 +171,10 @@ class PaginationContext(pydantic.BaseModel):
     offset: int
 
     def get_links(
-            self,
-            base_url: str,
-            target_media_type: str = constants.MEDIA_TYPE_JSON,
-            additional_query_params: dict[str, str] | None = None,
+        self,
+        base_url: str,
+        target_media_type: str = constants.MEDIA_TYPE_JSON,
+        additional_query_params: dict[str, str] | None = None,
     ) -> list[Link]:
         additional = "&".join(f"{k}={v}" for k, v in additional_query_params.items())
         result = []
@@ -184,7 +185,7 @@ class PaginationContext(pydantic.BaseModel):
                     type=target_media_type,
                     rel="prev",
                     href=f"{base_url}?offset={prev_offset}{f'&{additional}' if additional else ''}",
-                    title="Previous page of this resultset"
+                    title="Previous page of this resultset",
                 )
             )
         if self.number_matched > self.offset + self.limit:
@@ -194,7 +195,7 @@ class PaginationContext(pydantic.BaseModel):
                     type=target_media_type,
                     rel="next",
                     href=f"{base_url}?offset={next_offset}{f'&{additional}' if additional else ''}",
-                    title="Next page of this resultset"
+                    title="Next page of this resultset",
                 )
             )
         return result
@@ -216,8 +217,12 @@ class ItemFilter(pydantic.BaseModel):
     offset: int = 0
     query: str | None = None
     result_type: typing.Literal["hits", "results"] = "results"
-    select_properties: typing.Annotated[list[str] | None, pydantic.Field(alias="properties")] = None
-    skip_geometry: typing.Annotated[bool | None, pydantic.Field(alias="skipGeometry")] = None
+    select_properties: typing.Annotated[
+        list[str] | None, pydantic.Field(alias="properties")
+    ] = None
+    skip_geometry: typing.Annotated[
+        bool | None, pydantic.Field(alias="skipGeometry")
+    ] = None
     sort_by: typing.Annotated[str | None, pydantic.Field(alias="sortby")] = None
 
 
@@ -226,8 +231,8 @@ class FeatureFilter(ItemFilter):
 
     @classmethod
     def from_query_parameters(
-            cls,
-            params: typing.Mapping[str, str | typing.Sequence[str]],
+        cls,
+        params: typing.Mapping[str, str | typing.Sequence[str]],
     ) -> "FeatureFilter":
         return cls(
             bbox=params.get("bbox"),
@@ -246,6 +251,7 @@ class FeatureFilter(ItemFilter):
             skip_geometry=(
                 True
                 if params.get("skipGeometry", "").lower()
-                   in ("true", "yes", "on", "t", "1") else False
+                in ("true", "yes", "on", "t", "1")
+                else False
             ),
         )

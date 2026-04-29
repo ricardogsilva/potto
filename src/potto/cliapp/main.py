@@ -50,10 +50,7 @@ potto_app.command(user_app.meta, name="user")
 
 @potto_app.meta.default
 def launcher(
-    *tokens: Annotated[
-        str,
-        cyclopts.Parameter(show=False, allow_leading_hyphen=True)
-    ],
+    *tokens: Annotated[str, cyclopts.Parameter(show=False, allow_leading_hyphen=True)],
 ):
     """Potto, the OGC API server."""
     # Custom cli launcher that injects potto's settings if needed.
@@ -65,13 +62,15 @@ def launcher(
     # configuration facilities, but rather pydantic-settings.
     settings = get_settings()
     rich_log_handler = RichHandler(console=potto_app.error_console)
-    if (log_config_file := settings.uvicorn_log_config_file) and log_config_file.exists():
+    if (
+        log_config_file := settings.uvicorn_log_config_file
+    ) and log_config_file.exists():
         log_config = yaml.safe_load(settings.uvicorn_log_config_file.read_text())
         logging.config.dictConfig(log_config)
     else:
         logging.basicConfig(
             level=logging.DEBUG if settings.debug else logging.INFO,
-            handlers=[rich_log_handler]
+            handlers=[rich_log_handler],
         )
     command, bound, ignored = potto_app.parse_args(tokens)
     additional_kwargs = {}
@@ -86,8 +85,8 @@ def launcher(
 
 @potto_app.command(name="run-server")
 def run_uvicorn_server(
-        *,
-        settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
+    *,
+    settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ):
     table = Table(title="Potto configuration")
     table.add_column("Parameter")

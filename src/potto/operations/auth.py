@@ -26,10 +26,10 @@ _EDITOR_SCOPE_RE = re.compile(r"^collection-(.+):editor$")
 
 
 async def create_user(
-        session: AsyncSession,
-        requesting_user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        to_create: UserCreate,
+    session: AsyncSession,
+    requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    to_create: UserCreate,
 ) -> User:
     if not await authorization_backend.can_create_user(requesting_user):
         raise PottoCannotCreateUserException(
@@ -43,11 +43,11 @@ async def create_user(
 
 
 async def update_user(
-        session: AsyncSession,
-        requesting_user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        db_user: User,
-        to_update: UserUpdate,
+    session: AsyncSession,
+    requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    db_user: User,
+    to_update: UserUpdate,
 ) -> User:
     if to_update.scopes is not None:
         await _check_scope_assignment(
@@ -57,10 +57,10 @@ async def update_user(
 
 
 async def _check_scope_assignment(
-        session: AsyncSession,
-        requesting_user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        new_scopes: list[str],
+    session: AsyncSession,
+    requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    new_scopes: list[str],
 ) -> None:
     if PottoScope.ADMIN.value in new_scopes:
         if not await authorization_backend.can_assign_admin_scope(requesting_user):
@@ -79,8 +79,8 @@ async def _check_scope_assignment(
 
 
 async def _get_editable_collection_identifiers(
-        session: AsyncSession,
-        user: PottoUser | None,
+    session: AsyncSession,
+    user: PottoUser | None,
 ) -> list[str]:
     if user is None:
         return []
@@ -92,21 +92,21 @@ async def _get_editable_collection_identifiers(
 
 
 async def delete_user(
-        session: AsyncSession,
-        requesting_user: PottoUser | None,
-        user_id: str,
+    session: AsyncSession,
+    requesting_user: PottoUser | None,
+    user_id: str,
 ) -> None:
     # TODO: check user permissions
     return await auth_commands.delete_user(session, user_id)
 
 
 async def paginated_list_users(
-        session: AsyncSession,
-        *,
-        admin_filter: bool = False,
-        page: int = 1,
-        page_size: int = 20,
-        include_total: bool = False,
+    session: AsyncSession,
+    *,
+    admin_filter: bool = False,
+    page: int = 1,
+    page_size: int = 20,
+    include_total: bool = False,
 ) -> tuple[list[User], int | None]:
     # TODO: check user permissions
     return await auth_queries.paginated_list_users(
@@ -119,8 +119,8 @@ async def paginated_list_users(
 
 
 async def get_user(
-        session: AsyncSession,
-        user_id: str,
+    session: AsyncSession,
+    user_id: str,
 ) -> User | None:
     # TODO: check user permissions
     return await auth_queries.get_user(session, user_id)

@@ -78,7 +78,9 @@ async def oidc_callback(request: Request) -> Response:
             access_claims = await oidc_provider.validate_access_token(access_token)
             claims = {**claims, **access_claims}
         except jwt.InvalidTokenError as exc:
-            logger.warning(f"Access token validation failed, using ID token claims only: {exc}")
+            logger.warning(
+                f"Access token validation failed, using ID token claims only: {exc}"
+            )
 
     async with settings.get_db_session_maker()() as session:
         db_user = await oidc_provider.provision_user(session, claims)

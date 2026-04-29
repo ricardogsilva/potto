@@ -23,7 +23,9 @@ class LocalizableConfigString(pydantic.RootModel):
         return cls({"en": value} if isinstance(value, str) else value.copy())
 
     @classmethod
-    def from_pygeoapi_config(cls, value: str | dict[str, str]) -> "LocalizableConfigString":
+    def from_pygeoapi_config(
+        cls, value: str | dict[str, str]
+    ) -> "LocalizableConfigString":
         return cls.from_potto_db(value)
 
 
@@ -35,7 +37,7 @@ class LocalizableConfigStringList(pydantic.RootModel):
 
     @classmethod
     def from_potto_db(
-            cls, value: list[str] | dict[str, list[str]]
+        cls, value: list[str] | dict[str, list[str]]
     ) -> "LocalizableConfigStringList":
         if isinstance(value, list):
             return cls({"en": value})
@@ -44,9 +46,11 @@ class LocalizableConfigStringList(pydantic.RootModel):
 
     @classmethod
     def from_pygeoapi_config(
-            cls, value: list[str] | dict[str, list[str]]
+        cls, value: list[str] | dict[str, list[str]]
     ) -> "LocalizableConfigStringList":
         return cls.from_potto_db(value)
+
+
 #
 #
 # class ServerMetadataIdentificationConfig(pydantic.BaseModel):
@@ -118,9 +122,11 @@ class LinkConfig(pydantic.BaseModel):
             type_=link_config["media_type"],
             rel=link_config["rel"],
             href=link_config["href"],
-            title=list(link_config.get("title", {}).values())[0] if link_config else None,
+            title=list(link_config.get("title", {}).values())[0]
+            if link_config
+            else None,
             href_lang=link_config.get("hreflang"),
-            length=int(length) if (length :=link_config.get("length")) else None,
+            length=int(length) if (length := link_config.get("length")) else None,
         )
 
     @classmethod
@@ -131,9 +137,8 @@ class LinkConfig(pydantic.BaseModel):
             href=link_config["href"],
             title=link_config.get("title"),
             href_lang=link_config.get("hreflang"),
-            length=int(length) if (length :=link_config.get("length")) else None,
+            length=int(length) if (length := link_config.get("length")) else None,
         )
-
 
 
 class SpatialExtentConfig(pydantic.BaseModel):
@@ -153,9 +158,9 @@ class ExtentConfig(pydantic.BaseModel):
 
     @classmethod
     def from_potto_db(
-            cls,
-            spatial_extent: shapely.Polygon | None,
-            temporal_extent: tuple[dt.datetime | None, dt.datetime | None],
+        cls,
+        spatial_extent: shapely.Polygon | None,
+        temporal_extent: tuple[dt.datetime | None, dt.datetime | None],
     ):
         bbox = spatial_extent if spatial_extent else shapely.box(-180, -90, 180, 90)
         return cls(
@@ -165,7 +170,7 @@ class ExtentConfig(pydantic.BaseModel):
             temporal=TemporalExtentConfig(
                 begin=temporal_extent[0],
                 end=temporal_extent[1],
-            )
+            ),
         )
 
     @classmethod
@@ -174,14 +179,18 @@ class ExtentConfig(pydantic.BaseModel):
             spatial=SpatialExtentConfig(
                 bbox=extent_config["spatial"]["bbox"],
                 crs=extent_config["spatial"].get(
-                    "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84")
+                    "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+                ),
             ),
             temporal=TemporalExtentConfig(
                 begin=raw_temporal_config.get("begin"),
                 end=raw_temporal_config.get("end"),
                 trs=raw_temporal_config.get(
-                    "trs", "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian")
-            ) if (raw_temporal_config := extent_config.get("temporal")) else None
+                    "trs", "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian"
+                ),
+            )
+            if (raw_temporal_config := extent_config.get("temporal"))
+            else None,
         )
 
 
@@ -191,10 +200,7 @@ class FormatConfig(pydantic.BaseModel):
 
     @classmethod
     def from_pygeoapi_config(cls, format_config: dict) -> "FormatConfig":
-        return cls(
-            name=format_config["name"],
-            media_type=format_config["mimetype"]
-        )
+        return cls(name=format_config["name"], media_type=format_config["mimetype"])
 
 
 class ProviderConfig(pydantic.BaseModel):
@@ -241,13 +247,21 @@ class ProviderConfig(pydantic.BaseModel):
             geometry_y_field=provider_config.get("geometry", {}).get("y_field"),
             time_field=provider_config.get("time_field"),
             title_field=provider_config.get("title_field"),
-            default_format=FormatConfig.from_pygeoapi_config(raw_format) if (raw_format := provider_config.get("format")) else None,
+            default_format=FormatConfig.from_pygeoapi_config(raw_format)
+            if (raw_format := provider_config.get("format"))
+            else None,
             extra_options=provider_config.get("options"),
             properties_to_return=provider_config.get("properties"),
             supported_crs=provider_config.get("crs"),
-            storage_crs=provider_config.get("storage_crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84"),
-            storage_crs_coordinate_epoch=provider_config.get("storage_crs_coordinate_epoch"),
-            include_extra_query_parameters=provider_config.get("include_extra_query_parameters", True),
+            storage_crs=provider_config.get(
+                "storage_crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+            ),
+            storage_crs_coordinate_epoch=provider_config.get(
+                "storage_crs_coordinate_epoch"
+            ),
+            include_extra_query_parameters=provider_config.get(
+                "include_extra_query_parameters", True
+            ),
         )
 
     @classmethod
@@ -269,30 +283,34 @@ class ItemCollectionConfig(pydantic.BaseModel):
     limits: LimitsConfig | None = None
 
     def list_provider_configs(
-            self,
-            type_: Literal[
-                "feature",
-                "coverage",
-                "record",
-                "map",
-                "tile",
-                "edr",
-                "stac",
-            ] | None = None
+        self,
+        type_: Literal[
+            "feature",
+            "coverage",
+            "record",
+            "map",
+            "tile",
+            "edr",
+            "stac",
+        ]
+        | None = None,
     ):
-        return [p for p in self.providers if p.type_ == type_] if type_ else self.providers
+        return (
+            [p for p in self.providers if p.type_ == type_] if type_ else self.providers
+        )
 
     def get_default_provider_config(
-            self,
-            type_: Literal[
-                "feature",
-                "coverage",
-                "record",
-                "map",
-                "tile",
-                "edr",
-                "stac",
-            ] | None = None
+        self,
+        type_: Literal[
+            "feature",
+            "coverage",
+            "record",
+            "map",
+            "tile",
+            "edr",
+            "stac",
+        ]
+        | None = None,
     ) -> ProviderConfig:
         for provider_conf in self.providers:
             if provider_conf.is_default_for_collection:
@@ -303,16 +321,21 @@ class ItemCollectionConfig(pydantic.BaseModel):
             return self.providers[0]
 
     @classmethod
-    def from_pygeoapi_config(cls, identifier: str, collection_config: dict) -> "ItemCollectionConfig":
+    def from_pygeoapi_config(
+        cls, identifier: str, collection_config: dict
+    ) -> "ItemCollectionConfig":
         return cls(
             identifier=identifier,
             type_=collection_config["type"],
             title=LocalizableConfigString.from_pygeoapi_config(
-                collection_config["title"]),
+                collection_config["title"]
+            ),
             description=LocalizableConfigString.from_pygeoapi_config(
-                collection_config["description"]),
+                collection_config["description"]
+            ),
             keywords=LocalizableConfigStringList.from_pygeoapi_config(
-                collection_config["keywords"]),
+                collection_config["keywords"]
+            ),
             extents=ExtentConfig.from_pygeoapi_config(collection_config["extents"]),
             providers=[
                 ProviderConfig.from_pygeoapi_config(raw_provider)
@@ -320,10 +343,12 @@ class ItemCollectionConfig(pydantic.BaseModel):
             ],
             visibility=collection_config.get("visibility", "default"),
             linked_data=collection_config.get("linked_data"),
-            links=[
-                LinkConfig.from_pygeoapi_config(raw_link) for raw_link in raw_links
-            ] if (raw_links:=collection_config.get("links")) else None,
-            limits=LimitsConfig.from_pygeoapi_config(raw_limits) if (raw_limits:=collection_config.get("limits")) else None,
+            links=[LinkConfig.from_pygeoapi_config(raw_link) for raw_link in raw_links]
+            if (raw_links := collection_config.get("links"))
+            else None,
+            limits=LimitsConfig.from_pygeoapi_config(raw_limits)
+            if (raw_limits := collection_config.get("limits"))
+            else None,
         )
 
     @classmethod
@@ -332,20 +357,28 @@ class ItemCollectionConfig(pydantic.BaseModel):
             identifier=collection_config.resource_identifier,
             type_="collection",
             title=LocalizableConfigString.from_potto_db(collection_config.title),
-            description=LocalizableConfigString.from_potto_db(collection_config.description or ""),
-            keywords=LocalizableConfigStringList.from_potto_db(collection_config.keywords or {}),
+            description=LocalizableConfigString.from_potto_db(
+                collection_config.description or ""
+            ),
+            keywords=LocalizableConfigStringList.from_potto_db(
+                collection_config.keywords or {}
+            ),
             extents=ExtentConfig.from_potto_db(
                 collection_config.spatial_extent,
                 (
                     collection_config.temporal_extent_begin,
-                    collection_config.temporal_extent_end
-                )
+                    collection_config.temporal_extent_end,
+                ),
             ),
             providers=[
-                ProviderConfig.from_potto_db(provider) for provider in collection_config.providers
+                ProviderConfig.from_potto_db(provider)
+                for provider in collection_config.providers
             ],
             visibility="default",
             linked_data=None,
-            links=[LinkConfig.from_potto_db(link) for link in collection_config.additional_links],
+            links=[
+                LinkConfig.from_potto_db(link)
+                for link in collection_config.additional_links
+            ],
             limits=None,
         )

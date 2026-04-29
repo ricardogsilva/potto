@@ -10,10 +10,7 @@ db_app = cyclopts.App(name="db")
 
 @db_app.meta.default
 def launcher(
-        *tokens: Annotated[
-            str,
-            cyclopts.Parameter(show=False, allow_leading_hyphen=True)
-        ],
+    *tokens: Annotated[str, cyclopts.Parameter(show=False, allow_leading_hyphen=True)],
 ):
     """Custom cli launcher that injects the alembic context if needed.
 
@@ -38,8 +35,8 @@ def launcher(
 
 @db_app.command
 def check_for_changes(
-        *,
-        alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
+    *,
+    alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
 ):
     """Look for changes in the DB schema.
 
@@ -54,9 +51,9 @@ def check_for_changes(
 
 @db_app.command
 def generate_migration(
-        migration_message: str,
-        *,
-        alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
+    migration_message: str,
+    *,
+    alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
 ):
     """Generate migration files with any new database schema changes.
 
@@ -72,9 +69,9 @@ def generate_migration(
 
 @db_app.command
 def upgrade(
-        *,
-        alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
-        revision_identifier: str | None = None,
+    *,
+    alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
+    revision_identifier: str | None = None,
 ) -> None:
     """Apply any pending migration files."""
     db_app.console.print("Upgrading database...")
@@ -85,8 +82,8 @@ def upgrade(
 
 @db_app.command
 def list_history(
-        *,
-        alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
+    *,
+    alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
 ) -> None:
     """List database revision history"""
     alembic.command.history(alembic_config, indicate_current=True)
@@ -94,9 +91,9 @@ def list_history(
 
 @db_app.command
 def downgrade(
-        revision_identifier: str,
-        *,
-        alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
+    revision_identifier: str,
+    *,
+    alembic_config: Annotated[alembic.config.Config, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Downgrade the database to a previous revision."""
     db_app.console.print("Downgrading database...")

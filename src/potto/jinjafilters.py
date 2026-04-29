@@ -44,19 +44,15 @@ ICONS: dict[str, str] = {
 
 @pass_context
 def get_translatable_string(
-        context: dict[str, Any],
-        value: str | dict[str, str] | None
+    context: dict[str, Any], value: str | dict[str, str] | None
 ) -> str | None:
     logger.debug(f"{value=}")
-    request = context['request']
+    request = context["request"]
     logger.debug(f"{request.state.language=}")
     if value is None:
         return None
     try:
-        result = value.get(
-            request.state.language,
-            list(value.values())[0]
-        )
+        result = value.get(request.state.language, list(value.values())[0])
         logger.debug(f"{result=}")
         return result
     except AttributeError:

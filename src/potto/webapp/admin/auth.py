@@ -6,10 +6,7 @@ from starlette.responses import (
     RedirectResponse,
     Response,
 )
-from starlette_admin.auth import (
-    AdminUser,
-    AuthProvider
-)
+from starlette_admin.auth import AdminUser, AuthProvider
 from starlette_admin.exceptions import LoginFailed
 
 from ...config import PottoSettings
@@ -59,7 +56,6 @@ class LocalAdminAuthProvider(AuthProvider):
 
 
 class OIDCAdminAuthProvider(AuthProvider):
-
     def __init__(self, settings: PottoSettings) -> None:
         super().__init__()
         self._settings = settings

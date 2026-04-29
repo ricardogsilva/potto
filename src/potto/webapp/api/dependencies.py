@@ -27,7 +27,7 @@ def get_settings() -> Iterator[config.PottoSettings]:
 
 
 def get_potto(
-        settings: Annotated[config.PottoSettings, Depends(get_settings)]
+    settings: Annotated[config.PottoSettings, Depends(get_settings)],
 ) -> Iterator[Potto]:
     yield Potto(settings)
 
@@ -44,14 +44,14 @@ def get_current_locale(request: Request) -> babel.Locale:
 
 
 def get_authorization_backend(
-        settings: Annotated[config.PottoSettings, Depends(get_settings)]
+    settings: Annotated[config.PottoSettings, Depends(get_settings)],
 ) -> AuthorizationBackendProtocol:
     return settings.get_authorization_backend()
 
 
 def get_pagination_limit(
-        settings: Annotated[config.PottoSettings, Depends(get_settings)],
-        limit: Annotated[int | None, Query(gte=1)] = None
+    settings: Annotated[config.PottoSettings, Depends(get_settings)],
+    limit: Annotated[int | None, Query(gte=1)] = None,
 ) -> int:
     return min(limit or settings.page_size, settings.page_size_max)
 

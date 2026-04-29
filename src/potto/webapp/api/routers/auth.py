@@ -26,8 +26,8 @@ class LoginResponse(pydantic.BaseModel):
 
 @router.post("/login", name="login")
 async def login(
-        form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-        settings: SettingsDependency,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    settings: SettingsDependency,
 ) -> LoginResponse:
     """Authenticate with username and password, receive a JWT access token."""
     async with settings.get_db_session_maker()() as session:
@@ -38,9 +38,13 @@ async def login(
         logger.warning(f"Login failed: user {form_data.username!r} is inactive")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if db_user.hashed_password is None:
-        logger.warning(f"Login failed: user {form_data.username!r} has no local password")
+        logger.warning(
+            f"Login failed: user {form_data.username!r} has no local password"
+        )
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not bcrypt.checkpw(form_data.password.encode(), db_user.hashed_password.encode()):
+    if not bcrypt.checkpw(
+        form_data.password.encode(), db_user.hashed_password.encode()
+    ):
         logger.debug(f"Login failed: wrong password for user {form_data.username!r}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     potto_user = PottoUser(

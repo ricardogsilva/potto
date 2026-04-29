@@ -34,12 +34,12 @@ router = APIRouter()
     tags=["items"],
 )
 async def list_collection_items(
-        request: Request,
-        collection_id: str,
-        filter_: Annotated[ItemFilter, Query()],
-        potto: PottoDependency,
-        user: UserDependency,
-        locale: LocaleDependency,
+    request: Request,
+    collection_id: str,
+    filter_: Annotated[ItemFilter, Query()],
+    potto: PottoDependency,
+    user: UserDependency,
+    locale: LocaleDependency,
 ):
     collection_items = await potto.api_list_collection_items(
         collection_id,
@@ -53,7 +53,7 @@ async def list_collection_items(
         headers={
             "Content-Type": constants.MEDIA_TYPE_GEO_JSON,
             "Link": ",".join((li.serialize_as_http_header() for li in result.links)),
-        }
+        },
     )
 
 
@@ -63,11 +63,11 @@ async def list_collection_items(
     tags=["items"],
 )
 async def get_item_details(
-        request: Request,
-        potto: PottoDependency,
-        user: UserDependency,
-        collection_id: str,
-        item_id: str,
+    request: Request,
+    potto: PottoDependency,
+    user: UserDependency,
+    collection_id: str,
+    item_id: str,
 ):
     current_locale = babel.Locale.parse(request.state.language)
     collection_item = await potto.api_get_collection_item(
@@ -82,5 +82,5 @@ async def get_item_details(
         headers={
             "Content-Type": constants.MEDIA_TYPE_GEO_JSON,
             "Link": ",".join((li.serialize_as_http_header() for li in result.links)),
-        }
+        },
     )

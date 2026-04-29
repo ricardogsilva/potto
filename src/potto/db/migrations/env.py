@@ -44,7 +44,9 @@ target_metadata = SQLModel.metadata
 def potto_render_item(type_, obj, autogen_context):
     """Render ShapelyGeometryAdapter as a plain Geometry, for migrations"""
     if type_ == "type" and isinstance(obj, ShapelyGeometryAdapter):
-        geom = Geometry(geometry_type=obj.geometry_type, srid=obj.srid, spatial_index=False)
+        geom = Geometry(
+            geometry_type=obj.geometry_type, srid=obj.srid, spatial_index=False
+        )
         return alembic_helpers.render_item(type_, geom, autogen_context)
     return alembic_helpers.render_item(type_, obj, autogen_context)
 

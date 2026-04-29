@@ -39,27 +39,25 @@ class PygeoapiReadOnlyFeatureProviderProtocol(Protocol):
     def properties(self) -> list[ReturnableProperty] | None: ...
 
     def query(
-            self,
-            offset: int = 0,
-            limit: int = 10,
-            resulttype: Literal["hits", "results"] = "results",
-            bbox: RawBbox | None = None,
-            datetime_: RawDateTimeOrRange | None = None,
-            properties: list[EqualityFilterableProperty] | None = None,
-            sortby: list[SortByEntry] | None = None,
-            skip_geometry: bool = False,
-            select_properties: list[ReturnableProperty] | None = None,
-            crs_transform_spec: "CrsTransformSpec | None" = None,
-            q: RawFullTextSearchQuery | None = None,
-            language: str | None = None,
-            filterq: CqlQueryText | None = None,
-    ) -> GeoJsonFeatureCollection:
-        ...
+        self,
+        offset: int = 0,
+        limit: int = 10,
+        resulttype: Literal["hits", "results"] = "results",
+        bbox: RawBbox | None = None,
+        datetime_: RawDateTimeOrRange | None = None,
+        properties: list[EqualityFilterableProperty] | None = None,
+        sortby: list[SortByEntry] | None = None,
+        skip_geometry: bool = False,
+        select_properties: list[ReturnableProperty] | None = None,
+        crs_transform_spec: "CrsTransformSpec | None" = None,
+        q: RawFullTextSearchQuery | None = None,
+        language: str | None = None,
+        filterq: CqlQueryText | None = None,
+    ) -> GeoJsonFeatureCollection: ...
 
     def get(
-            self,
-            identifier: str | int,
-            crs_transform_spec: "CrsTransformSpec | None" = None,
-            **kwargs
-    ) -> GeoJsonFeature:
-        ...
+        self,
+        identifier: str | int,
+        crs_transform_spec: "CrsTransformSpec | None" = None,
+        **kwargs,
+    ) -> GeoJsonFeature: ...

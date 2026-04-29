@@ -3,10 +3,7 @@ import logging
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...exceptions import PottoException
-from ...schemas.collections import (
-    CollectionCreate,
-    CollectionUpdate
-)
+from ...schemas.collections import CollectionCreate, CollectionUpdate
 from ..models import Collection
 from ..queries import get_collection
 
@@ -14,14 +11,14 @@ logger = logging.getLogger(__name__)
 
 
 async def create_collection(
-        session: AsyncSession, to_create: CollectionCreate
+    session: AsyncSession, to_create: CollectionCreate
 ) -> Collection:
     instance = Collection(
         **to_create.model_dump(exclude={"additional_extents"}),
     )
-    for additional_extent in (instance.additional_extents or []):
-        instance.additional_extents[additional_extent.name] = additional_extent.model_dump(
-            exclude={"name"}
+    for additional_extent in instance.additional_extents or []:
+        instance.additional_extents[additional_extent.name] = (
+            additional_extent.model_dump(exclude={"name"})
         )
     session.add(instance)
     await session.commit()
@@ -30,9 +27,9 @@ async def create_collection(
 
 
 async def update_collection(
-        session: AsyncSession,
-        db_collection: Collection,
-        to_update: CollectionUpdate,
+    session: AsyncSession,
+    db_collection: Collection,
+    to_update: CollectionUpdate,
 ) -> Collection:
     updates = to_update.model_dump(
         exclude={"additional_extents"},
@@ -42,9 +39,9 @@ async def update_collection(
         setattr(db_collection, key, value)
     if to_update.additional_extents is not None:
         db_collection.additional_extents = {}
-        for additional_extent in (db_collection.additional_extents or []):
-            db_collection.additional_extents[additional_extent.name] = additional_extent.model_dump(
-                exclude={"name"}
+        for additional_extent in db_collection.additional_extents or []:
+            db_collection.additional_extents[additional_extent.name] = (
+                additional_extent.model_dump(exclude={"name"})
             )
     session.add(db_collection)
     await session.commit()
@@ -53,8 +50,8 @@ async def update_collection(
 
 
 async def delete_collection(
-        session: AsyncSession,
-        collection_id: int,
+    session: AsyncSession,
+    collection_id: int,
 ) -> None:
     if instance := (await get_collection(session, collection_id)):
         await session.delete(instance)

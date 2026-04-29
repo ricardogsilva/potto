@@ -23,7 +23,7 @@ class LocalAuthBackend(AuthenticationBackend):
         self._settings = settings
 
     async def authenticate(
-            self, conn: HTTPConnection
+        self, conn: HTTPConnection
     ) -> tuple[AuthCredentials, PottoUser] | None:
         logger.debug(f"Inside LocalAuthBackend.authenticate")
         if user_id := conn.session.get("user_id"):
@@ -35,9 +35,8 @@ class LocalAuthBackend(AuthenticationBackend):
             )
         # Try local HS256 Bearer JWT
         if (
-                (auth_header := conn.headers.get("Authorization"))
-                and auth_header.startswith("Bearer ")
-        ):
+            auth_header := conn.headers.get("Authorization")
+        ) and auth_header.startswith("Bearer "):
             token = auth_header.rpartition(" ")[-1]
             try:
                 payload = decode_access_token(
@@ -76,7 +75,7 @@ class OIDCAuthBackend(AuthenticationBackend):
         self._oidc_provider = oidc_provider
 
     async def authenticate(
-            self, conn: HTTPConnection
+        self, conn: HTTPConnection
     ) -> tuple[AuthCredentials, PottoUser] | None:
         # Try session first (set during OIDC callback)
         if user_id := conn.session.get("user_id"):
@@ -89,9 +88,8 @@ class OIDCAuthBackend(AuthenticationBackend):
 
         # Try OIDC RS256 Bearer JWT
         if (
-                (auth_header := conn.headers.get("Authorization"))
-                and auth_header.startswith("Bearer ")
-        ):
+            auth_header := conn.headers.get("Authorization")
+        ) and auth_header.startswith("Bearer "):
             token = auth_header.rpartition(" ")[-1]
             try:
                 claims = await self._oidc_provider.validate_access_token(token)
@@ -102,9 +100,7 @@ class OIDCAuthBackend(AuthenticationBackend):
                 if db_user is None:
                     db_user = await self._oidc_provider.provision_user(session, claims)
             if not db_user.is_active:
-                logger.warning(
-                    f"User {db_user.username!r} is inactive, denying access"
-                )
+                logger.warning(f"User {db_user.username!r} is inactive, denying access")
                 return None
             # When roles_claim is configured, scopes come from the token directly
             scopes = self._oidc_provider.extract_scopes(claims) or db_user.scopes

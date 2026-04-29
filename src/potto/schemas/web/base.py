@@ -22,58 +22,62 @@ class JsonLanding(pydantic.BaseModel):
 
     @classmethod
     def from_potto(
-            cls,
-            potto_response: LandingPage,
-            url_resolver: UrlResolver,
-            oidc_configured: bool = False,
+        cls,
+        potto_response: LandingPage,
+        url_resolver: UrlResolver,
+        oidc_configured: bool = False,
     ) -> "JsonLanding":
         links = [
             Link(
                 type=constants.MEDIA_TYPE_JSON,
                 rel=constants.REL_SELF,
                 href=str(url_resolver("api:landing-page")),
-                title="This resource"
+                title="This resource",
             ),
             Link(
                 type=constants.MEDIA_TYPE_HTML,
                 rel=constants.REL_ALTERNATE,
                 href=str(url_resolver("landing-page")),
-                title="HTML landing page"
+                title="HTML landing page",
             ),
             Link(
                 type=constants.MEDIA_TYPE_JSON,
                 rel=constants.REL_SERVICE_DESC,
                 href=str(url_resolver("api:openapi")),
-                title="OpenAPI document"
+                title="OpenAPI document",
             ),
             Link(
                 type=constants.MEDIA_TYPE_HTML,
                 rel=constants.REL_SERVICE_DOC,
                 href=str(url_resolver("api:swagger_ui_html")),
-                title="API documentation"
+                title="API documentation",
             ),
             Link(
                 type=constants.MEDIA_TYPE_JSON,
                 rel=constants.REL_CONFORMANCE,
                 href=str(url_resolver("api:conformance-page")),
-                title="API conformance declaration"
+                title="API conformance declaration",
             ),
             Link(
                 type=constants.MEDIA_TYPE_JSON,
                 rel=constants.REL_COLLECTIONS,
                 href=str(url_resolver("api:collection-list")),
-                title="Collections exposed by this server"
+                title="Collections exposed by this server",
             ),
             Link(
-                type=constants.MEDIA_TYPE_HTML if oidc_configured else constants.MEDIA_TYPE_JSON,
+                type=constants.MEDIA_TYPE_HTML
+                if oidc_configured
+                else constants.MEDIA_TYPE_JSON,
                 rel=constants.REL_LOGIN,
                 href=str(
-                    url_resolver("oidc-login") if oidc_configured else url_resolver("api:login")
+                    url_resolver("oidc-login")
+                    if oidc_configured
+                    else url_resolver("api:login")
                 ),
                 title=(
                     "Authenticate via OIDC provider"
-                    if oidc_configured else
-                    "Obtain a bearer token"
+                    if oidc_configured
+                    else "Obtain a bearer token"
                 ),
             ),
         ]
@@ -81,17 +85,14 @@ class JsonLanding(pydantic.BaseModel):
             title=potto_response.metadata.title,
             description=potto_response.metadata.description,
             attribution=potto_response.attribution,
-            links=links
+            links=links,
         )
 
 
 class HtmlLanding(JsonLanding):
-
     @classmethod
     def from_potto(
-            cls,
-            potto_response: LandingPage,
-            url_resolver: UrlResolver
+        cls, potto_response: LandingPage, url_resolver: UrlResolver
     ) -> "HtmlLanding":
         return cls(
             title=potto_response.title,
@@ -102,15 +103,15 @@ class HtmlLanding(JsonLanding):
                     type=constants.MEDIA_TYPE_HTML,
                     rel=constants.REL_SELF,
                     href=str(url_resolver("landing-page")),
-                    title="This resource"
+                    title="This resource",
                 ),
                 Link(
                     type=constants.MEDIA_TYPE_JSON,
                     rel=constants.REL_ALTERNATE,
                     href=str(url_resolver("api:landing-page")),
-                    title="JSON landing page"
+                    title="JSON landing page",
                 ),
-            ]
+            ],
         )
 
 

@@ -41,20 +41,21 @@ router = APIRouter()
     tags=["collections"],
 )
 async def list_collections(
-        request: Request,
-        potto: PottoDependency,
-        user: UserDependency,
-        locale: LocaleDependency,
-        limit: PaginationLimitDependency
+    request: Request,
+    potto: PottoDependency,
+    user: UserDependency,
+    locale: LocaleDependency,
+    limit: PaginationLimitDependency,
 ) -> JSONResponse:
     potto_collections = await potto.api_list_collections(
-        user=user, locale=locale, page_size=limit)
+        user=user, locale=locale, page_size=limit
+    )
     result = JsonCollectionList.from_potto(potto_collections, request.url_for)
     return JSONResponse(
         result.model_dump(exclude_none=True, by_alias=True),
         headers={
             "Link": ",".join((li.serialize_as_http_header() for li in result.links))
-        }
+        },
     )
 
 
@@ -65,15 +66,16 @@ async def list_collections(
     tags=["collections"],
 )
 async def get_collection_details(
-        request: Request,
-        collection_id: str,
-        potto: PottoDependency,
-        user: UserDependency,
-        locale: LocaleDependency,
+    request: Request,
+    collection_id: str,
+    potto: PottoDependency,
+    user: UserDependency,
+    locale: LocaleDependency,
 ):
     if (
-            potto_collection := await potto.api_get_collection(
-                collection_id, user=user, locale=locale)
+        potto_collection := await potto.api_get_collection(
+            collection_id, user=user, locale=locale
+        )
     ) is None:
         raise HTTPException(status_code=404, detail="Collection not found.")
     result = JsonCollection.from_potto(potto_collection, request.url_for)
@@ -81,7 +83,7 @@ async def get_collection_details(
         result.model_dump(exclude_none=True, by_alias=True),
         headers={
             "Link": ",".join((li.serialize_as_http_header() for li in result.links))
-        }
+        },
     )
 
 
@@ -91,14 +93,15 @@ async def get_collection_details(
     tags=["collections"],
 )
 async def get_collection_queryables(
-        request: Request,
-        collection_id: str,
-        potto: PottoDependency,
-        user: UserDependency,
-        locale: LocaleDependency,
+    request: Request,
+    collection_id: str,
+    potto: PottoDependency,
+    user: UserDependency,
+    locale: LocaleDependency,
 ) -> JSONResponse:
     potto_collection = await potto.api_get_collection(
-        collection_id, user=user, locale=locale, include_queryables=True)
+        collection_id, user=user, locale=locale, include_queryables=True
+    )
     if potto_collection is None:
         raise HTTPException(status_code=404, detail="Collection not found.")
     queryables = copy.deepcopy(potto_collection.queryables)
@@ -114,13 +117,15 @@ async def get_collection_queryables(
         base_schemas.Link(
             type=constants.MEDIA_TYPE_JSON,
             rel=constants.REL_COLLECTION,
-            href=str(request.url_for("api:collection-get", collection_id=collection_id)),
+            href=str(
+                request.url_for("api:collection-get", collection_id=collection_id)
+            ),
         ),
     ]
     return JSONResponse(
         headers={
             "Content-Type": constants.MEDIA_TYPE_JSON_SCHEMA,
-            "Link": ",".join((li.serialize_as_http_header() for li in links))
+            "Link": ",".join((li.serialize_as_http_header() for li in links)),
         },
         content=queryables,
     )
@@ -132,14 +137,15 @@ async def get_collection_queryables(
     tags=["collections"],
 )
 async def get_collection_schema(
-        request: Request,
-        collection_id: str,
-        potto: PottoDependency,
-        user: UserDependency,
-        locale: LocaleDependency,
+    request: Request,
+    collection_id: str,
+    potto: PottoDependency,
+    user: UserDependency,
+    locale: LocaleDependency,
 ) -> JSONResponse:
     potto_collection = await potto.api_get_collection(
-        collection_id, user=user, locale=locale, include_schema=True)
+        collection_id, user=user, locale=locale, include_schema=True
+    )
     schema = copy.deepcopy(potto_collection.schema)
     schema["$id"] = str(
         request.url_for("api:collection-get", collection_id=collection_id)
@@ -153,13 +159,15 @@ async def get_collection_schema(
         base_schemas.Link(
             type=constants.MEDIA_TYPE_JSON,
             rel=constants.REL_COLLECTION,
-            href=str(request.url_for("api:collection-get", collection_id=collection_id)),
+            href=str(
+                request.url_for("api:collection-get", collection_id=collection_id)
+            ),
         ),
     ]
     return JSONResponse(
         headers={
             "Content-Type": constants.MEDIA_TYPE_JSON_SCHEMA,
-            "Link": ",".join((li.serialize_as_http_header() for li in links))
+            "Link": ",".join((li.serialize_as_http_header() for li in links)),
         },
         content=schema,
     )
@@ -172,11 +180,11 @@ async def get_collection_schema(
     tags=["collections"],
 )
 async def create_collection(
-        request: Request,
-        to_create: collections_schemas.CollectionCreate,
-        settings: SettingsDependency,
-        user: UserDependency,
-        authorization_backend: AuthorizationBackendDependency,
+    request: Request,
+    to_create: collections_schemas.CollectionCreate,
+    settings: SettingsDependency,
+    user: UserDependency,
+    authorization_backend: AuthorizationBackendDependency,
 ):
     async with settings.get_db_session_maker()() as session:
         db_collection = await collection_operations.create_collection(
@@ -191,10 +199,10 @@ async def create_collection(
     tags=["collections"],
 )
 async def delete_collection(
-        collection_id: str,
-        user: UserDependency,
-        authorization_backend: AuthorizationBackendDependency,
-        settings: SettingsDependency,
+    collection_id: str,
+    user: UserDependency,
+    authorization_backend: AuthorizationBackendDependency,
+    settings: SettingsDependency,
 ):
     async with settings.get_db_session_maker()() as session:
         await collection_operations.delete_collection(
@@ -209,12 +217,12 @@ async def delete_collection(
     tags=["collections"],
 )
 async def grant_collection_access(
-        collection_id: str,
-        user_id: str,
-        body: collections_schemas.CollectionAccessGrant,
-        user: UserDependency,
-        authorization_backend: AuthorizationBackendDependency,
-        settings: SettingsDependency,
+    collection_id: str,
+    user_id: str,
+    body: collections_schemas.CollectionAccessGrant,
+    user: UserDependency,
+    authorization_backend: AuthorizationBackendDependency,
+    settings: SettingsDependency,
 ):
     async with settings.get_db_session_maker()() as session:
         collection = await collection_operations.get_collection_by_resource_identifier(
@@ -234,11 +242,11 @@ async def grant_collection_access(
     tags=["collections"],
 )
 async def revoke_collection_access(
-        collection_id: str,
-        user_id: str,
-        user: UserDependency,
-        authorization_backend: AuthorizationBackendDependency,
-        settings: SettingsDependency,
+    collection_id: str,
+    user_id: str,
+    user: UserDependency,
+    authorization_backend: AuthorizationBackendDependency,
+    settings: SettingsDependency,
 ):
     async with settings.get_db_session_maker()() as session:
         collection = await collection_operations.get_collection_by_resource_identifier(

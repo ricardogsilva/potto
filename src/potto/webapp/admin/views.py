@@ -2,7 +2,9 @@ import json
 import logging
 from typing import (
     Any,
-    cast, List, Optional,
+    cast,
+    List,
+    Optional,
 )
 
 import pydantic
@@ -69,9 +71,10 @@ logger = logging.getLogger(__name__)
 
 
 class _PottoAdminModelView(ModelView):
-
     def handle_exception(self, exc: Exception) -> None:
-        if isinstance(exc, (PottoCannotSetAdminScopeException, PottoCannotSetScopesException)):
+        if isinstance(
+            exc, (PottoCannotSetAdminScopeException, PottoCannotSetScopesException)
+        ):
             raise FormValidationError({"scopes": str(exc)})
         if isinstance(exc, PottoCannotChangeCollectionOwnerException):
             raise FormValidationError({"owner": str(exc)})
@@ -102,6 +105,7 @@ class UserView(_PottoAdminModelView):
         user = cast(PottoUser, request.user)
         settings = cast(PottoSettings, request.app.state.SETTINGS)
         return await settings.get_authorization_backend().can_create_user(user)
+
     fields = (
         User.username,
         User.email,
@@ -109,12 +113,8 @@ class UserView(_PottoAdminModelView):
         User.is_active,
         User.scopes,
     )
-    exclude_fields_from_detail = (
-        "password",
-    )
-    exclude_fields_from_list = (
-        "password",
-    )
+    exclude_fields_from_detail = ("password",)
+    exclude_fields_from_list = ("password",)
 
     async def create(self, request: Request, data: dict[str, Any]) -> Any:
         user = cast(PottoUser, request.user)
@@ -128,13 +128,14 @@ class UserView(_PottoAdminModelView):
                     authorization_backend=auth_backend,
                     to_create=UserCreate(
                         **{
-                            k: v for k, v in {
+                            k: v
+                            for k, v in {
                                 "username": data["username"],
                                 "is_active": data["is_active"],
                                 "email": data["email"] or None,
                                 "scopes": data["scopes"] or None,
                                 "password": data["password"],
-                                }.items()
+                            }.items()
                             if v is not None
                         }
                     ),
@@ -159,13 +160,15 @@ class UserView(_PottoAdminModelView):
                     db_user=db_user,
                     to_update=UserUpdate(
                         **{
-                            k: v for k,v in {
+                            k: v
+                            for k, v in {
                                 "username": data["username"],
                                 "is_active": data["is_active"],
                                 "email": data["email"] or None,
                                 "scopes": data["scopes"] or None,
                                 "password": data["password"] or None,
-                            }.items() if v is not None
+                            }.items()
+                            if v is not None
                         }
                     ),
                 )
@@ -182,6 +185,7 @@ class CollectionView(_PottoAdminModelView):
     use our own commands, thus ensuring a consistent schema is preserved whether modifications
     are done via the admin UI, the web API or the CLI.
     """
+
     fields = (
         Collection.resource_identifier,
         Collection.collection_type,
@@ -214,7 +218,7 @@ class CollectionView(_PottoAdminModelView):
                     ),
                     StringField(name="python_callable"),
                     JSONField(name="config"),
-                )
+                ),
             )
         ),
         ListField(
@@ -226,7 +230,7 @@ class CollectionView(_PottoAdminModelView):
                     URLField(name="href"),
                     JSONField(name="title"),
                     StringField(name="href_lang"),
-                )
+                ),
             )
         ),
     )
@@ -268,7 +272,9 @@ class CollectionView(_PottoAdminModelView):
                 settings = cast(PottoSettings, request.app.state.SETTINGS)
                 auth_backend = settings.get_authorization_backend()
                 async with settings.get_db_session_maker()() as session:
-                    collection = await collection_queries.get_collection(session, int(pk))
+                    collection = await collection_queries.get_collection(
+                        session, int(pk)
+                    )
                 if collection is not None:
                     return await auth_backend.can_edit_collection(user, collection)
         return await super().is_row_action_allowed(request, name)
@@ -305,7 +311,9 @@ class CollectionView(_PottoAdminModelView):
         settings = cast(PottoSettings, request.app.state.SETTINGS)
         auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
-            accessible_ids = await auth_backend.get_accessible_collection_identifiers(user)
+            accessible_ids = await auth_backend.get_accessible_collection_identifiers(
+                user
+            )
             items, _ = await collection_queries.list_user_collections(
                 session,
                 offset=skip,
@@ -320,7 +328,9 @@ class CollectionView(_PottoAdminModelView):
         settings = cast(PottoSettings, request.app.state.SETTINGS)
         auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
-            accessible_ids = await auth_backend.get_accessible_collection_identifiers(user)
+            accessible_ids = await auth_backend.get_accessible_collection_identifiers(
+                user
+            )
             _, total = await collection_queries.list_user_collections(
                 session,
                 limit=1,
@@ -330,17 +340,25 @@ class CollectionView(_PottoAdminModelView):
             )
         return total or 0
 
-    async def serialize(self, obj: Any, request: Request, action: RequestAction, **kwargs: Any) -> Any:
+    async def serialize(
+        self, obj: Any, request: Request, action: RequestAction, **kwargs: Any
+    ) -> Any:
         result = await super().serialize(obj, request, action, **kwargs)
         if action == RequestAction.LIST:
             user = cast(PottoUser, request.user)
             settings = cast(PottoSettings, request.app.state.SETTINGS)
             auth_backend = settings.get_authorization_backend()
-            result["_meta"]["can_edit"] = await auth_backend.can_edit_collection(user, obj)
+            result["_meta"]["can_edit"] = await auth_backend.can_edit_collection(
+                user, obj
+            )
         return result
 
     async def serialize_field_value(
-        self, value: list[dict], field: BaseField, action: RequestAction, request: Request
+        self,
+        value: list[dict],
+        field: BaseField,
+        action: RequestAction,
+        request: Request,
     ) -> Any:
         if field.name == "providers":
             result = []
@@ -365,7 +383,8 @@ class CollectionView(_PottoAdminModelView):
             for pk in pks:
                 try:
                     await collection_operations.delete_collection(
-                        session, user, auth_backend, int(pk))
+                        session, user, auth_backend, int(pk)
+                    )
                 except PottoException as err:
                     return self.handle_exception(err)
                 num_deleted += 1
@@ -373,7 +392,9 @@ class CollectionView(_PottoAdminModelView):
 
     async def edit(self, request: Request, pk: Any, data: dict[str, Any]) -> Any:
         user = cast(PottoUser, request.user)
-        data["providers"] = self._adapt_request_providers_to_internal_model(data["providers"])
+        data["providers"] = self._adapt_request_providers_to_internal_model(
+            data["providers"]
+        )
         new_editor_ids = set(data.pop("editors", None) or [])
         new_viewer_ids = set(data.pop("viewers", None) or [])
         logger.debug(f"{data=}")
@@ -407,16 +428,31 @@ class CollectionView(_PottoAdminModelView):
             )
             current_editor_ids = {e.id for e in current_editors}
             current_viewer_ids = {v.id for v in current_viewers}
-            for target_user_id in current_editor_ids | current_viewer_ids | new_editor_ids | new_viewer_ids:
+            for target_user_id in (
+                current_editor_ids
+                | current_viewer_ids
+                | new_editor_ids
+                | new_viewer_ids
+            ):
                 if target_user_id in new_editor_ids:
                     if target_user_id not in current_editor_ids:
                         await collection_operations.grant_collection_access(
-                            session, user, auth_backend, target_user_id, db_collection, "editor"
+                            session,
+                            user,
+                            auth_backend,
+                            target_user_id,
+                            db_collection,
+                            "editor",
                         )
                 elif target_user_id in new_viewer_ids:
                     if target_user_id not in current_viewer_ids:
                         await collection_operations.grant_collection_access(
-                            session, user, auth_backend, target_user_id, db_collection, "viewer"
+                            session,
+                            user,
+                            auth_backend,
+                            target_user_id,
+                            db_collection,
+                            "viewer",
                         )
                 else:
                     await collection_operations.revoke_collection_access(
@@ -426,7 +462,9 @@ class CollectionView(_PottoAdminModelView):
 
     async def create(self, request: Request, data: dict[str, Any]) -> Any:
         user = cast(PottoUser, request.user)
-        data["providers"] = self._adapt_request_providers_to_internal_model(data["providers"])
+        data["providers"] = self._adapt_request_providers_to_internal_model(
+            data["providers"]
+        )
         settings = cast(PottoSettings, request.app.state.SETTINGS)
         auth_backend = settings.get_authorization_backend()
         async with settings.get_db_session_maker()() as session:
@@ -441,7 +479,8 @@ class CollectionView(_PottoAdminModelView):
                 return self.handle_exception(err)
 
     def _adapt_request_providers_to_internal_model(
-            self, request_providers: list[dict]) -> dict[str, dict]:
+        self, request_providers: list[dict]
+    ) -> dict[str, dict]:
         new_providers = {}
         for sent_provider in request_providers:
             new_providers[sent_provider.pop("type")] = sent_provider
@@ -481,29 +520,38 @@ class ServerMetadataModelView(_PottoAdminModelView):
         StringField("keywords_type"),
         StringField("terms_of_service"),
         URLField("url"),
-        CollectionField("license", fields=(
-            StringField("name"),
-            URLField("url"),
-        )),
-        CollectionField("data_provider", fields=(
-            StringField("name"),
-            URLField("url"),
-        )),
-        CollectionField("point_of_contact", fields=(
-            StringField("name"),
-            StringField("position"),
-            StringField("address"),
-            StringField("city"),
-            StringField("state_or_province"),
-            StringField("postal_code"),
-            StringField("country"),
-            StringField("phone"),
-            StringField("fax"),
-            StringField("email"),
-            URLField("url"),
-            StringField("contact_hours"),
-            StringField("contact_instructions"),
-        )),
+        CollectionField(
+            "license",
+            fields=(
+                StringField("name"),
+                URLField("url"),
+            ),
+        ),
+        CollectionField(
+            "data_provider",
+            fields=(
+                StringField("name"),
+                URLField("url"),
+            ),
+        ),
+        CollectionField(
+            "point_of_contact",
+            fields=(
+                StringField("name"),
+                StringField("position"),
+                StringField("address"),
+                StringField("city"),
+                StringField("state_or_province"),
+                StringField("postal_code"),
+                StringField("country"),
+                StringField("phone"),
+                StringField("fax"),
+                StringField("email"),
+                URLField("url"),
+                StringField("contact_hours"),
+                StringField("contact_instructions"),
+            ),
+        ),
     )
 
     async def find_all(
@@ -529,7 +577,9 @@ class ServerMetadataModelView(_PottoAdminModelView):
     async def serialize_field_value(
         self, value: Any, field: BaseField, action: RequestAction, request: Request
     ) -> Any:
-        if field.name in ("title", "description", "terms_of_service") and isinstance(value, dict):
+        if field.name in ("title", "description", "terms_of_service") and isinstance(
+            value, dict
+        ):
             return json.dumps(value)
         return await super().serialize_field_value(value, field, action, request)
 
@@ -557,12 +607,18 @@ class ServerMetadataModelView(_PottoAdminModelView):
                         license=LicenseInformation(
                             name=lic_data["name"],
                             url=lic_data.get("url") or None,
-                        ) if lic_data.get("name") else None,
+                        )
+                        if lic_data.get("name")
+                        else None,
                         data_provider=DataProviderInformation(
                             name=dp_data["name"],
                             url=dp_data.get("url") or None,
-                        ) if dp_data.get("name") else None,
-                        point_of_contact=PointOfContact(**poc_values) if any(poc_values.values()) else None,
+                        )
+                        if dp_data.get("name")
+                        else None,
+                        point_of_contact=PointOfContact(**poc_values)
+                        if any(poc_values.values())
+                        else None,
                     ),
                 )
         except PottoException as err:

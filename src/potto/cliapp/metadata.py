@@ -25,10 +25,7 @@ logger = logging.getLogger(__name__)
 
 @metadata_app.meta.default
 def launcher(
-        *tokens: Annotated[
-            str,
-            cyclopts.Parameter(show=False, allow_leading_hyphen=True)
-        ],
+    *tokens: Annotated[str, cyclopts.Parameter(show=False, allow_leading_hyphen=True)],
 ):
     """Manage server metadata."""
     command, bound, ignored = metadata_app.parse_args(tokens)
@@ -43,14 +40,16 @@ def launcher(
         if bound is None:
             return asyncio.run(command(**additional_kwargs))
         else:
-            return asyncio.run(command(*bound.args, **bound.kwargs, **additional_kwargs))
+            return asyncio.run(
+                command(*bound.args, **bound.kwargs, **additional_kwargs)
+            )
 
 
 @metadata_app.command(name="detail")
 async def get_metadata_detail(
-        format: Literal["json", "table"] = "table",
-        *,
-        settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
+    format: Literal["json", "table"] = "table",
+    *,
+    settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ):
     """Inspect current server metadata."""
     async with settings.get_db_session_maker()() as session:
@@ -65,10 +64,12 @@ async def get_metadata_detail(
 
 @metadata_app.command(name="update")
 async def update_metadata(
-        to_update: Annotated[ServerMetadataFlattenedUpdate, cyclopts.Parameter(name="*")] = None,
-        format: Literal["json", "table"] = "table",
-        *,
-        settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
+    to_update: Annotated[
+        ServerMetadataFlattenedUpdate, cyclopts.Parameter(name="*")
+    ] = None,
+    format: Literal["json", "table"] = "table",
+    *,
+    settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ):
     """Update metadata"""
     if not to_update:
@@ -77,14 +78,14 @@ async def update_metadata(
     async with settings.get_db_session_maker()() as session:
         metadata = await metadata_operations.get_server_metadata(session)
         updated_metadata = await metadata_commands.update_metadata_flattened(
-            session, metadata, to_update)
+            session, metadata, to_update
+        )
     result = cli_schemas.ServerMetadataDetail.from_db_item(updated_metadata)
     if format == "json":
         metadata_app.console.print_json(result.model_dump_json(indent=2))
     else:
         detail_table = _prepare_detail_table(result)
         metadata_app.console.print(detail_table)
-
 
 
 def _prepare_detail_table(instance: cli_schemas.ServerMetadataDetail):

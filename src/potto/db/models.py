@@ -67,11 +67,7 @@ class ShapelyGeometryAdapter(geoalchemy2.Geometry):
 
 class Collection(SQLModel, table=True):
     __table_args__ = (
-        sqlalchemy.Index(
-            "idx_collection_title_gin",
-            "title",
-            postgresql_using="gin"
-        ),
+        sqlalchemy.Index("idx_collection_title_gin", "title", postgresql_using="gin"),
     )
 
     model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
@@ -98,22 +94,29 @@ class Collection(SQLModel, table=True):
         nullable=True,
     )
     spatial_extent_crs: str | None = None  # part 1 - CRS of the spatial extent
-    crs: list[str] | None = Field(sa_type=JSONB(), nullable=True)  # part 2 - list of supported CRS
-    storage_crs: str | None = Field(default=None, nullable=True)  # part 2 - CRS of the dataset
-    storage_crs_coordinate_epoch: float | None = Field(default=None, nullable=True)  # part 3 - epoch of the dataset CRS
+    crs: list[str] | None = Field(
+        sa_type=JSONB(), nullable=True
+    )  # part 2 - list of supported CRS
+    storage_crs: str | None = Field(
+        default=None, nullable=True
+    )  # part 2 - CRS of the dataset
+    storage_crs_coordinate_epoch: float | None = Field(
+        default=None, nullable=True
+    )  # part 3 - epoch of the dataset CRS
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
     # this can be used for configuring additional extents, as mentioned in
     # OAPIF - Part 1
-    additional_extents: dict[str, dict[str, str | int | float | None]] | None = Field(default=None, sa_type=JSONB(), nullable=True)
+    additional_extents: dict[str, dict[str, str | int | float | None]] | None = Field(
+        default=None, sa_type=JSONB(), nullable=True
+    )
     custom_page_size: int | None = Field(default=None, ge=1)
     custom_page_size_max: int | None = Field(default=None, ge=1)
     additional_links: list[dict[str, str | dict[str, str]]] | None = Field(
-        default=None, sa_type=JSONB(), nullable=True)
+        default=None, sa_type=JSONB(), nullable=True
+    )
     providers: dict[str, CollectionProvider] | None = Field(
-        default=None,
-        sa_type=JSONB(),
-        nullable=True
+        default=None, sa_type=JSONB(), nullable=True
     )
     created_at: dt.datetime | None = Field(default_factory=now_)
     updated_at: dt.datetime | None = Field(
@@ -173,20 +176,13 @@ class User(SQLModel, table=True):
         return self.username
 
     def __admin_select2_repr__(self, request: Request) -> str:
-        return Template(
-            "<span>{{ name }}</span>",
-            autoescape=True
-        ).render(
+        return Template("<span>{{ name }}</span>", autoescape=True).render(
             name=self.username,
         )
 
     def to_potto(self) -> PottoUser:
         return PottoUser(
-            **self.model_dump(
-                exclude={
-                    "hashed_password"
-                }
-            ),
+            **self.model_dump(exclude={"hashed_password"}),
         )
 
 
@@ -198,12 +194,18 @@ class ServerMetadata(SQLModel, table=True):
     title: Title = Field(sa_type=JSONB())
     description: MaybeDescription = Field(default=None, sa_type=JSONB(), nullable=True)
     keywords: MaybeKeywords = Field(default=None, sa_type=JSONB(), nullable=True)
-    keywords_type: str | None = Field(default=None, min_length=3, max_length=50, nullable=True)
-    terms_of_service: MaybeDescription = Field(default=None, sa_type=JSONB(), nullable=True)
+    keywords_type: str | None = Field(
+        default=None, min_length=3, max_length=50, nullable=True
+    )
+    terms_of_service: MaybeDescription = Field(
+        default=None, sa_type=JSONB(), nullable=True
+    )
     url: str | None = Field(default=None, min_length=3, max_length=100, nullable=True)
     license: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
     data_provider: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
-    point_of_contact: dict[str, Any] = Field(default=None, sa_type=JSONB(), nullable=True)
+    point_of_contact: dict[str, Any] = Field(
+        default=None, sa_type=JSONB(), nullable=True
+    )
 
     def to_potto(self) -> potto_schemas.ServerMetadata:
         return potto_schemas.ServerMetadata(
@@ -235,6 +237,5 @@ class ServerMetadata(SQLModel, table=True):
                 url=self.point_of_contact.get("url"),
                 contact_hours=self.point_of_contact.get("contact_hours"),
                 contact_instructions=self.point_of_contact.get("contact_instructions"),
-            )
+            ),
         )
-

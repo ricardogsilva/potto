@@ -29,8 +29,12 @@ async def get_landing_page(request: Request) -> Response:
     settings: PottoSettings = request.state.settings
     async with settings.get_db_session_maker()() as session:
         server_metadata = await get_server_metadata(session)
-        db_collections, total_collections = await collection_operations.paginated_list_collections(
-            session, include_total=True)
+        (
+            db_collections,
+            total_collections,
+        ) = await collection_operations.paginated_list_collections(
+            session, include_total=True
+        )
     # current_locale = babel.Locale.parse(request.state.language)
     return request.state.templates.TemplateResponse(
         request,
@@ -44,8 +48,8 @@ async def get_landing_page(request: Request) -> Response:
             "has_stac_collections": False,
             "has_processes": False,
             "has_tiles": False,
-            "pygeoapi_config": server_metadata
-        }
+            "pygeoapi_config": server_metadata,
+        },
     )
 
 
@@ -65,19 +69,19 @@ async def get_conformance_details(request: Request) -> Response:
                 "href": conformance_url,
                 "rel": "self",
                 "title": _("This document as HTML"),
-                "type": FORMAT_TYPES[F_HTML]
+                "type": FORMAT_TYPES[F_HTML],
             },
             {
                 "href": f"{conformance_url}?f={F_JSON}",
                 "rel": "alternate",
                 "title": _("This document as JSON"),
-                "type": FORMAT_TYPES[F_JSON]
+                "type": FORMAT_TYPES[F_JSON],
             },
             {
                 "href": f"{conformance_url}?f={F_JSONLD}",
                 "rel": "alternate",
                 "title": _("This document as RDF (JSON-LD)"),
-                "type": FORMAT_TYPES[F_JSONLD]
+                "type": FORMAT_TYPES[F_JSONLD],
             },
         ]
         return request.state.templates.TemplateResponse(
@@ -86,13 +90,10 @@ async def get_conformance_details(request: Request) -> Response:
             context={
                 "data": content,
                 "pygeoapi_config": await potto.get_localized_config(current_locale),
-            }
+            },
         )
     else:
-        return JSONResponse(
-            content=result.content,
-            headers=result.metadata
-        )
+        return JSONResponse(content=result.content, headers=result.metadata)
 
 
 async def get_openapi_document(request: Request) -> Response:
@@ -105,11 +106,9 @@ async def get_openapi_document(request: Request) -> Response:
             request,
             "openapi/swagger.html",
             context={
-                "data": {
-                    "openapi-document-path": request.url_for("openapi-document")
-                },
+                "data": {"openapi-document-path": request.url_for("openapi-document")},
                 "pygeoapi_config": await potto.get_localized_config(current_locale),
-            }
+            },
         )
     else:
         return JSONResponse(

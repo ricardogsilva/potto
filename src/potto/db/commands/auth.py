@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 async def provision_oidc_user(
-        session: AsyncSession, to_create: UserCreateFromOidc
+    session: AsyncSession, to_create: UserCreateFromOidc
 ) -> User:
     instance = User(**to_create.model_dump())
     session.add(instance)
@@ -24,10 +24,10 @@ async def provision_oidc_user(
     return instance
 
 
-async def create_user(
-        session: AsyncSession, to_create: UserCreate
-) -> User:
-    hashed = bcrypt.hashpw(to_create.password.get_secret_value().encode(), bcrypt.gensalt())
+async def create_user(session: AsyncSession, to_create: UserCreate) -> User:
+    hashed = bcrypt.hashpw(
+        to_create.password.get_secret_value().encode(), bcrypt.gensalt()
+    )
     instance = User(
         username=to_create.username,
         email=to_create.email,
@@ -42,9 +42,9 @@ async def create_user(
 
 
 async def update_user(
-        session: AsyncSession,
-        db_user: User,
-        to_update: UserUpdate,
+    session: AsyncSession,
+    db_user: User,
+    to_update: UserUpdate,
 ) -> User:
     updates = to_update.model_dump(exclude_unset=True)
     if "password" in updates:
@@ -62,8 +62,8 @@ async def update_user(
 
 
 async def delete_user(
-        session: AsyncSession,
-        user_id: str,
+    session: AsyncSession,
+    user_id: str,
 ) -> None:
     if instance := (await session.get(User, user_id)):
         await session.delete(instance)

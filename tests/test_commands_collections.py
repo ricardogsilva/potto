@@ -25,7 +25,9 @@ async def test_bare_collection_create(db_session_maker, admin_user):
 
 
 @pytest.mark.asyncio
-async def test_collection_create_fails_on_duplicate_identifier(db_session_maker, admin_user):
+async def test_collection_create_fails_on_duplicate_identifier(
+    db_session_maker, admin_user
+):
     first_to_create = collection_schemas.CollectionCreate(
         resource_identifier="res1",
         owner_id=admin_user.id,
@@ -43,8 +45,7 @@ async def test_collection_create_fails_on_duplicate_identifier(db_session_maker,
     async with db_session_maker() as session:
         await collection_commands.create_collection(session, first_to_create)
         with pytest.raises(IntegrityError):
-            await collection_commands.create_collection(
-                session, second_to_create)
+            await collection_commands.create_collection(session, second_to_create)
 
 
 @pytest.mark.asyncio
@@ -61,7 +62,7 @@ async def test_collection_create_no_temporal_extent(db_session_maker, admin_user
             "feature": base_schemas.CollectionProvider(
                 python_callable="fake",
             )
-        }
+        },
     )
     async with db_session_maker() as session:
         db_collection = await collection_commands.create_collection(session, to_create)

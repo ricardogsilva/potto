@@ -36,7 +36,7 @@ class ServerMetadataDetail(pydantic.BaseModel):
     point_of_contact_contact_instructions: str | None
 
     @classmethod
-    def from_db_item(cls, item: ServerMetadata) ->"ServerMetadataDetail":
+    def from_db_item(cls, item: ServerMetadata) -> "ServerMetadataDetail":
         data_license = item.license or {}
         data_provider = item.data_provider or {}
         point_of_contact = item.point_of_contact or {}
@@ -55,7 +55,9 @@ class ServerMetadataDetail(pydantic.BaseModel):
             point_of_contact_position=point_of_contact.get("position"),
             point_of_contact_address=point_of_contact.get("address"),
             point_of_contact_city=point_of_contact.get("city"),
-            point_of_contact_state_or_province=point_of_contact.get("state_or_province"),
+            point_of_contact_state_or_province=point_of_contact.get(
+                "state_or_province"
+            ),
             point_of_contact_postal_code=point_of_contact.get("postal_code"),
             point_of_contact_country=point_of_contact.get("country"),
             point_of_contact_phone=point_of_contact.get("phone"),
@@ -63,7 +65,7 @@ class ServerMetadataDetail(pydantic.BaseModel):
             point_of_contact_email=point_of_contact.get("email"),
             point_of_contact_url=point_of_contact.get("url"),
             point_of_contact_contact_hours=point_of_contact.get("contact_hours"),
-            point_of_contact_contact_instructions=point_of_contact.get("contact_instructions"),
+            point_of_contact_contact_instructions=point_of_contact.get(
+                "contact_instructions"
+            ),
         )
-
-

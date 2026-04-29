@@ -21,7 +21,7 @@ def get_base_links(url_resolver: UrlResolver) -> list[Link]:
                     "api:landing-page",
                 )
             ),
-            title="API landing page"
+            title="API landing page",
         ),
     ]
 
@@ -55,7 +55,7 @@ def get_accepted_info(request: Request) -> tuple[str, str | None]:
 
 
 def _get_requested_media_type(request: Request) -> str:
-    if f_param:=request.query_params.get("f"):
+    if f_param := request.query_params.get("f"):
         return pygeoapi.api.FORMAT_TYPES.get(f_param, "*/*")
     else:
         if raw_accept_header := request.headers.get("Accept"):

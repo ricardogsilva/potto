@@ -5,7 +5,7 @@ from ..models import ServerMetadata
 
 
 async def get_metadata(
-        session: AsyncSession,
+    session: AsyncSession,
 ) -> ServerMetadata | None:
     statement = select(ServerMetadata)
     return (await session.exec(statement)).first()

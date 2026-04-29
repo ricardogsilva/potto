@@ -11,9 +11,9 @@ _ALGORITHM = "HS256"
 
 
 def create_access_token(
-        user: PottoUser,
-        secret: str,
-        expires_minutes: int = 60,
+    user: PottoUser,
+    secret: str,
+    expires_minutes: int = 60,
 ) -> str:
     payload = {
         "sub": user.id,

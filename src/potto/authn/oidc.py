@@ -54,9 +54,7 @@ class OIDCProvider:
     async def get_discovery(self) -> dict:
         if self._discovery is None:
             async with httpx.AsyncClient() as client:
-                r = await client.get(
-                    f"{self._issuer}/.well-known/openid-configuration"
-                )
+                r = await client.get(f"{self._issuer}/.well-known/openid-configuration")
                 r.raise_for_status()
                 self._discovery = r.json()
         return self._discovery
@@ -76,7 +74,7 @@ class OIDCProvider:
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
         jwks = await self._get_jwks()
-        if (key:=_match_key(jwks, kid)) is None:
+        if (key := _match_key(jwks, kid)) is None:
             # Possible key rotation – clear cache and retry once
             self._jwks = None
             jwks = await self._get_jwks()
@@ -100,7 +98,9 @@ class OIDCProvider:
     async def validate_id_token(self, token: str) -> dict:
         """Validate an OIDC ID token. Audience must be the client_id."""
         signing_key = await self._find_signing_key(token)
-        return jwt.decode(token, signing_key.key, **self._decode_kwargs(self._client_id))
+        return jwt.decode(
+            token, signing_key.key, **self._decode_kwargs(self._client_id)
+        )
 
     async def validate_access_token(self, token: str) -> dict:
         """Validate an OIDC JWT access token."""
@@ -111,9 +111,7 @@ class OIDCProvider:
 
     def get_authorization_url(self, redirect_uri: str, state: str, nonce: str) -> str:
         if self._discovery is None:
-            raise RuntimeError(
-                "OIDC discovery not loaded – call get_discovery() first"
-            )
+            raise RuntimeError("OIDC discovery not loaded – call get_discovery() first")
         params = {
             "response_type": "code",
             "client_id": self._client_id,
@@ -182,7 +180,7 @@ class OIDCProvider:
                 is_active=True,
                 scopes=self.extract_scopes(claims),
                 email=claims.get("email"),
-            )
+            ),
         )
         logger.info(f"JIT-provisioned OIDC user {db_user.username!r} (sub={sub!r})")
         return db_user

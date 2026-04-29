@@ -71,7 +71,9 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
     if settings.oidc is not None:
         routes += [
             Route("/auth/oidc/login", auth_routes.oidc_login, name="oidc-login"),
-            Route("/auth/oidc/callback", auth_routes.oidc_callback, name="oidc-callback"),
+            Route(
+                "/auth/oidc/callback", auth_routes.oidc_callback, name="oidc-callback"
+            ),
         ]
     routes += [
         Route("/", landing_routes.get_landing_page, name="landing-page"),
@@ -79,55 +81,52 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
         Route(
             "/conformance",
             ogc_api_common_routes.get_conformance_details,
-            name="conformance-document"
+            name="conformance-document",
         ),
         Route(
             "/openapi",
             ogc_api_common_routes.get_openapi_document,
-            name="openapi-document"
+            name="openapi-document",
         ),
     ]
     if True:  # whether to enable ogc api features routes: let's make this controllable via server metadata
-        routes.extend([
-            Route(
-                "/collections/{collection_id}/items/{item_id}",
-                ogc_api_features_routes.get_item_details,
-                name="collection-item-get"
+        routes.extend(
+            [
+                Route(
+                    "/collections/{collection_id}/items/{item_id}",
+                    ogc_api_features_routes.get_item_details,
+                    name="collection-item-get",
+                ),
+                Route(
+                    "/collections/{collection_id}/items",
+                    ogc_api_features_routes.list_collection_items,
+                    name="collection-item-list",
+                ),
+                Route(
+                    "/collections/{collection_id}",
+                    ogc_api_features_routes.get_collection_details,
+                    name="collection-get",
+                ),
+                Route(
+                    "/collections",
+                    ogc_api_features_routes.list_collections,
+                    name="collection-list",
+                ),
+            ]
+        )
+    routes.extend(
+        [
+            Mount("/api", app=api_app, name="api"),
+            Mount(
+                "/static",
+                app=StaticFiles(
+                    directory=settings.static_dir,
+                    packages=[("potto", "webapp/static"), ("pygeoapi", "static")],
+                ),
+                name="static",
             ),
-            Route(
-                "/collections/{collection_id}/items",
-                ogc_api_features_routes.list_collection_items,
-                name="collection-item-list"
-            ),
-            Route(
-                "/collections/{collection_id}",
-                ogc_api_features_routes.get_collection_details,
-                name="collection-get"
-            ),
-            Route(
-                "/collections",
-                ogc_api_features_routes.list_collections,
-                name="collection-list"
-            ),
-        ])
-    routes.extend([
-        Mount(
-            "/api",
-            app=api_app,
-            name="api"
-        ),
-        Mount(
-            "/static",
-            app=StaticFiles(
-                directory=settings.static_dir,
-                packages=[
-                    ("potto", "webapp/static"),
-                    ("pygeoapi", "static")
-                ]
-            ),
-            name="static"
-        ),
-    ])
+        ]
+    )
     app = Starlette(
         debug=settings.debug,
         routes=routes,
@@ -135,7 +134,7 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
             Middleware(
                 LocaleMiddleware,
                 locales=settings.languages,
-                default_locale=settings.languages[0]
+                default_locale=settings.languages[0],
             ),
             Middleware(
                 SessionMiddleware,
@@ -145,10 +144,7 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
                 AuthenticationMiddleware,
                 backend=auth_backend,
             ),
-            Middleware(
-                GZipMiddleware,
-                minimum_size=1000, compresslevel=9
-            )
+            Middleware(GZipMiddleware, minimum_size=1000, compresslevel=9),
         ],
         lifespan=lifespan,
     )

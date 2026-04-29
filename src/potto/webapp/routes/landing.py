@@ -18,17 +18,14 @@ logger = logging.getLogger(__name__)
 async def get_landing_page(request: Request) -> Response:
     user = (
         potto_user
-        if isinstance(
-            (potto_user := request.user), auth_schemas.PottoUser)
+        if isinstance((potto_user := request.user), auth_schemas.PottoUser)
         else None
     )
     potto: Potto = request.state.potto
     return request.state.templates.TemplateResponse(
         request,
         "landing-page.html",
-        context={
-            "contents": await potto.api_get_landing_page(user=user)
-        }
+        context={"contents": await potto.api_get_landing_page(user=user)},
     )
 
 

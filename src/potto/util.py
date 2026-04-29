@@ -32,15 +32,11 @@ def get_collection_type(pygeoapi_collection: dict) -> CollectionType:
 
 
 def get_collection_pagination_limit(
-        request_limit: int | None,
-        collection: "Collection",
-        settings: "PottoSettings"
+    request_limit: int | None, collection: "Collection", settings: "PottoSettings"
 ) -> int:
-    requested_limit = (
-        request_limit
-        or (collection.custom_page_size or settings.page_size)
+    requested_limit = request_limit or (
+        collection.custom_page_size or settings.page_size
     )
     return min(
-        requested_limit,
-        collection.custom_page_size_max or settings.page_size_max
+        requested_limit, collection.custom_page_size_max or settings.page_size_max
     )

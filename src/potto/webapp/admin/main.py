@@ -17,10 +17,7 @@ from ...db.models import (
     User,
 )
 from . import views
-from .auth import (
-    LocalAdminAuthProvider,
-    OIDCAdminAuthProvider
-)
+from .auth import LocalAdminAuthProvider, OIDCAdminAuthProvider
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +29,7 @@ class PottoAdmin(Admin):
         super().__init__(*args, **kwargs)
         self.potto_settings = potto_settings
 
-
-    def mount_to(
-            self,
-            app: Starlette,
-            redirect_slashes: bool = True
-    ) -> None:
+    def mount_to(self, app: Starlette, redirect_slashes: bool = True) -> None:
         """Reimplemented in order to pass settings to the admin app."""
         admin_app = Starlette(
             routes=self.routes,
@@ -91,7 +83,9 @@ class PottoAdmin(Admin):
             if items:
                 pk = await model.get_pk_value(request, items[0])
                 return RedirectResponse(
-                    request.url_for(self.route_name + ":detail", identity=identity, pk=pk)
+                    request.url_for(
+                        self.route_name + ":detail", identity=identity, pk=pk
+                    )
                 )
         if hasattr(model, "async_can_create"):
             can_create = await model.async_can_create(request)
@@ -115,11 +109,11 @@ class PottoAdmin(Admin):
 
 def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
     templates_dir = str(
-        settings.admin_templates_dir or
-        Path(__file__).parents[1] / "templates/admin"
+        settings.admin_templates_dir or Path(__file__).parents[1] / "templates/admin"
     )
     auth_provider = (
-        OIDCAdminAuthProvider(settings) if settings.oidc is not None
+        OIDCAdminAuthProvider(settings)
+        if settings.oidc is not None
         else LocalAdminAuthProvider(settings)
     )
     app = PottoAdmin(
@@ -127,13 +121,10 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
         potto_settings=settings,
         auth_provider=auth_provider,
         templates_dir=templates_dir,
-        statics_dir=str(
-            settings.static_dir or Path(__file__).parents[1] / "static"),
+        statics_dir=str(settings.static_dir or Path(__file__).parents[1] / "static"),
         title="Potto admin",
     )
-    app.add_view(
-        Link(label="Back to front page", url="/", icon="fa fa-home")
-    )
+    app.add_view(Link(label="Back to front page", url="/", icon="fa fa-home"))
     app.add_view(
         views.ServerMetadataModelView(
             ServerMetadata,

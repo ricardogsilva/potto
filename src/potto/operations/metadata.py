@@ -18,18 +18,15 @@ async def get_server_metadata(session: AsyncSession) -> ServerMetadata:
         return existing
 
     return await metadata_commands.create_metadata(
-        session,
-        ServerMetadataCreate(
-            title="Default title"
-        )
+        session, ServerMetadataCreate(title="Default title")
     )
 
 
 async def update_server_metadata(
-        session: AsyncSession,
-        user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        to_update: ServerMetadataUpdate,
+    session: AsyncSession,
+    user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    to_update: ServerMetadataUpdate,
 ) -> ServerMetadata:
     if not await authorization_backend.can_edit_server_metadata(user):
         raise PottoCannotEditServerMetadataException(

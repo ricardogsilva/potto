@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 async def collect_all_public_collections(
-        session: AsyncSession,
-        collection_type_filter: list[CollectionType] | None = None,
+    session: AsyncSession,
+    collection_type_filter: list[CollectionType] | None = None,
 ) -> list[Collection]:
     _, num_total = await list_public_collections(
         session,
@@ -39,10 +39,10 @@ async def collect_all_public_collections(
 
 
 async def collect_all_user_collections(
-        session: AsyncSession,
-        user_id: str | None = None,
-        accessible_identifiers: list[str] | None = None,
-        collection_type_filter: list[CollectionType] | None = None,
+    session: AsyncSession,
+    user_id: str | None = None,
+    accessible_identifiers: list[str] | None = None,
+    collection_type_filter: list[CollectionType] | None = None,
 ) -> list[Collection]:
     _, num_total = await list_user_collections(
         session,
@@ -64,14 +64,14 @@ async def collect_all_user_collections(
 
 
 async def paginated_list_public_collections(
-        session: AsyncSession,
-        *,
-        page: int = 1,
-        page_size: int = 20,
-        include_total: bool = False,
-        identifier_filter: str | None = None,
-        collection_type_filter: list[CollectionType] | None = None,
-        spatial_intersect: shapely.Polygon | None = None,
+    session: AsyncSession,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    include_total: bool = False,
+    identifier_filter: str | None = None,
+    collection_type_filter: list[CollectionType] | None = None,
+    spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
     limit = page_size
     offset = limit * (page - 1)
@@ -87,16 +87,16 @@ async def paginated_list_public_collections(
 
 
 async def paginated_list_user_collections(
-        session: AsyncSession,
-        *,
-        page: int = 1,
-        page_size: int = 20,
-        include_total: bool = False,
-        user_id: str | None = None,
-        accessible_identifiers: list[str] | None = None,
-        identifier_filter: str | None = None,
-        collection_type_filter: list[CollectionType] | None = None,
-        spatial_intersect: shapely.Polygon | None = None,
+    session: AsyncSession,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    include_total: bool = False,
+    user_id: str | None = None,
+    accessible_identifiers: list[str] | None = None,
+    identifier_filter: str | None = None,
+    collection_type_filter: list[CollectionType] | None = None,
+    spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
     limit = page_size
     offset = limit * (page - 1)
@@ -114,14 +114,14 @@ async def paginated_list_user_collections(
 
 
 async def list_public_collections(
-        session: AsyncSession,
-        *,
-        limit: int = 20,
-        offset: int = 0,
-        include_total: bool = False,
-        identifier_filter: str | None = None,
-        collection_type_filter: list[CollectionType] | None = None,
-        spatial_intersect: shapely.Polygon | None = None,
+    session: AsyncSession,
+    *,
+    limit: int = 20,
+    offset: int = 0,
+    include_total: bool = False,
+    identifier_filter: str | None = None,
+    collection_type_filter: list[CollectionType] | None = None,
+    spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
     logger.debug(f"{locals()=}")
     statement = (
@@ -133,8 +133,7 @@ async def list_public_collections(
         statement, identifier_filter, collection_type_filter, spatial_intersect
     )
     statement = statement.order_by(
-        Collection.created_at,
-        Collection.resource_identifier.desc().nullslast()
+        Collection.created_at, Collection.resource_identifier.desc().nullslast()
     )
     items = (await session.exec(statement.offset(offset).limit(limit))).all()
     num_total = (
@@ -144,16 +143,16 @@ async def list_public_collections(
 
 
 async def list_user_collections(
-        session: AsyncSession,
-        *,
-        limit: int = 20,
-        offset: int = 0,
-        include_total: bool = False,
-        user_id: str | None = None,
-        accessible_identifiers: list[str] | None = None,
-        identifier_filter: str | None = None,
-        collection_type_filter: list[CollectionType] | None = None,
-        spatial_intersect: shapely.Polygon | None = None,
+    session: AsyncSession,
+    *,
+    limit: int = 20,
+    offset: int = 0,
+    include_total: bool = False,
+    user_id: str | None = None,
+    accessible_identifiers: list[str] | None = None,
+    identifier_filter: str | None = None,
+    collection_type_filter: list[CollectionType] | None = None,
+    spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
     """List collections visible to an authenticated user.
 
@@ -175,8 +174,7 @@ async def list_user_collections(
         statement, identifier_filter, collection_type_filter, spatial_intersect
     )
     statement = statement.order_by(
-        Collection.created_at,
-        Collection.resource_identifier.desc().nullslast()
+        Collection.created_at, Collection.resource_identifier.desc().nullslast()
     )
     items = (await session.exec(statement.offset(offset).limit(limit))).all()
     num_total = (
@@ -185,13 +183,17 @@ async def list_user_collections(
     return items, num_total
 
 
-def _apply_common_filters(statement, identifier_filter, collection_type_filter, spatial_intersect):
+def _apply_common_filters(
+    statement, identifier_filter, collection_type_filter, spatial_intersect
+):
     if identifier_filter:
         statement = statement.where(
             Collection.resource_identifier.ilike(f"%{identifier_filter}%")
         )
     if collection_type_filter:
-        statement = statement.where(Collection.collection_type in collection_type_filter)
+        statement = statement.where(
+            Collection.collection_type in collection_type_filter
+        )
     if spatial_intersect is not None:
         statement = statement.where(
             or_(
@@ -206,8 +208,8 @@ def _apply_common_filters(statement, identifier_filter, collection_type_filter, 
 
 
 async def get_collection(
-        session: AsyncSession,
-        collection_id: int,
+    session: AsyncSession,
+    collection_id: int,
 ) -> Collection | None:
     statement = (
         select(Collection)
@@ -218,8 +220,8 @@ async def get_collection(
 
 
 async def get_collection_editors(
-        session: AsyncSession,
-        resource_identifier: str,
+    session: AsyncSession,
+    resource_identifier: str,
 ) -> list[User]:
     statement = select(User).where(
         User.scopes.contains([f"collection-{resource_identifier}:editor"])
@@ -228,8 +230,8 @@ async def get_collection_editors(
 
 
 async def get_collection_viewers(
-        session: AsyncSession,
-        resource_identifier: str,
+    session: AsyncSession,
+    resource_identifier: str,
 ) -> list[User]:
     statement = select(User).where(
         User.scopes.contains([f"collection-{resource_identifier}:viewer"])
@@ -238,8 +240,8 @@ async def get_collection_viewers(
 
 
 async def get_collection_by_resource_identifier(
-        session: AsyncSession,
-        resource_identifier: str,
+    session: AsyncSession,
+    resource_identifier: str,
 ) -> Collection | None:
     statement = (
         select(Collection)
@@ -250,8 +252,10 @@ async def get_collection_by_resource_identifier(
 
 
 async def get_owned_collection_identifiers(
-        session: AsyncSession,
-        user_id: str,
+    session: AsyncSession,
+    user_id: str,
 ) -> list[str]:
-    statement = select(Collection.resource_identifier).where(Collection.owner_id == user_id)
+    statement = select(Collection.resource_identifier).where(
+        Collection.owner_id == user_id
+    )
     return list((await session.exec(statement)).all())

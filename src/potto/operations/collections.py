@@ -44,10 +44,10 @@ logger = logging.getLogger(__name__)
 
 
 async def collect_all_collections(
-        session: AsyncSession,
-        user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        collection_type_filter: list[CollectionType] | None = None,
+    session: AsyncSession,
+    user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    collection_type_filter: list[CollectionType] | None = None,
 ) -> list[Collection]:
     """List all collections that the user has access to."""
     if user is None:
@@ -55,7 +55,9 @@ async def collect_all_collections(
             session,
             collection_type_filter=collection_type_filter,
         )
-    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(user)
+    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(
+        user
+    )
     return await collection_queries.collect_all_user_collections(
         session,
         user_id=user.id,
@@ -65,16 +67,16 @@ async def collect_all_collections(
 
 
 async def paginated_list_collections(
-        session: AsyncSession,
-        user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        *,
-        page: int = 1,
-        page_size: int = 20,
-        include_total: bool = False,
-        identifier_filter: str | None = None,
-        collection_type_filter: list[CollectionType] | None = None,
-        spatial_intersect: shapely.Polygon | None = None,
+    session: AsyncSession,
+    user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    include_total: bool = False,
+    identifier_filter: str | None = None,
+    collection_type_filter: list[CollectionType] | None = None,
+    spatial_intersect: shapely.Polygon | None = None,
 ) -> tuple[list[Collection], int | None]:
     """Produce a paginated list of all collections that the user has access to."""
     if user is None:
@@ -87,7 +89,9 @@ async def paginated_list_collections(
             collection_type_filter=collection_type_filter,
             spatial_intersect=spatial_intersect,
         )
-    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(user)
+    accessible_ids = await authorization_backend.get_accessible_collection_identifiers(
+        user
+    )
     return await collection_queries.paginated_list_user_collections(
         session,
         page=page,
@@ -102,10 +106,10 @@ async def paginated_list_collections(
 
 
 async def get_collection(
-        session: AsyncSession,
-        user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        collection_id: int,
+    session: AsyncSession,
+    user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    collection_id: int,
 ) -> Collection | None:
     collection = await collection_queries.get_collection(session, collection_id)
     if collection is None:
@@ -116,12 +120,14 @@ async def get_collection(
 
 
 async def get_collection_by_resource_identifier(
-        session: AsyncSession,
-        user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        identifier: str,
+    session: AsyncSession,
+    user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    identifier: str,
 ) -> Collection | None:
-    collection = await collection_queries.get_collection_by_resource_identifier(session, identifier)
+    collection = await collection_queries.get_collection_by_resource_identifier(
+        session, identifier
+    )
     if collection is None:
         return None
     if not await authorization_backend.can_view_collection(user, collection):
@@ -130,10 +136,10 @@ async def get_collection_by_resource_identifier(
 
 
 async def create_collection(
-        session: AsyncSession,
-        user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        to_create: CollectionCreate,
+    session: AsyncSession,
+    user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    to_create: CollectionCreate,
 ) -> Collection:
     if not await authorization_backend.can_create_collection(user):
         raise PottoCannotCreateCollectionException(
@@ -143,11 +149,11 @@ async def create_collection(
 
 
 async def update_collection(
-        session: AsyncSession,
-        user: PottoUser | None,
-        authorization_backend: AuthorizationBackendProtocol,
-        collection: Collection,
-        to_update: CollectionUpdate,
+    session: AsyncSession,
+    user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
+    collection: Collection,
+    to_update: CollectionUpdate,
 ) -> Collection:
     if not await authorization_backend.can_edit_collection(user, collection):
         raise PottoCannotEditCollectionException(
@@ -155,7 +161,9 @@ async def update_collection(
             f"{collection.resource_identifier!r}."
         )
     if to_update.owner_id is not None and to_update.owner_id != collection.owner_id:
-        if not await authorization_backend.can_change_collection_owner(user, collection):
+        if not await authorization_backend.can_change_collection_owner(
+            user, collection
+        ):
             raise PottoCannotChangeCollectionOwnerException(
                 f"User does not have permission to change the owner of collection "
                 f"{collection.resource_identifier!r}."
@@ -164,10 +172,10 @@ async def update_collection(
 
 
 async def delete_collection(
-        session: AsyncSession,
-        user: PottoUser,
-        authorization_backend: AuthorizationBackendProtocol,
-        collection_id: int,
+    session: AsyncSession,
+    user: PottoUser,
+    authorization_backend: AuthorizationBackendProtocol,
+    collection_id: int,
 ) -> None:
     collection = await collection_queries.get_collection(session, collection_id)
     if collection is None:
@@ -180,21 +188,25 @@ async def delete_collection(
 
 
 async def grant_collection_access(
-        session: AsyncSession,
-        granting_user: PottoUser,
-        authorization_backend: AuthorizationBackendProtocol,
-        target_user_id: str,
-        collection: Collection,
-        role: str,
+    session: AsyncSession,
+    granting_user: PottoUser,
+    authorization_backend: AuthorizationBackendProtocol,
+    target_user_id: str,
+    collection: Collection,
+    role: str,
 ) -> None:
     if not await authorization_backend.can_edit_collection(granting_user, collection):
-        raise PottoException("User does not have permission to grant access to this collection.")
+        raise PottoException(
+            "User does not have permission to grant access to this collection."
+        )
     target_user = await auth_queries.get_user(session, target_user_id)
     if target_user is None:
         raise PottoException(f"User with id {target_user_id!r} does not exist.")
     editor_scope = PottoScope.collection_editor(collection.resource_identifier)
     viewer_scope = PottoScope.collection_viewer(collection.resource_identifier)
-    new_scopes = [s for s in target_user.scopes if s not in (editor_scope, viewer_scope)]
+    new_scopes = [
+        s for s in target_user.scopes if s not in (editor_scope, viewer_scope)
+    ]
     if role == "editor":
         new_scopes.append(editor_scope)
     else:
@@ -203,24 +215,30 @@ async def grant_collection_access(
 
 
 async def revoke_collection_access(
-        session: AsyncSession,
-        revoking_user: PottoUser,
-        authorization_backend: AuthorizationBackendProtocol,
-        target_user_id: str,
-        collection: Collection,
+    session: AsyncSession,
+    revoking_user: PottoUser,
+    authorization_backend: AuthorizationBackendProtocol,
+    target_user_id: str,
+    collection: Collection,
 ) -> None:
     if not await authorization_backend.can_edit_collection(revoking_user, collection):
-        raise PottoException("User does not have permission to revoke access to this collection.")
+        raise PottoException(
+            "User does not have permission to revoke access to this collection."
+        )
     target_user = await auth_queries.get_user(session, target_user_id)
     if target_user is None:
         raise PottoException(f"User with id {target_user_id!r} does not exist.")
     editor_scope = PottoScope.collection_editor(collection.resource_identifier)
     viewer_scope = PottoScope.collection_viewer(collection.resource_identifier)
-    new_scopes = [s for s in target_user.scopes if s not in (editor_scope, viewer_scope)]
+    new_scopes = [
+        s for s in target_user.scopes if s not in (editor_scope, viewer_scope)
+    ]
     await auth_commands.update_user(session, target_user, UserUpdate(scopes=new_scopes))
 
 
-def _get_crs_info(pygeoapi_collection: dict) -> tuple[list[str], str | None, str | None]:
+def _get_crs_info(
+    pygeoapi_collection: dict,
+) -> tuple[list[str], str | None, str | None]:
     supported_crs = {constants.CRS_84}
     storage_crs = None
     storage_crs_coordinate_epoch = None
@@ -229,7 +247,11 @@ def _get_crs_info(pygeoapi_collection: dict) -> tuple[list[str], str | None, str
             supported_crs.update(advertised_crs_list)
         if (provider_storage_crs := provider_conf.get("storage_crs")) is not None:
             storage_crs = provider_storage_crs
-        if (provider_storage_crs_coordinate_epoch := provider_conf.get("storage_crs_coordinate_epoch")) is not None:
+        if (
+            provider_storage_crs_coordinate_epoch := provider_conf.get(
+                "storage_crs_coordinate_epoch"
+            )
+        ) is not None:
             storage_crs_coordinate_epoch = provider_storage_crs_coordinate_epoch
         if all((storage_crs, supported_crs, storage_crs_coordinate_epoch)):
             break
@@ -237,28 +259,29 @@ def _get_crs_info(pygeoapi_collection: dict) -> tuple[list[str], str | None, str
 
 
 async def import_pygeoapi_collection(
-        session: AsyncSession,
-        user: User,
-        authorization_backend: AuthorizationBackendProtocol,
-        identifier: str,
-        pygeoapi_collection: dict,
-        *,
-        overwrite: bool = False,
+    session: AsyncSession,
+    user: User,
+    authorization_backend: AuthorizationBackendProtocol,
+    identifier: str,
+    pygeoapi_collection: dict,
+    *,
+    overwrite: bool = False,
 ) -> Collection:
-    existing_db_collection = await collection_queries.get_collection_by_resource_identifier(
-        session, identifier)
+    existing_db_collection = (
+        await collection_queries.get_collection_by_resource_identifier(
+            session, identifier
+        )
+    )
     if existing_db_collection and not overwrite:
         raise PottoException(f"Collection {identifier!r} already exists!")
-    resource_spatial_extents = pygeoapi_collection.get(
-        "extents", {}).get("spatial", {})
+    resource_spatial_extents = pygeoapi_collection.get("extents", {}).get("spatial", {})
     spatial_extent = None
     spatial_extent_crs = None
     try:
         if (raw_bbox := resource_spatial_extents.get("bbox")) is not None:
             spatial_extent = shapely.box(*raw_bbox)
             spatial_extent_crs = resource_spatial_extents.get(
-                "crs",
-                constants.CRS_84h if spatial_extent.has_z else constants.CRS_84
+                "crs", constants.CRS_84h if spatial_extent.has_z else constants.CRS_84
             )
             # TODO: convert the bbox to either CRS84 or CRS84h, if given something else
     except TypeError:
@@ -271,7 +294,8 @@ async def import_pygeoapi_collection(
     storage_crs_coordinate_epoch = None
     if spatial_extent is not None:
         supported_crs, storage_crs, storage_crs_coordinate_epoch = _get_crs_info(
-            pygeoapi_collection)
+            pygeoapi_collection
+        )
     providers = {}
     for prov in pygeoapi_collection.get("providers", []):
         modifiable_prov = copy.deepcopy(prov)
@@ -280,15 +304,18 @@ async def import_pygeoapi_collection(
         providers[type_] = CollectionProvider(
             python_callable=modifiable_prov.pop("name"),
             config=CollectionProviderConfiguration(
-                data=modifiable_prov.pop("data"),
-                options=modifiable_prov
-            )
+                data=modifiable_prov.pop("data"), options=modifiable_prov
+            ),
         )
 
     collection_type = util.get_collection_type(pygeoapi_collection)
     if existing_db_collection and overwrite:
-        if not await authorization_backend.can_edit_collection(user, existing_db_collection):
-            raise PottoException(f"User does not have permission to overwrite collection {identifier!r}.")
+        if not await authorization_backend.can_edit_collection(
+            user, existing_db_collection
+        ):
+            raise PottoException(
+                f"User does not have permission to overwrite collection {identifier!r}."
+            )
         logger.debug(f"Updating existing collection {identifier!r}...")
         to_update = CollectionUpdate(
             collection_type=collection_type,
@@ -300,12 +327,18 @@ async def import_pygeoapi_collection(
             crs=supported_crs,
             storage_crs=storage_crs,
             storage_crs_coordinate_epoch=storage_crs_coordinate_epoch,
-            temporal_extent_begin=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("begin"),
-            temporal_extent_end=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("end"),
+            temporal_extent_begin=pygeoapi_collection.get("extents", {})
+            .get("temporal", {})
+            .get("begin"),
+            temporal_extent_end=pygeoapi_collection.get("extents", {})
+            .get("temporal", {})
+            .get("end"),
             additional_links=pygeoapi_collection.get("links"),
-            providers=providers
+            providers=providers,
         )
-        return await collection_commands.update_collection(session, existing_db_collection, to_update)
+        return await collection_commands.update_collection(
+            session, existing_db_collection, to_update
+        )
     else:
         to_create = CollectionCreate(
             resource_identifier=identifier,
@@ -319,9 +352,13 @@ async def import_pygeoapi_collection(
             crs=supported_crs,
             storage_crs=storage_crs,
             storage_crs_coordinate_epoch=storage_crs_coordinate_epoch,
-            temporal_extent_begin=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("begin"),
-            temporal_extent_end=pygeoapi_collection.get("extents", {}).get("temporal", {}).get("end"),
+            temporal_extent_begin=pygeoapi_collection.get("extents", {})
+            .get("temporal", {})
+            .get("begin"),
+            temporal_extent_end=pygeoapi_collection.get("extents", {})
+            .get("temporal", {})
+            .get("end"),
             additional_links=pygeoapi_collection.get("links"),
-            providers=providers
+            providers=providers,
         )
         return await create_collection(session, user, authorization_backend, to_create)

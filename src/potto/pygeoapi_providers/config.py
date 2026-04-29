@@ -1,11 +1,6 @@
-
 import json
 import logging
-from typing import (
-    Literal,
-    TYPE_CHECKING
-
-)
+from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pygeoapi.crs import CrsTransformSpec
@@ -58,7 +53,8 @@ class PygeoapiConfigWktFeatureProvider:
                 }
             )
         self.storage_crs = provider_definition["data"].get(
-            "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84")
+            "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+        )
         try:
             first_feature = next(iter(self._data.values()))
         except StopIteration:
@@ -66,28 +62,32 @@ class PygeoapiConfigWktFeatureProvider:
             self._fields = {}
             return
 
-        self._fields = _get_fields(first_feature, provider_definition.get("properties") or [])
-        self.properties = list(ReturnableProperty(prop_name) for prop_name in self._fields.keys())
+        self._fields = _get_fields(
+            first_feature, provider_definition.get("properties") or []
+        )
+        self.properties = list(
+            ReturnableProperty(prop_name) for prop_name in self._fields.keys()
+        )
 
     @property
     def fields(self) -> dict:
         return self._fields.copy()
 
     def query(
-            self,
-            offset: int = 0,
-            limit: int = 10,
-            resulttype: Literal["hits", "results"] = "results",
-            bbox: RawBbox | None = None,
-            datetime_: RawDateTimeOrRange | None = None,
-            properties: list[EqualityFilterableProperty] | None = None,
-            sortby: list[SortByEntry] | None = None,
-            skip_geometry: bool = False,
-            select_properties: list[ReturnableProperty] | None = None,
-            crs_transform_spec: "CrsTransformSpec | None" = None,
-            q: RawFullTextSearchQuery | None = None,
-            language: str | None = None,
-            filterq: CqlQueryText | None = None,
+        self,
+        offset: int = 0,
+        limit: int = 10,
+        resulttype: Literal["hits", "results"] = "results",
+        bbox: RawBbox | None = None,
+        datetime_: RawDateTimeOrRange | None = None,
+        properties: list[EqualityFilterableProperty] | None = None,
+        sortby: list[SortByEntry] | None = None,
+        skip_geometry: bool = False,
+        select_properties: list[ReturnableProperty] | None = None,
+        crs_transform_spec: "CrsTransformSpec | None" = None,
+        q: RawFullTextSearchQuery | None = None,
+        language: str | None = None,
+        filterq: CqlQueryText | None = None,
     ) -> GeoJsonFeatureCollection:
         features = list(self._data.values())
         return {
@@ -97,10 +97,10 @@ class PygeoapiConfigWktFeatureProvider:
         }
 
     def get(
-            self,
-            identifier: str | int,
-            crs_transform_spec: "CrsTransformSpec | None" = None,
-            **kwargs
+        self,
+        identifier: str | int,
+        crs_transform_spec: "CrsTransformSpec | None" = None,
+        **kwargs,
     ) -> GeoJsonFeature:
         try:
             return self._data[str(identifier)].copy()
@@ -127,9 +127,13 @@ class PygeoapiConfigGeoJsonFeatureProvider:
         This is mainly useful for testing.
         """
         # TODO: let's check that data is valid GeoJSON and is a FeatureCollection
-        self._data = {str(feat["id"]): feat for feat in provider_definition["data"].get("features", [])}
+        self._data = {
+            str(feat["id"]): feat
+            for feat in provider_definition["data"].get("features", [])
+        }
         self.storage_crs = provider_definition["data"].get(
-            "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84")
+            "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+        )
         try:
             first_feature = next(iter(self._data.values()))
         except StopIteration:
@@ -137,28 +141,32 @@ class PygeoapiConfigGeoJsonFeatureProvider:
             self._fields = {}
             return
 
-        self._fields = _get_fields(first_feature, provider_definition.get("properties") or [])
-        self.properties = list(ReturnableProperty(prop_name) for prop_name in self._fields.keys())
+        self._fields = _get_fields(
+            first_feature, provider_definition.get("properties") or []
+        )
+        self.properties = list(
+            ReturnableProperty(prop_name) for prop_name in self._fields.keys()
+        )
 
     @property
     def fields(self) -> dict:
         return self._fields.copy()
 
     def query(
-            self,
-            offset: int = 0,
-            limit: int = 10,
-            resulttype: Literal["hits", "results"] = "results",
-            bbox: RawBbox | None = None,
-            datetime_: RawDateTimeOrRange | None = None,
-            properties: list[EqualityFilterableProperty] | None = None,
-            sortby: list[SortByEntry] | None = None,
-            skip_geometry: bool = False,
-            select_properties: list[ReturnableProperty] | None = None,
-            crs_transform_spec: "CrsTransformSpec | None" = None,
-            q: RawFullTextSearchQuery | None = None,
-            language: str | None = None,
-            filterq: CqlQueryText | None = None,
+        self,
+        offset: int = 0,
+        limit: int = 10,
+        resulttype: Literal["hits", "results"] = "results",
+        bbox: RawBbox | None = None,
+        datetime_: RawDateTimeOrRange | None = None,
+        properties: list[EqualityFilterableProperty] | None = None,
+        sortby: list[SortByEntry] | None = None,
+        skip_geometry: bool = False,
+        select_properties: list[ReturnableProperty] | None = None,
+        crs_transform_spec: "CrsTransformSpec | None" = None,
+        q: RawFullTextSearchQuery | None = None,
+        language: str | None = None,
+        filterq: CqlQueryText | None = None,
     ) -> GeoJsonFeatureCollection:
         features = list(self._data.values())
         return {
@@ -168,10 +176,10 @@ class PygeoapiConfigGeoJsonFeatureProvider:
         }
 
     def get(
-            self,
-            identifier: str | int,
-            crs_transform_spec: "CrsTransformSpec | None" = None,
-            **kwargs
+        self,
+        identifier: str | int,
+        crs_transform_spec: "CrsTransformSpec | None" = None,
+        **kwargs,
     ) -> GeoJsonFeature:
         try:
             return self._data[str(identifier)].copy()
@@ -179,7 +187,9 @@ class PygeoapiConfigGeoJsonFeatureProvider:
             raise ProviderItemNotFoundError(f"Item {identifier!r} not found") from err
 
 
-def _get_fields(feature: GeoJsonFeature, returnable_properties: list[ReturnableProperty]) -> dict:
+def _get_fields(
+    feature: GeoJsonFeature, returnable_properties: list[ReturnableProperty]
+) -> dict:
     field_names = set(feature["properties"].keys())
     if len(returnable_properties) > 0:
         field_names = field_names.intersection(returnable_properties)

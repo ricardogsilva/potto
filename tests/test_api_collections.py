@@ -4,21 +4,24 @@ pytestmark = pytest.mark.integration
 
 
 def test_api_collection_list_body(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get("/api/collections")
     assert response.status_code == 200
-    assert response.json()["collections"][0]["id"] == obs_feature_collection.resource_identifier
+    assert (
+        response.json()["collections"][0]["id"]
+        == obs_feature_collection.resource_identifier
+    )
 
 
 def test_api_collection_list_headers(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get("/api/collections")
     assert response.status_code == 200
@@ -27,10 +30,10 @@ def test_api_collection_list_headers(
 
 
 def test_api_collection_list_links(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get("/api/collections")
     assert response.status_code == 200
@@ -45,12 +48,14 @@ def test_api_collection_list_links(
 
 
 def test_api_collection_get_body(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
-    response = webapp_test_client_as_admin.get(f"/api/collections/{obs_feature_collection.resource_identifier}")
+    response = webapp_test_client_as_admin.get(
+        f"/api/collections/{obs_feature_collection.resource_identifier}"
+    )
     assert response.status_code == 200
     payload = response.json()
     assert payload["id"] == obs_feature_collection.resource_identifier
@@ -58,24 +63,28 @@ def test_api_collection_get_body(
 
 
 def test_api_collection_get_headers(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
-    response = webapp_test_client_as_admin.get(f"/api/collections/{obs_feature_collection.resource_identifier}")
+    response = webapp_test_client_as_admin.get(
+        f"/api/collections/{obs_feature_collection.resource_identifier}"
+    )
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/json"
     assert "link" in response.headers
 
 
 def test_api_collection_get_oapif_part2(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
-    response = webapp_test_client_as_admin.get(f"/api/collections/{obs_feature_collection.resource_identifier}")
+    response = webapp_test_client_as_admin.get(
+        f"/api/collections/{obs_feature_collection.resource_identifier}"
+    )
     assert response.status_code == 200
     payload = response.json()
     assert payload["id"] == obs_feature_collection.resource_identifier
@@ -84,12 +93,14 @@ def test_api_collection_get_oapif_part2(
 
 
 def test_api_collection_get_links(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
-    response = webapp_test_client_as_admin.get(f"/api/collections/{obs_feature_collection.resource_identifier}")
+    response = webapp_test_client_as_admin.get(
+        f"/api/collections/{obs_feature_collection.resource_identifier}"
+    )
     assert response.status_code == 200
     payload = response.json()
     assert payload["id"] == obs_feature_collection.resource_identifier
@@ -99,28 +110,48 @@ def test_api_collection_get_links(
     assert home_link["href"].endswith(f"/api/")
     self_link = [li for li in links if li["rel"] == "self"][0]
     assert self_link["type"] == "application/json"
-    assert self_link["href"].endswith(f"/api/collections/{obs_feature_collection.resource_identifier}")
+    assert self_link["href"].endswith(
+        f"/api/collections/{obs_feature_collection.resource_identifier}"
+    )
     items_link = [li for li in links if li["rel"] == "items"][0]
     assert items_link["type"] == "application/geo+json"
-    assert items_link["href"].endswith(f"/api/collections/{obs_feature_collection.resource_identifier}/items")
-    schema_link = [li for li in links if li["rel"] == "http://www.opengis.net/def/rel/ogc/1.0/schema"][0]
+    assert items_link["href"].endswith(
+        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
+    )
+    schema_link = [
+        li
+        for li in links
+        if li["rel"] == "http://www.opengis.net/def/rel/ogc/1.0/schema"
+    ][0]
     assert schema_link["type"] == "application/schema+json"
-    assert schema_link["href"].endswith(f"/api/collections/{obs_feature_collection.resource_identifier}/schema")
-    queryables_link = [li for li in links if li["rel"] == "http://www.opengis.net/def/rel/ogc/1.0/queryables"][0]
+    assert schema_link["href"].endswith(
+        f"/api/collections/{obs_feature_collection.resource_identifier}/schema"
+    )
+    queryables_link = [
+        li
+        for li in links
+        if li["rel"] == "http://www.opengis.net/def/rel/ogc/1.0/queryables"
+    ][0]
     assert queryables_link["type"] == "application/schema+json"
-    assert queryables_link["href"].endswith(f"/api/collections/{obs_feature_collection.resource_identifier}/queryables")
+    assert queryables_link["href"].endswith(
+        f"/api/collections/{obs_feature_collection.resource_identifier}/queryables"
+    )
 
 
 def test_api_collection_get_schema_body(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
-    response = webapp_test_client_as_admin.get(f"/api/collections/{obs_feature_collection.resource_identifier}/schema")
+    response = webapp_test_client_as_admin.get(
+        f"/api/collections/{obs_feature_collection.resource_identifier}/schema"
+    )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["$id"].endswith(f"/api/collections/{obs_feature_collection.resource_identifier}")
+    assert payload["$id"].endswith(
+        f"/api/collections/{obs_feature_collection.resource_identifier}"
+    )
     assert payload["type"] == "object"
     assert payload["properties"]["datetime"]["type"] == "string"
     assert payload["properties"]["stn_id"]["type"] == "integer"
@@ -130,27 +161,33 @@ def test_api_collection_get_schema_body(
 
 
 def test_api_collection_get_schema_headers(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
-    response = webapp_test_client_as_admin.get(f"/api/collections/{obs_feature_collection.resource_identifier}/schema")
+    response = webapp_test_client_as_admin.get(
+        f"/api/collections/{obs_feature_collection.resource_identifier}/schema"
+    )
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/schema+json"
     assert "link" in response.headers
 
 
 def test_api_collection_get_queryables_body(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
-    response = webapp_test_client_as_admin.get(f"/api/collections/{obs_feature_collection.resource_identifier}/queryables")
+    response = webapp_test_client_as_admin.get(
+        f"/api/collections/{obs_feature_collection.resource_identifier}/queryables"
+    )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["$id"].endswith(f"/api/collections/{obs_feature_collection.resource_identifier}")
+    assert payload["$id"].endswith(
+        f"/api/collections/{obs_feature_collection.resource_identifier}"
+    )
     assert payload["type"] == "object"
     assert payload["properties"]["datetime"]["type"] == "string"
     assert payload["properties"]["stn_id"]["type"] == "integer"
@@ -160,12 +197,14 @@ def test_api_collection_get_queryables_body(
 
 
 def test_api_collection_get_queryables_headers(
-        db,
-        admin_user,
-        obs_feature_collection,
-        webapp_test_client_as_admin,
+    db,
+    admin_user,
+    obs_feature_collection,
+    webapp_test_client_as_admin,
 ):
-    response = webapp_test_client_as_admin.get(f"/api/collections/{obs_feature_collection.resource_identifier}/queryables")
+    response = webapp_test_client_as_admin.get(
+        f"/api/collections/{obs_feature_collection.resource_identifier}/queryables"
+    )
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/schema+json"
     assert "link" in response.headers

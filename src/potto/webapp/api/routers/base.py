@@ -21,17 +21,18 @@ async def swagger_ui_html(request: Request) -> HTMLResponse:
     return get_swagger_ui_html(
         openapi_url=request.scope.get("root_path", "") + request.app.openapi_url,
         title=f"{request.app.title} - Swagger UI",
-        swagger_favicon_url=str(request.url_for("static", path="/img/potto-favicon.png")),
+        swagger_favicon_url=str(
+            request.url_for("static", path="/img/potto-favicon.png")
+        ),
     )
-
 
 
 @router.get("/", name="landing-page", response_model_exclude_none=True)
 async def landing_page(
-        request: Request,
-        potto: PottoDependency,
-        settings: SettingsDependency,
-        user: UserDependency,
+    request: Request,
+    potto: PottoDependency,
+    settings: SettingsDependency,
+    user: UserDependency,
 ) -> base.JsonLanding:
     result = await potto.api_get_landing_page(user=user)
     return base.JsonLanding.from_potto(
