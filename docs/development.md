@@ -24,12 +24,12 @@ uv run potto run-server
 
 
 
-## 0 - Contribution guidelines
+## Contribution guidelines
 
 Read the contribution guidelines, to be added...
 
 
-## 1 - Setup
+## Setup
 
 Contributing to potto requires a couple of pre-requisites to be met:
 
@@ -56,16 +56,16 @@ whatever way you prefer and then create a database to be used for development.
 [uv]: https://docs.astral.sh/uv/
 
 
-## 2 - Workflow
+## Workflow
 
-If you are not a core committer to potto, be sure to always open an issue that described the problem, feature or
-changes you'd like to materialize. This will provide visibility and give the potto devs a chance to offer some
-feedback. If you don't do this, there is a risk that your work will be refused.
+If you are not a core committer to potto, be sure to always open an issue that describes the problem,
+feature or changes you'd like to materialize. This will provide visibility and give the potto devs
+a chance to offer some feedback. If you don't do this, there is a risk that your work will be refused.
 
 !!! warning
 
-    Just in case you skipped the previous paragraph - **the potto team does not accept PRs without a corresponding
-    issue**.
+    Just in case you skipped the previous paragraph - **the potto team does not accept PRs without
+    a corresponding issue**.
 
 potto's code is developed by following the [forking workflow] collaboration strategy. In short:
 
@@ -80,7 +80,7 @@ potto's code is developed by following the [forking workflow] collaboration stra
 [forking workflow]: https://www.atlassian.com/git/tutorials/comparing-workflows/forking-workflow
 
 
-## 3 - Installation
+## Installation
 
 After having `git clone`d your fork of the potto repository and having set up both `origin` and `upstream`
 remotes:
@@ -135,7 +135,7 @@ You are now ready to start working on the code.
     ```uv run potto run-server```
 
 
-## 4 - Running tests
+## Running tests
 
 potto uses [pytest] and running the tests requires the existence of an additional database.
 
@@ -159,8 +159,8 @@ potto uses [pytest] and running the tests requires the existence of an additiona
 [pytest]: https://docs.pytest.org/en/stable/
 
 
-## 5 - Working on documentation
+## Working on documentation
 
 potto's docs are built with [zensical].
 
-[zensical]:
+[zensical]: https://zensical.org/
