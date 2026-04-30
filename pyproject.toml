@@ -46,6 +46,9 @@ dev = [
     "ruff>=0.15.12",
     "ty>=0.0.33",
 ]
+docs = [
+    "zensical>=0.0.38",
+]
 
 [project.scripts]
 potto = "potto.__main__:potto_app.meta"
