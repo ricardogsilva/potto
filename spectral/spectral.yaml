@@ -1,0 +1,15 @@
+extends:
+  - "./owasp-top10/.spectral.json"
+
+rules:
+  owasp:api4:2019-string-limit: off
+  owasp:api4:2019-string-restricted: off
+  owasp:api4:2019-integer-format: off
+  owasp:api4:2019-integer-limit: off
+  owasp:api4:2019-array-limit: off
+  owasp:api4:2019-rate-limit: off
+
+  # In the documentation presented in the jsonschema website, arrays are described as being allowed to
+  # use either "items" or "prefixItems" to describe their contents. The default spectral:oas array-items rule
+  # only mentioned "items" so this reimplemented rule adds the missing support for "prefixItems"
+  array-items: off

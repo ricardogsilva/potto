@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import json
 import logging
 import logging.config
 import os
@@ -10,6 +11,7 @@ from typing import Annotated
 import cyclopts
 import yaml
 from cyclopts import App
+from cyclopts.types import StdioPath
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
@@ -19,6 +21,7 @@ from ..config import (
     get_settings,
     PottoSettings,
 )
+from ..webapp.api.main import create_api_app_from_settings
 
 from .db import db_app
 from .collections import collections_app
@@ -138,3 +141,29 @@ def run_uvicorn_server(
     sys.stdout.flush()
     sys.stderr.flush()
     os.execvp("uvicorn", uvicorn_args)
+
+
+@potto_app.command(name="export-openapi")
+def export_openapi_document(
+    output: Annotated[
+        StdioPath,
+        cyclopts.Parameter(
+            help=(
+                "Path to the openapi document that will be created. "
+                "A value of '-' means write to stdout."
+            )
+        ),
+    ] = StdioPath("-"),
+    indent: bool = True,
+    *,
+    settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
+):
+    """Export the OpenAPI document.
+
+    This is mainly useful for using the openapi document with third-party
+    tools, usually for checking compliance - it is not required to run
+    potto.
+    """
+    app = create_api_app_from_settings(settings)
+    openapi_document = app.openapi()
+    output.write_text(json.dumps(openapi_document, indent=2 if indent else None))

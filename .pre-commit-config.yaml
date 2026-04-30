@@ -13,11 +13,36 @@ repos:
     hooks:
       - id: ruff-check
       - id: ruff-format
+
 #  - repo: local
 #    hooks:
+#
 #      - id: ty
 #        name: ty
 #        entry: uv run ty check
 #        language: system
 #        types: [python]
 #        pass_filenames: false
+
+#      - id: export-openapi-document
+#        name: Export the webapp's openapi document for further checking
+#        language: system
+#        entry: uv run potto export-openapi potto_openapi_precommit.json
+#        pass_filenames: false
+#        always_run: true
+#
+#      - id: spectral-lint
+#        name: Lint openapi document with spectral
+#        language: node
+#        additional_dependencies:
+#          - "@stoplight/spectral-cli@6.15.1"
+#        entry: spectral lint potto_openapi_precommit.json --ruleset spectral/spectral.yaml
+#        pass_filenames: false
+#        always_run: true
+#
+#      - id: delete-generated-openapi-document
+#        name: delete the previously generate openapi document
+#        language: system
+#        entry: rm -f potto_openapi_precommit.json
+#        pass_filenames: false
+#        always_run: true

@@ -1,0 +1,2036 @@
+{
+  "description": "**Set of rules to enforce [OWASP security guidelines](https://owasp.org/www-project-api-security/)**.\n\nTo use these rules:\n \n1. Go to your Stoplight workspace.\n2. Create a [style guide project](https://meta.stoplight.io/docs/platform/364e30f79daa0-create-a-style-guide) OR edit a project that has an API.\n3. Select **Manage Style Guides**.\n4. Enable `OWASP Top 10` from list of public style guides.\n\nYou can then:\n\n- Use the style guide as-is to [automatically lint](https://meta.stoplight.io/docs/platform/7975f76a794c4-validation-and-linting) your API files\n- [Disable individual rules](https://meta.stoplight.io/docs/platform/3f80fd36750e3-disable-inherited-rules)  that do not follow your organization's standards\n- [Reuse and customize rules](https://meta.stoplight.io/docs/platform/2331c5241ddfc) to meet your needs\n\nIf you have suggestions on how to improve the ruleset or find any bugs, you can open an issue [here](https://github.com/stoplightio/spectral-owasp-ruleset).",
+  "formats": [
+    "oas2",
+    "oas3",
+    "oas3.0",
+    "oas3.1"
+  ],
+  "aliases": {
+    "JWT": {
+      "description": "",
+      "targets": [
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.components.securitySchemes[?(@ && @.type==\"oauth2\")]",
+            "$.components.securitySchemes[?(@ && (@.bearerFormat==\"jwt\" || @.bearerFormat==\"JWT\"))]"
+          ]
+        },
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.components.securitySchemes[?(@ && @.type==\"oauth2\")]",
+            "$.components.securitySchemes[?(@ && (@.bearerFormat==\"jwt\" || @.bearerFormat==\"JWT\"))]"
+          ]
+        }
+      ]
+    },
+    "ArrayProperties": {
+      "description": "",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"array\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3.0"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"array\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3.1"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"array\")]",
+            "$..[?(@ && @.type && @.type.constructor.name === \"Array\" && @.type.includes(\"array\"))]"
+          ]
+        }
+      ]
+    },
+    "IntegerProperties": {
+      "description": "",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"integer\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3.0"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"integer\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3.1"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"integer\")]",
+            "$..[?(@ && @.type && @.type.constructor.name === \"Array\" && @.type.includes(\"integer\"))]"
+          ]
+        }
+      ]
+    },
+    "StringProperties": {
+      "description": "",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"string\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3.0"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"string\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3.1"
+          ],
+          "given": [
+            "$..[?(@ && @.type==\"string\")]",
+            "$..[?(@ && @.type && @.type.constructor.name === \"Array\" && @.type.includes(\"string\"))]"
+          ]
+        }
+      ]
+    },
+    "API_Document": {
+      "description": "The complete API specification document. This can be used to target any part of the OpenAPI document using **field**.\n\n*Use this if you don't find specific targets that cater to your usecase.* ",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$"
+          ]
+        }
+      ]
+    },
+    "API_Description": {
+      "description": "The top level description in an API document",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.info.description"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.info.description"
+          ]
+        }
+      ]
+    },
+    "Operation_Object": {
+      "description": "The complete operation object. Use it in combo with field object.",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "#Path_Item[get,put,post,delete,options,head,patch,trace]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "#Path_Item[get,put,post,delete,options,head,patch,trace]"
+          ]
+        }
+      ]
+    },
+    "Operation_Responses": {
+      "description": "Responses for all operations including get, put, post, delete, options, head, patch, trace.",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "#Operation_Object.responses"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "#Operation_Object.responses"
+          ]
+        }
+      ]
+    },
+    "Path_Item": {
+      "description": "",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.paths[*]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.paths[*]"
+          ]
+        }
+      ]
+    },
+    "API_Contact": {
+      "description": "The top level description in an API document",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.info.contact"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.info.contact"
+          ]
+        }
+      ]
+    },
+    "API_License": {
+      "description": "The top level description in an API document",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.info.license"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.info.license"
+          ]
+        }
+      ]
+    },
+    "All_Markdown": {
+      "description": "All markdown descriptions across the document.",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..[description,title]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..[description,title]"
+          ]
+        }
+      ]
+    },
+    "API_Tags": {
+      "description": "Tags on an API object",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "#Operation_Object.tags"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "#Operation_Object.tags"
+          ]
+        }
+      ]
+    },
+    "All_Servers": {
+      "description": "API hosts defined in the API specification",
+      "targets": [
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.servers[*]",
+            "#Path_Item.servers[*]",
+            "#Operation_Object.servers[*]",
+            "#Link_Object.server"
+          ]
+        },
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.host"
+          ]
+        }
+      ]
+    },
+    "Response_All_Object": {
+      "description": "All responses (object) in an API",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.responses",
+            "#Operation_Responses",
+            "$..responses"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.components.responses",
+            "#Operation_Responses",
+            "$..responses"
+          ]
+        }
+      ]
+    },
+    "API_Server_URL": {
+      "description": "API host urls defined in the API specification",
+      "targets": [
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.servers[*].url"
+          ]
+        },
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.host"
+          ]
+        }
+      ]
+    },
+    "All_Ref": {
+      "description": "All references throughout the API",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..[?(@property === '$ref')]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..[?(@property === '$ref')]"
+          ]
+        }
+      ]
+    },
+    "All_Enum_Object": {
+      "description": "All references throughout the API",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..[?(@ && @.enum)]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..[?(@ && @.enum)]"
+          ]
+        }
+      ]
+    },
+    "Request_Parameter_All": {
+      "description": "All request parameters",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..parameters[*]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..parameters[*]"
+          ]
+        }
+      ]
+    },
+    "Request_Parameter_Query": {
+      "description": "All request query parameters",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..parameters[?(@ && @.in==\"query\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..parameters[?(@ && @.in==\"query\")]"
+          ]
+        }
+      ]
+    },
+    "Request_Parameter_Header": {
+      "description": "All request header parameters",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..parameters[?(@ && @.in==\"header\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..parameters[?(@ && @.in==\"header\")]"
+          ]
+        }
+      ]
+    },
+    "Request_Parameter_Cookie": {
+      "description": "All request cookie parameters",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..parameters[?(@ && @.in==\"cookie\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..parameters[?(@ && @.in==\"cookie\")]"
+          ]
+        }
+      ]
+    },
+    "Request_Parameter_Path": {
+      "description": "All request path parameters",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..parameters[?(@ && @.in==\"path\")]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..parameters[?(@ && @.in==\"path\")]"
+          ]
+        }
+      ]
+    },
+    "Path_Object": {
+      "description": "Path object. Usually used to target the Path key e.g. `/users/{userId}`",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.paths"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.paths"
+          ]
+        }
+      ]
+    },
+    "All_Example_Schema": {
+      "description": "All examples for schemas",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..definitions..[?(@property !== 'properties' && @ && (@.example !== void 0 || @['x-example'] !== void 0 || @.default !== void 0) && (@.enum || @.type || @.format || @.$ref || @.properties || @.items))]",
+            "$..parameters..[?(@property !== 'properties' && @ && (@.example !== void 0 || @['x-example'] !== void 0 || @.default !== void 0) && (@.enum || @.type || @.format || @.$ref || @.properties || @.items))]",
+            "$..responses..[?(@property !== 'properties' && @ && (@.example !== void 0 || @['x-example'] !== void 0 || @.default !== void 0) && (@.enum || @.type || @.format || @.$ref || @.properties || @.items))]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.components.schemas..[?(@property !== 'properties' && @ && (@ && @.example !== void 0 || @.default !== void 0) && (@.enum || @.type || @.format || @.$ref || @.properties || @.items))]",
+            "$..content..[?(@property !== 'properties' && @ && (@ && @.example !== void 0 || @.default !== void 0) && (@.enum || @.type || @.format || @.$ref || @.properties || @.items))]",
+            "$..headers..[?(@property !== 'properties' && @ && (@ && @.example !== void 0 || @.default !== void 0) && (@.enum || @.type || @.format || @.$ref || @.properties || @.items))]",
+            "$..parameters..[?(@property !== 'properties' && @ && (@ && @.example !== void 0 || @.default !== void 0) && (@.enum || @.type || @.format || @.$ref || @.properties || @.items))]"
+          ]
+        }
+      ]
+    },
+    "API_Document_RecursiveSearch": {
+      "description": "The complete API specification document. This can be used to target any part of the OpenAPI document using **field**.\n\n*Use this if you don't find specific targets that cater to your usecase.* ",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.."
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.."
+          ]
+        }
+      ]
+    },
+    "All_Example": {
+      "description": "All examples across the API document",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..examples[*]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.components.examples[*]",
+            "$.paths[*][*]..content[*].examples[*]",
+            "$.paths[*][*]..parameters[*].examples[*]",
+            "$.components.parameters[*].examples[*]",
+            "$.paths[*][*]..headers[*].examples[*]",
+            "$.components.headers[*].examples[*]"
+          ]
+        }
+      ]
+    },
+    "All_Example_Media": {
+      "description": "All examples for schemas",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..responses..[?(@ && @.schema && @.examples)]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..content..[?(@ && @.schema && (@.example !== void 0 || @.examples))]",
+            "$..headers..[?(@ && @.schema && (@.example !== void 0 || @.examples))]",
+            "$..parameters..[?(@ && @.schema && (@.example !== void 0 || @.examples))]"
+          ]
+        }
+      ]
+    },
+    "API_Tags_Item": {
+      "description": "Tags on an API object",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.tags[*]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.tags[*]"
+          ]
+        }
+      ]
+    },
+    "All_Enum_Value": {
+      "description": "All enum values throughout the API",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..[?(@ && @.enum)].enum[*]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..[?(@ && @.enum)].enum[*]"
+          ]
+        }
+      ]
+    },
+    "Link_Object": {
+      "description": "",
+      "targets": [
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.components.links[*]",
+            "#Response_All_Object.links[*]"
+          ]
+        }
+      ]
+    },
+    "API_Server": {
+      "description": "API hosts defined in the API specification",
+      "targets": [
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$.servers"
+          ]
+        },
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$.host"
+          ]
+        }
+      ]
+    },
+    "All_Array_Item": {
+      "description": "",
+      "targets": [
+        {
+          "formats": [
+            "oas2"
+          ],
+          "given": [
+            "$..[?(@ && @.type=='array')]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3"
+          ],
+          "given": [
+            "$..[?(@ && @.type=='array')]"
+          ]
+        },
+        {
+          "formats": [
+            "oas3.0"
+          ],
+          "given": [
+            "$..[?(@ && @.type=='array')]",
+            "$..[?(@ && @.type && @.type.constructor.name === 'Array' && @.type.includes('array'))]"
+          ]
+        }
+      ]
+    }
+  },
+  "rules": {
+    "owasp:api2:2019-protection-global-unsafe": {
+      "given": [
+        "$"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "check-security",
+        "functionOptions": {
+          "schemesPath": [
+            "securitySchemes"
+          ],
+          "methods": [
+            "post",
+            "patch",
+            "delete",
+            "put"
+          ],
+          "nullable": true
+        }
+      },
+      "description": "POST. PUT, PATCH, and DELETE operations must be protected by a security scheme at either the global level or operation level. \n\nSecurity rules are defined in the `securityScheme` section.\n\n**Valid Example: Global**\n\n```yaml lineNumbers\n  securitySchemes:\n    API Key:\n      name: API Key\n      type: apiKey\n      in: header\nsecurity:\n  - API Key: []\n```\n\n***Valid Example: Operation**\n\n```yaml lineNumbers\npaths:\n  '/users/{userId}':\n    patch:\n      ...\n      responses:\n        ...\n      security:\n        - API Key: []\n```",
+      "message": "The following unsafe operation is not protected by a `security` rule: {{path}}"
+    },
+    "owasp:api1:2019-no-numeric-ids": {
+      "given": [
+        "$.paths..parameters[*][?(@property === \"name\" && (@ === \"id\" || @.match(/(_id|Id)$/)))]^.schema"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "schema",
+        "functionOptions": {
+          "schema": {
+            "type": "object",
+            "not": {
+              "properties": {
+                "type": {
+                  "const": "integer"
+                }
+              }
+            },
+            "properties": {
+              "format": {
+                "const": "uuid"
+              }
+            }
+          }
+        }
+      },
+      "description": "Path parameters must use random IDs that cannot be guessed, such as UUIDs.\n\n**Invalid Example**\n\nIn this example, the `{userId}` parameter has a type of `integer`.\n\n```yaml lineNumbers\npaths:\n  '/users/{userId}':\n    parameters:\n      - schema:\n          type: integer\n        name: userId\n        in: path\n        required: true\n        description: Id of an existing user.\n```\n\n**Valid Example**\n\nIn this example, the `{userId}` parameter has a type of `string` with a format of `uuid`.\n\n```yaml lineNumbers\npaths:\n  '/users/{userId}':\n    parameters:\n      - schema:\n          type: string\n          format: uuid\n        name: userId\n        in: path\n        required: true\n        description: Id of an existing user.\n```",
+      "message": "Use random IDs that cannot be guessed (UUIDs)"
+    },
+    "owasp:api2:2019-no-http-basic": {
+      "given": [
+        "$.components.securitySchemes[*]"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "basic"
+        },
+        "field": "scheme"
+      },
+      "description": "Security scheme must not use basic auth. Use a more secure authentication method, such as OAuth 2.0.\r\n\r\n**Invalid Example**\r\n\r\n``` yaml lineNumbers\r\nsecuritySchemes:\r\n    basicAuth:\r\n      type: http\r\n      scheme: basic\r\n```\r\n\r\n**Valid Example**\r\n\r\n``` yaml lineNumbers\r\nsecuritySchemes:\r\n    OAuth2:\r\n      type: oauth2\r\n      flows:\r\n        ...\r\n          ...\r\n          ...\r\n          ...\r\n          ...\r\n```",
+      "message": "{{property}} uses basic auth. Use a more secure authentication method, like OAuth 2.0."
+    },
+    "owasp:api2:2019-no-api-keys-in-url": {
+      "given": [
+        "$.components.securitySchemes[?(@ && @.type==\"apiKey\")].in"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "^(query)$"
+        }
+      },
+      "description": "Security scheme must not contain API Keys in query parameters.\n\nAPI Keys are (usually opaque) strings that can be eavesdropped, especially when they are passed as URL parameters.\n\n**Invalid Example**\n\nThe `in:query` setting makes this example invalid.\n\n```yaml lineNumbers\n  securitySchemes:\n    API Key:\n      name: API Key\n      type: apiKey\n      in: query\n```\n\n**Valid Example**\n\nThe `in:header` makes this example valid.\n\n```yaml lineNumbers\n  securitySchemes:\n    API Key:\n      name: API Key\n      type: apiKey\n      in: header\n```",
+      "message": "ApiKey passed in URL: {{error}}",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "owasp:api2:2019-no-credentials-in-url": {
+      "given": [
+        "$..parameters[?(@ && @.in && @.in.match(/query|path/))].name"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "/^.*(password|secret|apikey).*$/i"
+        }
+      },
+      "description": "Path parameter must not contain credentials, such as API key, password, or secret.\n\n**Invalid Example**\n\nThis example is invalid because the path parameter includes a string with the name `password`. \n\n```yaml lineNumbers\npaths:\n  '/user/{password}':\n    parameters:\n      - schema:\n          type: string\n          format: password\n        name: password\n        in: path\n        required: true\n```\n\n**Valid Example**\n\nRemove the invalid path parameter. \n\n```yaml lineNumbers\npaths:\n  '/user/\n```",
+      "message": "Security credentials detected in path parameter: {{value}}.",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "owasp:api2:2019-auth-insecure-schemes": {
+      "given": [
+        "$.components.securitySchemes[?(@.type==\"http\")].scheme"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "^(negotiate|oauth)$"
+        }
+      },
+      "description": "Security scheme must use a secure method.\r\n\r\n`negotiate` and `auth2` are considered to be insecure security schemes.\r\n\r\n**Invalid Example**\r\n\r\nThis example is invalid because `oauth` is considered an insecure scheme.\r\n\r\n```yaml lineNumbers\r\nsecuritySchemes:\r\n   Oauth1:\r\n     type: http\r\n     scheme: oauth\r\n```\r\n\r\n**Valid Example**\r\n\r\n```yaml lineNumbers\r\nsecuritySchemes:\r\n   Bearer:\r\n     type: http\r\n     scheme: bearer\r\n```",
+      "message": "Authentication scheme is considered outdated or insecure: {{value}}.",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "owasp:api2:2019-jwt-best-practices": {
+      "given": [
+        "#JWT"
+      ],
+      "severity": "error",
+      "then": [
+        {
+          "function": "truthy",
+          "field": "description"
+        },
+        {
+          "function": "pattern",
+          "functionOptions": {
+            "match": ".*RFC8725.*"
+          },
+          "field": "description"
+        }
+      ],
+      "description": "Security scheme description must state that the implementation conforms with JSON Web Tokens RFC7519, the JSON Web Token standard.\n\n**Invalid Example**\n\nThis example is invalid because RFC8726 is not included in the security scheme description.\n\n```yaml lineNumbers\nJWTBearer:\n      type: oauth2\n      flows:\n        authorizationCode:\n          ...\n          ...\n          ...\n          ...\n      description: A bearer token in the format of a JWS.\n```\n\n**Valid Example**\n\n```yaml lineNumbers\nJWTBearer:\n      type: oauth2\n      flows:\n        authorizationCode:\n          ...\n          ...\n          ...\n          ...\n      description: A bearer token in the format of a JWS and conforms to the specifications included in RFC8725.\n```"
+    },
+    "owasp:api2:2019-protection-global-unsafe-strict": {
+      "given": [
+        "$"
+      ],
+      "severity": "info",
+      "then": {
+        "function": "check-security",
+        "functionOptions": {
+          "schemesPath": [
+            "securitySchemes"
+          ],
+          "methods": [
+            "post",
+            "patch",
+            "delete",
+            "put"
+          ],
+          "nullable": false
+        }
+      },
+      "description": "POST, PATCH, DELETE, and PUT operations should be protected by a security scheme at either the global level or operation level. \n\nSecurity rules are defined in the `securityScheme` section.\n\n**Invalid Example**\n\nThe PATCH operation has an empty security value so it is not protected. \n\n```yaml lineNumbers\npaths:\n  '/users/{userId}':\n    patch:\n      ...\n      responses:\n        ...\n      security:\n      - []\n```\n\n**Valid Example**\n\nThe PATCH operation is protected by the API Key. As an alternative, remove the empty security setting at the operation level and use global security. \n\n```yaml lineNumbers\npaths:\n  '/users/{userId}':\n    patch:\n      ...\n      responses:\n        ...\n      security:\n        - API Key: []\n```",
+      "message": "{{error}}"
+    },
+    "owasp:api2:2019-protection-global-safe": {
+      "given": [
+        "$"
+      ],
+      "severity": "info",
+      "then": {
+        "function": "check-security",
+        "functionOptions": {
+          "schemesPath": [
+            "securitySchemes"
+          ],
+          "methods": [
+            "get",
+            "head"
+          ],
+          "nullable": true
+        }
+      },
+      "description": "GET and HEAD operations should be protected by a security scheme at either the global level or operation level. \n\nSecurity rules are defined in the `securityScheme` section.\n\n**Valid Example: Global**\n\n```yaml lineNumbers\n  securitySchemes:\n    API Key:\n      name: API Key\n      type: apiKey\n      in: header\nsecurity:\n  - API Key: []\n```\n\n***Valid Example: Operation**\n\n```yaml lineNumbers\npaths:\n  '/users/{userId}':\n    get:\n      ...\n      responses:\n        ...\n      security:\n        - API Key: []\n```",
+      "message": "The following unsafe operation is not protected by a `security` rule: {{path}}"
+    },
+    "owasp:api3:2019-define-error-validation": {
+      "given": [
+        "$.paths..responses"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "schema",
+        "functionOptions": {
+          "schema": {
+            "type": "object",
+            "anyOf": [
+              {
+                "required": [
+                  "400"
+                ]
+              },
+              {
+                "required": [
+                  "422"
+                ]
+              },
+              {
+                "required": [
+                  "4XX"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "description": "Operation must have a 400, 422 or 4xx response defined.\r\n\r\n**Invalid Example**\r\n\r\n```yaml lineNumbers\r\nget:\r\n  summary: Get User Info by User ID\r\n  tags: []\r\n  responses:\r\n    '200':\r\n       ...\r\n    '404':\r\n      description: User Not Found\r\n      headers:\r\n        ...\r\n```\r\n\r\n**Valid Example**\r\n\r\n```yaml lineNumbers\r\nget:\r\n  summary: Get User Info by User ID\r\n  tags: []\r\n  responses:\r\n    '200':\r\n       ...\r\n    '400':\r\n      description: Bad Request\r\n      headers:\r\n      ...\r\n```",
+      "message": "Missing error response of either 400, 422 or 4XX."
+    },
+    "owasp:api4:2019-rate-limit-responses-429": {
+      "given": [
+        "$.paths..responses"
+      ],
+      "severity": "warn",
+      "then": [
+        {
+          "function": "truthy",
+          "field": "429"
+        },
+        {
+          "function": "truthy",
+          "field": "429.content"
+        }
+      ],
+      "description": "Operation must have a 429 response defined.\r\n\r\n**Invalid Example**\r\n\r\n```yaml lineNumbers\r\nget:\r\n  summary: Get User Info by User ID\r\n  tags: []\r\n  responses:\r\n    '200':\r\n       ...\r\n    '400':\r\n      ...\r\n    '431':\r\n      description: Request Header Fields Too Large\r\n      headers:\r\n        ...\r\n```\r\n\r\n**Valid Example**\r\n\r\n```yaml lineNumbers\r\nget:\r\n  summary: Get User Info by User ID\r\n  tags: []\r\n  responses:\r\n    '200':\r\n       ...\r\n    '400':\r\n      ...\r\n    '429':\r\n      description: Too Many Requests\r\n      headers:\r\n        ...\r\n```",
+      "message": "{{description}}. Missing {{property}}"
+    },
+    "owasp:api3:2019-define-error-responses-500": {
+      "given": [
+        "$.paths..responses"
+      ],
+      "severity": "warn",
+      "then": [
+        {
+          "function": "truthy",
+          "field": "500"
+        },
+        {
+          "function": "truthy",
+          "field": "500.content"
+        }
+      ],
+      "description": "Operation must have a  response defined.\r\n\r\n**Invalid Example**\r\n\r\n```yaml lineNumbers\r\nget:\r\n  summary: Get User Info by User ID\r\n  tags: []\r\n  responses:\r\n    '200':\r\n       ...\r\n    '400':\r\n      ...\r\n    '501':\r\n      description: Bad Gateway\r\n      headers:\r\n        ...\r\n```\r\n\r\n**Valid Example**\r\n\r\n```yaml lineNumbers\r\nget:\r\n  summary: Get User Info by User ID\r\n  tags: []\r\n  responses:\r\n    '200':\r\n       ...\r\n    '400':\r\n      ...\r\n    '429':\r\n        ...\r\n    '500':\r\n      description: Internal Server Error\r\n      headers:\r\n        ...\r\n```",
+      "message": "{{description}}. Missing {{property}}"
+    },
+    "owasp:api4:2019-rate-limit": {
+      "given": [
+        "$.paths[*]..responses[?(@property.match(/^(2|4)/))]"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "schema",
+        "functionOptions": {
+          "schema": {
+            "type": "object",
+            "oneOf": [
+              {
+                "required": [
+                  "RateLimit-Limit",
+                  "RateLimit-Reset"
+                ]
+              },
+              {
+                "required": [
+                  "X-RateLimit-Limit"
+                ]
+              },
+              {
+                "required": [
+                  "X-Rate-Limit-Limit"
+                ]
+              }
+            ]
+          }
+        },
+        "field": "headers"
+      },
+      "description": "Headers for 2xx and 4 xx responses must contain `RateLimit-Limit`, `RateLimit-Reset`, `X-RateLimit-Limit`, or `X-Rate-Limit-Limit`.\n\nProper rate limits avoid attackers overloading the API. There are many ways to implement rate-limiting, but most of them involve using HTTP headers, and there are two popular ways to do that:\n\nIETF Draft HTTP RateLimit Headers:. https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/\n\nCustomer headers like X-Rate-Limit-Limit (Twitter: https://developer.twitter.com/en/docs/twitter-api/rate-limits) or X-RateLimit-Limit (GitHub: https://docs.github.com/en/rest/overview/resources-in-the-rest-api)\n\n**Invalid Example**\n\nThe 200 response does not contain rate-limiting headers.\n\n```yaml lineNumbers\nresponses:\n'200':\n   description: User Not Found\n```\n\n**Valid Example**\n\nThe 200 response contains rate-limiting headers.\n\n```yaml lineNumbers\nresponses:\n  '200':\n    headers:\n      RateLimit-Limit:\n        description: The number of allowed requests in the current period.\n        schema:\n          type: integer\n      RateLimit-Reset:\n        description: The number of seconds left in the current period.\n        schema:\n          type: integer\n```",
+      "message": "All 2XX and 4XX responses should define rate limiting headers.",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "owasp:api4:2019-rate-limit-retry-after": {
+      "given": [
+        "$..responses[429].headers"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "defined",
+        "field": "Retry-After"
+      },
+      "description": "Headers for 429 responses must contain `Retry-After`.\r\n\r\n**Invalid Example**\r\n\r\n```yaml lineNumbers\r\n'429':\r\n      description: Too Many Requests\r\n      headers:\r\n        RateLimit-Limit:\r\n          ...\r\n        RateLimit-Reset:\r\n          ...\r\n```\r\n\r\n**Valid Example**\r\n\r\n```yaml lineNumbers\r\n'429':\r\n   headers:\r\n    RateLimit-Limit:\r\n      ...\r\n    RateLimit-Reset:\r\n      ...\r\n    Retry-After:\r\n      description: The number of seconds to wait before allowing a follow-up request.\r\n        schema:\r\n          type: integer\r\n```",
+      "message": "A 429 response should define a Retry-After header."
+    },
+    "owasp:api6:2019-no-additionalProperties": {
+      "given": [
+        "$..[?(@ && @.type==\"object\" && @.additionalProperties)]"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "falsy",
+        "field": "additionalProperties"
+      },
+      "description": "Object should not allow for additional properties, which can allow unspecified fields passed to the API without validation.\r\n\r\n**Invalid Example**\r\n\r\nIn this example, `additionalProperties` are allowed on the object. \r\n\r\n```yaml lineNumbers\r\n\r\nschemas:\r\n   User:\r\n     type: object\r\n     title: User\r\n      additionalProperties: true\r\n      properties:\r\n        id:\r\n          type: integer\r\n        firstName:\r\n          type: string\r\n        lastName:\r\n          type: string\r\n```\r\n**Valid Example**\r\n\r\nIn this example, `additionalProperties` are not allowed on the object. \r\n\r\n```yaml lineNumbers\r\n\r\nschemas:\r\n   User:\r\n     type: object\r\n     title: User\r\n     description: ''\r\n      additionalProperties: false\r\n      properties:\r\n        id:\r\n          type: integer\r\n        firstName:\r\n          type: string\r\n        lastName:\r\n          type: string\r\n```",
+      "message": "If the additionalProperties keyword is used it must be set to false.",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "owasp:api6:2019-constrained-additionalProperties": {
+      "given": [
+        "$..[?(@ &&@.type==\"object\" && @.additionalProperties &&  @.additionalProperties!=true &&  @.additionalProperties!=false )] "
+      ],
+      "severity": "warn",
+      "then": [
+        {
+          "function": "falsy",
+          "field": "additionalProperties"
+        },
+        {
+          "function": "defined",
+          "field": "maxProperties"
+        }
+      ],
+      "description": "By default JSON Schema allows additional properties, which can potentially lead to mass assignment issues, where unspecified fields are passed to the API without validation.",
+      "message": "Objects should not allow unconstrained additionalProperties. Disable them with `additionalProperties: false` or add `maxProperties`.",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "owasp:api4:2019-array-limit": {
+      "given": [
+        "#ArrayProperties"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "defined",
+        "field": "maxItems"
+      },
+      "description": "Array size should be limited to mitigate resource exhaustion attacks. This can be done using `maxItems`. You should ensure that the subschema in `items` is constrained too.",
+      "message": "Schema of type array must specify maxItems."
+    },
+    "owasp:api4:2019-string-limit": {
+      "given": [
+        "#StringProperties"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "schema",
+        "functionOptions": {
+          "schema": {
+            "type": "object",
+            "oneOf": [
+              {
+                "required": [
+                  "maxLength"
+                ]
+              },
+              {
+                "required": [
+                  "enum"
+                ]
+              },
+              {
+                "required": [
+                  "const"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "description": "String size should be limited to mitigate resource exhaustion attacks. This can be done using `maxLength`.",
+      "message": "Schema of type string, enum or const must specify maxItems."
+    },
+    "owasp:api4:2019-string-restricted": {
+      "given": [
+        "#StringProperties"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "schema",
+        "functionOptions": {
+          "schema": {
+            "type": "object",
+            "oneOf": [
+              {
+                "required": [
+                  "format"
+                ]
+              },
+              {
+                "required": [
+                  "pattern"
+                ]
+              },
+              {
+                "required": [
+                  "enum"
+                ]
+              },
+              {
+                "required": [
+                  "const"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "description": "To avoid unexpected values being sent or leaked, ensure that strings have either a format or a RegEx pattern. This can be done using `format` or `pattern`.",
+      "message": "Schema of type string must specify a format, enum, const or pattern."
+    },
+    "owasp:api4:2019-integer-limit": {
+      "given": [
+        "#IntegerProperties"
+      ],
+      "severity": "error",
+      "then": [
+        {
+          "function": "xor",
+          "functionOptions": {
+            "properties": [
+              "minimum",
+              "exclusiveMaximum"
+            ]
+          }
+        },
+        {
+          "function": "xor",
+          "functionOptions": {
+            "properties": [
+              "maximum",
+              "exclusiveMaximum"
+            ]
+          }
+        }
+      ],
+      "description": "Array size should be limited to mitigate resource exhaustion attacks. This can be done using `maxItems`. You should ensure that the subschema in `items` is constrained too.",
+      "message": "Schema of type integer must specify minimum and maximum.",
+      "formats": [
+        "oas3.1"
+      ]
+    },
+    "owasp:api4:2019-integer-limit-legacy": {
+      "given": [
+        "#IntegerProperties"
+      ],
+      "severity": "error",
+      "then": [
+        {
+          "function": "defined",
+          "field": "minimum"
+        },
+        {
+          "function": "defined",
+          "field": "maximum"
+        }
+      ],
+      "description": "Array size should be limited to mitigate resource exhaustion attacks. This can be done using `maxItems`. You should ensure that the subschema in `items` is constrained too.",
+      "message": "Schema of type integer must specify minimum and maximum.",
+      "formats": [
+        "oas3.0",
+        "oas2"
+      ]
+    },
+    "owasp:api4:2019-integer-format": {
+      "given": [
+        "#IntegerProperties"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "defined",
+        "field": "format"
+      },
+      "description": "Integers should be limited to mitigate resource exhaustion attacks. Specifying whether int32 or int64 is expected via `format`.",
+      "message": "Schema of type integer must specify format (int32 or int64)."
+    },
+    "owasp:api3:2019-define-error-responses-401": {
+      "given": [
+        "$.paths..responses"
+      ],
+      "severity": "warn",
+      "then": [
+        {
+          "function": "truthy",
+          "field": "401"
+        },
+        {
+          "function": "truthy",
+          "field": "401.content"
+        }
+      ],
+      "description": "Operation must have a 401 response defined.\r\n\r\n**Invalid Example**\r\n\r\n```yaml lineNumbers\r\nget:\r\n  summary: Get User Info by User ID\r\n  tags: []\r\n  responses:\r\n    '200':\r\n       ...\r\n    '400':\r\n      ...\r\n    '501':\r\n      description: Bad Gateway\r\n      headers:\r\n        ...\r\n```\r\n\r\n**Valid Example**\r\n\r\n```yaml lineNumbers\r\nget:\r\n  summary: Get User Info by User ID\r\n  tags: []\r\n  responses:\r\n    '200':\r\n       ...\r\n    '400':\r\n      ...\r\n    '429':\r\n        ...\r\n    '401':\r\n      description: Not Authenticated\r\n      headers:\r\n        ...\r\n```",
+      "message": "{{description}}. Missing {{property}}"
+    },
+    "contact-url": {
+      "given": [
+        "#API_Contact"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "url"
+      },
+      "description": "The `contact` object should have a valid organization URL. \r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"contact\": {\r\n     ... ,\r\n     \"url\": \"https://acme.com\",\r\n     ... \r\n},\r\n```",
+      "message": "Contact object should have \"url\"."
+    },
+    "contact-email": {
+      "given": [
+        "#API_Contact"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "email"
+      },
+      "description": "The `contact` object should have a valid email. \r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"contact\": {\r\n     ... ,\r\n     ... ,\r\n     \"email\": \"support.contact@acme.com\"\r\n},\r\n```",
+      "message": "Contact object should have \"email\""
+    },
+    "info-contact": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "info.contact"
+      },
+      "description": "The `info' object should include a `contact` object.\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"info\": {\r\n    ... ,\r\n    ... ,\r\n    \"contact\": {\r\n      \"name\": \"ACME Corporation\",\r\n      \"url\": \"https://acme.com\",\r\n      \"email\": \"support.contact@acme.com\"\r\n    }\r\n  } \r\n}\r\n```",
+      "message": "Info object should have \"contact\" object."
+    },
+    "info-description": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "info.description"
+      },
+      "description": "The `info` object should have a `description` object.\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"info\": {\r\n    ... ,\r\n    ... ,\r\n    \"description\": \"This describes my API.\",\r\n    ... \r\n    }\r\n  } \r\n}\r\n```",
+      "message": "Info object should have \"description\" object."
+    },
+    "info-license": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "info.license"
+      },
+      "description": "The `info` object should have a `license` object. \r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"info\": {\r\n    ... ,\r\n    ... ,\r\n    \"license\": {\r\n      \"name\": \"Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)\",\r\n      \"url\": \"https://creativecommons.org/licenses/by-sa/4.0/\"\r\n    }\r\n  } \r\n}\r\n```",
+      "message": "Info object should have \"license\" object."
+    },
+    "license-url": {
+      "given": [
+        "#API_License"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "url"
+      },
+      "description": "The `license` object should include a valid url.\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"license\": {\r\n    \"name\": \"Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)\",\r\n    \"url\": \"https://creativecommons.org/licenses/by-sa/4.0/\"\r\n  }\r\n}\r\n```",
+      "message": "License object should include \"url\"."
+    },
+    "no-eval-in-markdown": {
+      "given": [
+        "#All_Markdown"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "eval\\("
+        }
+      },
+      "description": "Markdown descriptions should not contain [`eval()` functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval), which pose a security risk. \r\n\r\n**Invalid Example**\r\n\r\n```json lineNumbers\r\n{  \r\n  \"info\": {\r\n    ... ,\r\n    ... , \r\n    \"description\": \"API for users. eval()\"",
+      "message": "Markdown descriptions must not have \"eval(\"."
+    },
+    "no-script-tags-in-markdown": {
+      "given": [
+        "#All_Markdown"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "<script"
+        }
+      },
+      "description": "Markdown descriptions should not contain `script` tags, which pose a security risk. \r\n\r\n**Invalid Example**\r\n\r\n```json lineNumbers\r\n{  \r\n  \"info\": {\r\n    ... ,\r\n    ... , \r\n    \"description\": \"API for users. <script>alert(\"You are Hacked\");</script>',\"\r\n```",
+      "message": "Markdown descriptions must not have \"<script>\" tags."
+    },
+    "openapi-tags-alphabetical": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "alphabetical",
+        "functionOptions": {
+          "keyedBy": "name"
+        },
+        "field": "tags"
+      },
+      "description": "Global tags specified at the root OpenAPI Document level should be in alphabetical order based on the `name` property.\r\n\r\n**Invalid Example**\r\n\r\n```json lineNumbers\r\n{\r\n   \"tags\":[\r\n      {\r\n         \"name\":\"Z Global Tag\"\r\n      },\r\n      {\r\n         \"name\":\"A Global Tag\"\r\n      }\r\n   ]\r\n}\r\n```\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n   \"tags\":[\r\n      {\r\n         \"name\":\"A Global Tag\"\r\n      },\r\n      {\r\n         \"name\":\"Z Global Tag\"\r\n      }\r\n   ]\r\n}\r\n```",
+      "message": "OpenAPI object should have alphabetical \"tags\"."
+    },
+    "openapi-tags": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "schema",
+        "functionOptions": {
+          "schema": {
+            "type": "array",
+            "minItems": 1
+          }
+        },
+        "field": "tags"
+      },
+      "description": "At least one global tag should be specified at the root OpenAPI Document level.\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n   \"tags\":[\r\n      {\r\n         \"name\":\"Global Tag #1\"\r\n      },\r\n      {\r\n         \"name\":\"Global Tag #2\"\r\n      }\r\n   ]\r\n}\r\n```",
+      "message": "OpenAPI object should have non-empty \"tags\" array."
+    },
+    "operation-description": {
+      "given": [
+        "#Operation_Object"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "description"
+      },
+      "description": "Each operation should have a description. \r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"get\": {\r\n    ... ,\r\n    \"description\": \"Get a list of users.\",\r\n    ... ,\r\n    ... ,\r\n  }\r\n}\r\n```",
+      "message": "Operation \"description\" should be present and non-empty string."
+    },
+    "operation-operationId": {
+      "given": [
+        "#Operation_Object"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "operationId"
+      },
+      "description": "All operations should have an `operationId`.\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"get\": {\r\n        \"summary\": \"Get users\",\r\n        ... ,\r\n        \"operationId\": \"get-users\"\r\n      }\r\n}\r\n```",
+      "message": "Operation should have \"operationId\"."
+    },
+    "operation-operationId-valid-in-url": {
+      "given": [
+        "#Operation_Object"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "match": "^[A-Za-z0-9-._~:/?#\\[\\]@!\\$&'()*+,;=]*$"
+        },
+        "field": "operationId"
+      },
+      "description": "Operation IDs must not contain characters that are invalid for URLs. \r\n\r\n**Invalid Example**\r\n\r\nThe `operationId` in this example includes a pipe and space, which are invalid for URLs.\r\n\r\n```json lineNumbers\r\n{\r\n    \"/users\": {\r\n      \"get\": {\r\n        ... ,\r\n         \"operationId\": \"invalid|operationID \",\r\n         ... ,\r\n      }\r\n    }\r\n}\r\n```\r\n\r\n**Valid Example**\r\n\r\nThis `operationId` is valid for URLs.\r\n\r\n```json lineNumbers\r\n{\r\n    \"/users\": {\r\n      \"get\": {\r\n        ... ,\r\n         \"operationId\": \"this-must-be-unique\",\r\n         ... ,\r\n      }\r\n    }\r\n}\r\n```",
+      "message": "OperationId should not have characters that are invalid when used in URL."
+    },
+    "operation-singular-tag": {
+      "given": [
+        "#API_Tags"
+      ],
+      "severity": "off",
+      "then": {
+        "function": "length",
+        "functionOptions": {
+          "max": 1
+        }
+      },
+      "description": "Operation should not have more than a single tag.",
+      "message": "Operation should not have more than a single tag."
+    },
+    "operation-tags": {
+      "given": [
+        "#Operation_Object"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "length",
+        "functionOptions": {
+          "max": 999,
+          "min": 1
+        },
+        "field": "tags"
+      },
+      "description": "At least one tag should be defined for each operation.\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"get\": {\r\n     ... ,\r\n     ... ,\r\n     \"tags\": [\r\n        \"Users\"\r\n     ],\r\n  }\r\n}",
+      "message": "Operation should have non-empty \"tags\" array."
+    },
+    "path-declarations-must-exist": {
+      "given": [
+        "#Path_Item"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "{}"
+        },
+        "field": "@key"
+      },
+      "description": "Path parameter declarations must not be empty.\r\n\r\n**Invalid Example**\r\n\r\n`/users/{}`\r\n\r\n**Valid Example**\r\n\r\n`/users/{userId}`",
+      "message": "Path parameter declarations must not be empty, ex.\"/given/{}\" is invalid."
+    },
+    "contact-name": {
+      "given": [
+        "#API_Contact"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "name"
+      },
+      "description": "The `contact` object should have an organization name. \r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"contact\": {\r\n    \"name\": \"ACME Corporation\",\r\n     ... ,\r\n     ... \r\n},\r\n```\r\n",
+      "message": "Contact object should have \"name\""
+    },
+    "path-keys-no-trailing-slash": {
+      "given": [
+        "#Path_Object"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": ".+\\/$"
+        },
+        "field": "@key"
+      },
+      "description": "Path keys should not end in forward slashes. This is a best practice for working with web tooling, such as mock servers, code generators, application frameworks, and more).\r\n\r\n**Invalid Example**\r\n\r\n```json\r\n{\r\n \"/users/\": {\r\n```\r\n\r\n**Valid Example**\r\n\r\n```json\r\n{\r\n \"/users\": {\r\n```",
+      "message": "Path should not end with slash."
+    },
+    "path-not-include-query": {
+      "given": [
+        "#Path_Object"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "\\?"
+        },
+        "field": "@key"
+      },
+      "description": "Paths should not include `query` string items. Instead, add them as parameters with `in: query`.\r\n\r\n**Invalid Example**\r\n\r\n```json\r\n{\r\n \"/users/{?id}\": {\r\n\r\n```\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"parameters\": [\r\n    {\r\n      \"schema\": {\r\n        \"type\": \"string\"\r\n      },\r\n      \"name\": \"id\",\r\n      \"in\": \"path\",\r\n      \"required\": true,\r\n      \"description\": \"User's ID\"\r\n    }\r\n  ]\r\n}\r\n\r\n```",
+      "message": "Path should not include query string."
+    },
+    "tag-description": {
+      "given": [
+        "#API_Tags_Item"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "description"
+      },
+      "description": "Tags defined at the global level should have a description.\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n   \"tags\": [\r\n      {\r\n         \"name\":\"Users\",\r\n         \"description\":\"End-user information\"\r\n      }\r\n   ]\r\n}\r\n```",
+      "message": "Tag object should have \"description\"."
+    },
+    "api-servers": {
+      "given": [
+        "#API_Server"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "schema",
+        "functionOptions": {
+          "schema": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object"
+            }
+          },
+          "dialect": "draft7"
+        }
+      },
+      "description": "A server should be defined at the root document level. This can be localhost, a development server, or a production server. \n\n**Valid OpenAPI V3 Example**\n\n```json\n{\n  \"servers\": [\n    {\n      \"url\": \"https://staging.myprodserver.com/v1\",\n      \"description\": \"Staging server\"\n    },\n    {\n      \"url\": \"https://myprodserver.com/v1\",\n      \"description\": \"Production server\"\n    }\n  ]\n}\n```\n\n**Valid OpenAPI V2 Example**\n\n```json\n{\n  \"host\": \"myprodserver.com\",\n  \"basePath\": \"/v2\",\n  \"schemes\": [\n    \"https\"\n  ]\n}\n```\n\n",
+      "message": "Server should be present."
+    },
+    "server-trailing-slash": {
+      "given": [
+        "#API_Server_URL"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "/$"
+        }
+      },
+      "description": "Server URLs should not end in forward slashes. This is a best practice for working with web tooling, such as mock servers, code generators, application frameworks, and more).\r\n\r\n**Invalid Example**\r\n\r\n```json lineNumbers\r\n{  \r\n  \"servers\": [\r\n    {\r\n      ... ,\r\n      \"url\": \"https://api.openweathermap.org/data/2.5/\"\r\n    }\r\n  ]\r\n}\r\n```\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{  \r\n  \"servers\": [\r\n    {\r\n      ... ,\r\n      \"url\": \"https://api.openweathermap.org/data/2.5\"\r\n    }\r\n  ]\r\n}\r\n```",
+      "message": "Server URL should not have trailing slash"
+    },
+    "operation-success-response": {
+      "given": [
+        "#Operation_Object"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "oasOpSuccessResponse",
+        "field": "responses"
+      },
+      "description": "Operations should have at least one \"2xx\" or \"3xx\" response defined.\r\n\r\n**Invalid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"get\": {\r\n      ... ,\r\n      \"responses\": {},\r\n  }\r\n}\r\n```\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"get\": {\r\n      ... ,\r\n      \"responses\": {\r\n        \"200\": {\r\n          \"description\": \"OK\"\r\n        }\r\n      },\r\n  }\r\n}\r\n```",
+      "message": "Operation should have at least one \"2xx\" or \"3xx\" response."
+    },
+    "path-params": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasPathParam"
+      },
+      "description": "Path parameters must be defined and valid in either the `path-parameters` or the `operation-parameters` object. Likewise, defined `path-parameters` or `operation-parameters` must be used in the `paths` string.\r\n\r\n**Valid Example**\r\n\r\nFor this path:\r\n\r\n`/users/{id}/{location}`\r\n\r\nThe following path parameters must be defined.\r\n\r\n```json lineNumbers\r\n      \"parameters\": [\r\n        {\r\n          \"schema\": {\r\n            \"type\": \"string\"\r\n          },\r\n          \"name\": \"id\",\r\n          \"in\": \"path\",\r\n          \"required\": true,\r\n          \"description\": \"This is the user's ID\"\r\n        },\r\n        {\r\n          \"schema\": {\r\n            \"type\": \"string\"\r\n          },\r\n          \"name\": \"location\",\r\n          \"in\": \"path\",\r\n          \"required\": true,\r\n          \"description\": \"This is the user's location\"\r\n        }\r\n      ]\r\n    }\r\n  },\r\n  ```",
+      "message": "{{error}}"
+    },
+    "operation-parameters": {
+      "given": [
+        "#Operation_Object"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "oasOpParams",
+        "field": "parameters"
+      },
+      "description": "Operation parameters should be unique and non-repeating:\r\n\r\n* `name` and `in` must be unique\r\n\r\nFor OAS2:\r\n\r\n* Operations should not have `in: body` and `in: formData` parameters.\r\n* Operations should have only one `in: body` parameter.\r\n\r\n**Invalid Example**\r\n\r\nIn this example, the query paramater `\"name\": \"last name\"` is repeated.\r\n\r\n```json lineNumbers\r\n{\r\n  \"parameters\": [\r\n    {\r\n      \"schema\": {\r\n        \"type\": \"string\"\r\n      },\r\n      \"in\": \"query\",\r\n      \"name\": \"last name\",\r\n      \"description\": \"User's last name\"\r\n    },\r\n    {\r\n      \"schema\": {\r\n        \"type\": \"string\"\r\n      },\r\n      \"in\": \"query\",\r\n      \"name\": \"last name\",\r\n      \"description\": \"User's last name\"\r\n    }\r\n  ],\r\n}\r\n```\r\n\r\n**Valid Example**\r\n\r\nIn this example, query parameters are unique.\r\n\r\n```json lineNumbers\r\n{\r\n  \"parameters\": [\r\n    {\r\n      \"schema\": {\r\n        \"type\": \"string\"\r\n      },\r\n      \"in\": \"query\",\r\n      \"name\": \"first name\",\r\n      \"description\": \"User's first name\"\r\n    },\r\n    {\r\n      \"schema\": {\r\n        \"type\": \"string\"\r\n      },\r\n      \"in\": \"query\",\r\n      \"name\": \"last name\",\r\n      \"description\": \"User's last name\"\r\n    }\r\n  ],\r\n}\r\n```",
+      "message": "Operation parameters are unique and non-repeating."
+    },
+    "typed-enum": {
+      "given": [
+        "$..[?(@ && @.enum && @.type)]"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "typedEnum"
+      },
+      "description": "All `enum' values should respect the specified type.\r\n\r\n**Invalid Example**\r\n\r\nIn this example, the `enum` type is `integer`, but the values are strings.\r\n\r\n```json lineNumbers\r\n{\r\n    \"schema\": {\r\n      \"type\": \"integer\",\r\n      \"enum\": [\r\n         \"standard\",\r\n         \"metric\",\r\n         \"imperial\"\r\n       ]\r\n     },\r\n```\r\n\r\n**Valid Example**\r\n\r\nIn this example, the `enum` type is `string` and the values are strings.\r\n\r\n```json lineNumbers\r\n{\r\n    \"schema\": {\r\n      \"type\": \"string\",\r\n      \"enum\": [\r\n         \"standard\",\r\n         \"metric\",\r\n         \"imperial\"\r\n       ]\r\n     },",
+      "message": "{{error}}"
+    },
+    "oas2-schema": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasDocumentSchema"
+      },
+      "description": "This Stoplight core rule validates the structure of OpenAPI v2 specification. This rule should never be disabled.",
+      "message": "{{error}}",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "oas3-schema": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasDocumentSchema"
+      },
+      "description": "This Stoplight core rule validates the structure of OpenAPI v3.x specification. This rule should never be disabled.",
+      "message": "{{error}}",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "oas3-unused-component": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "oasUnusedComponent"
+      },
+      "description": "A potentially shareable component is not being used. This may be expected, but you should review sharable components to avoid duplicate entry.",
+      "message": "{{error}}",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "operation-operationId-unique": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasOpIdUnique"
+      },
+      "description": "Every operation in a single document must have a unique `operationID`.\r\n\r\n**Valid Example**\r\n\r\nIn this example, the `operationId` is `get-users`. This `operationId` must be unique in an API document.\r\n\r\n```json lineNumbers\r\n{\r\n  \"get\": {\r\n        \"summary\": \"Get users\",\r\n        ... ,\r\n        \"operationId\": \"get-users\"\r\n      }\r\n}\r\n```\r\n",
+      "message": "Every operation must have unique operationId"
+    },
+    "oas2-operation-formData-consume-check": {
+      "given": [
+        "#Operation_Object"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasOpFormDataConsumeCheck"
+      },
+      "description": "Operations with an `in: formData` parameter must include a `consumes` property with one of these values:\r\n\r\n`application/x-www-form-urlencoded`\r\n\r\n`multipart/form-data`\r\n\r\n**Valid Example**\r\n\r\nIn this example, the `consumes` property correctly includes the `multipart/form-data` value.\r\n\r\n```json lineNumbers\r\n{\r\n   \"post\":{\r\n      \"summary\":\"Uploads a file\",\r\n      \"consumes\":[\r\n         \"multipart/form-data\"\r\n      ],\r\n      \"parameters\":[\r\n         {\r\n            \"name\":\"name\",\r\n            \"in\":\"formData\",\r\n            \"description\":\"Upload a file\",\r\n            \"required\":false,\r\n            \"type\":\"string\"\r\n         }\r\n      ]\r\n   }\r\n}",
+      "message": "Operations with \"in: formData\" parameter must include \"application/x-www-form-urlencoded\" or \"multipart/form-data\" in their \"consumes\" property.",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "operation-tag-defined": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "oasTagDefined"
+      },
+      "description": "Tags defined at the operation level should also be defined at the global level. \r\n\r\n**Operation-level Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"get\": {\r\n     ... ,\r\n     ... ,\r\n     \"tags\": [\r\n        \"Users\"\r\n     ],\r\n  }\r\n}  \r\n```\r\n\r\n**Global-level Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"tags\": [\r\n     {\r\n       \"name\": \"Users\",\r\n       ... ,\r\n     }\r\n  ],\r\n}\r\n\r\n```",
+      "message": "Operation tags must be defined in global tags"
+    },
+    "no-$ref-siblings": {
+      "given": [
+        "#All_Ref"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "refSiblings"
+      },
+      "description": "Property must not be placed among $ref.",
+      "message": "{{error}}",
+      "formats": [
+        "oas3.0",
+        "oas2"
+      ]
+    },
+    "oas2-operation-security-defined": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "oasOpSecurityDefined",
+        "functionOptions": {
+          "schemesPath": [
+            "securityDefinitions"
+          ]
+        }
+      },
+      "description": "Operation `security` values must match a scheme defined in the global `securityDefinitions` object. Empty `security` values for operations are ignored if authentication is not explicity required or is optional.\r\n\r\n**Valid Example**\r\n\r\nFor this global security scheme:\r\n\r\n```json lineNumbers\r\n{\r\n  \"securityDefinitions\": {\r\n    \"API Key\": {\r\n      \"name\": \"API Key\",\r\n      \"type\": \"apiKey\",\r\n      \"in\": \"query\"\r\n    }\r\n  }\r\n}\r\n```\r\n\r\nThis is a valid operation security value:\r\n\r\n```json lineNumbers\r\n{  \"operationId\": \"get-users-userId\",\r\n        \"security\": [\r\n          {\r\n            \"API Key\": []\r\n          }\r\n        ]\r\n}\r\n```\r\n\r\n**Invalid Example**\r\n\r\nFor the same global security scheme, this is an invalid operation security value:\r\n\r\n```json lineNumbers\r\n{  \"operationId\": \"get-users-userId\",\r\n        \"security\": [\r\n          {\r\n            \"oath2\": []\r\n          }\r\n        ]\r\n}\r\n```",
+      "message": "{{error}}",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "oas3-operation-security-defined": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "oasOpSecurityDefined",
+        "functionOptions": {
+          "schemesPath": [
+            "components",
+            "securitySchemes"
+          ]
+        }
+      },
+      "description": "Operation `security` values must match a scheme defined in the global `components.security.Schemes` object. \r\n\r\n**Valid Example**\r\n\r\nFor this global security scheme:\r\n\r\n```json lineNumbers\r\n{\r\n\"components\": {\r\n  \"security\": [\r\n    {\r\n      \"app-id\": []\r\n    }\r\n  ]\r\n }\r\n}\r\n```\r\n\r\n`app-id` is a valid operation `security` value:\r\n\r\n```json lineNumbers\r\n{  \r\n    \"get\": {\r\n        \"security\": [\r\n          {\r\n            \"app-id\": []\r\n          }\r\n      ]\r\n  }\r\n}  \r\n```\r\n\r\n**Invalid Example**\r\n\r\nFor the same global security scheme, `oath2` is an invalid operation `security` value:\r\n\r\n```json lineNumbers\r\n{  \r\n    \"get\": {\r\n        \"security\": [\r\n          {\r\n            \"oath2\": []\r\n          }\r\n      ]\r\n  }\r\n}  \r\n```",
+      "message": "{{error}}",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "duplicated-entry-in-enum": {
+      "given": [
+        "#All_Enum_Object"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "oasSchema",
+        "functionOptions": {
+          "schema": {
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "field": "enum"
+      },
+      "description": "All enum values should be unique.\r\n\r\n**Invalid Example**\r\n\r\nThere are two `json` enum values.\r\n\r\n```json lineNumbers\r\n{\r\n  \"schema\":{\r\n     \"type\":\"string\",\r\n       \"enum\":[\r\n          \"json\",\r\n          \"json\",\r\n          \"html\"\r\n   ]\r\n }\r\n}\r\n```\r\n**Valid Example**\r\n\r\nAll enum values are unique.\r\n\r\n```json lineNumbers\r\n{\r\n  \"schema\":{\r\n     \"type\":\"string\",\r\n       \"enum\":[\r\n          \"json\",\r\n          \"xml\",\r\n          \"html\"\r\n   ]\r\n }\r\n}\r\n```",
+      "message": "{{error}}"
+    },
+    "oas2-api-schemes": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "schema",
+        "functionOptions": {
+          "schema": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "dialect": "draft7"
+        },
+        "field": "schemes"
+      },
+      "description": "OpenAPI 2 host `schemes` reflect the transfer protocol of the API. Host schemes must be present and an array with one or more of these values: `http`, `https`, `ws`, or `wss`.\r\n\r\n**Valid Example**\r\n\r\nThis example shows that host schemes are `http` and `https`.\r\n\r\n```json\r\n{\r\n   \"schemes\":[\r\n      \"http\",\r\n      \"https\"\r\n   ]\r\n}\r\n \r\n```",
+      "message": "OpenAPI host \"schemes\" must be present and non-empty array",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "oas2-discriminator": {
+      "given": [
+        "#API_Document"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasDiscriminator",
+        "field": "definitions[?(@.discriminator)]"
+      },
+      "description": "Discriminator property must be defined and required",
+      "message": "Discriminator property must be defined and required",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "server-not-example": {
+      "given": [
+        "#API_Server_URL"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "notMatch": "example.com"
+        }
+      },
+      "description": "Server URLs must not direct to example.com. This helps ensure URLs are valid before you distribute your API document.\r\n\r\n**Invalid Example**\r\n\r\n```json lineNumbers\r\n{  \r\n  \"servers\": [\r\n    {\r\n      ... ,\r\n      \"url\": \"https://example.com\"\r\n    }\r\n  ]\r\n}\r\n```\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{  \r\n  \"servers\": [\r\n    {\r\n      ... ,\r\n      \"url\": \"https://api.openweathermap.org/data/2.5\"\r\n    }\r\n  ]\r\n}\r\n```",
+      "message": "Server URL must not point at example.com."
+    },
+    "parameter-description": {
+      "given": [
+        "#Request_Parameter_All"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "truthy",
+        "field": "description"
+      },
+      "description": "All `parameter` objects should have a description.\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"parameters\": [\r\n    {\r\n      \"schema\": {\r\n        \"type\": \"integer\"\r\n      },\r\n      ... ,\r\n      ... ,\r\n      \"description\": \"The number of days to include in the response.\"\r\n    }\r\n}\r\n```\r\n",
+      "message": "Parameter objects must have \"description\"."
+    },
+    "oas2-anyOf": {
+      "given": [
+        "#API_Document_RecursiveSearch"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "undefined",
+        "field": "anyOf"
+      },
+      "description": "The `anyOf` keyword is not supported in OAS2. Only `allOf` is supported.\r\n\r\n**Invalid Example**\r\n\r\n```json lineNumbers\r\n{\r\n   \"schema\": {\r\n     \"anyOf\": [\r\n       {\r\n         \"properties\": {\r\n           \"firstName\": {\r\n             \"type\": \"string\"\r\n            },\r\n           \"lastName\": {\r\n             \"type\": \"string\"\r\n            }\r\n          }\r\n        },\r\n        {}\r\n      ],\r\n   }\r\n}\r\n```\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"schema\": {\r\n              \"type\": \"object\",\r\n              \"properties\": {\r\n                \"firstName\": {\r\n                  \"type\": \"string\"\r\n                },\r\n                \"lastName\": {\r\n                  \"type\": \"string\"\r\n                }\r\n             },\r\n           }\r\n}\r\n```",
+      "message": "anyOf is not available in OpenAPI v2, it was added in OpenAPI v3",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "oas2-oneOf": {
+      "given": [
+        "#API_Document_RecursiveSearch"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "undefined",
+        "field": "oneOf"
+      },
+      "description": "The `oneOf` keyword is not supported in OAS2. Only `allOf` is supported.\r\n\r\n**Invalid Example**\r\n\r\n```json lineNumbers\r\n{\r\n   \"schema\": {\r\n     \"oneOf\": [\r\n       {\r\n         \"properties\": {\r\n           \"firstName\": {\r\n             \"type\": \"string\"\r\n            },\r\n           \"lastName\": {\r\n             \"type\": \"string\"\r\n            }\r\n          }\r\n        },\r\n        {}\r\n      ],\r\n   }\r\n}\r\n```\r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n  \"schema\": {\r\n              \"type\": \"object\",\r\n              \"properties\": {\r\n                \"firstName\": {\r\n                  \"type\": \"string\"\r\n                },\r\n                \"lastName\": {\r\n                  \"type\": \"string\"\r\n                }\r\n             },\r\n           }\r\n}\r\n```",
+      "message": "oneOf is not available in OpenAPI v2, it was added in OpenAPI v3",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "oas3-examples-value-or-externalValue": {
+      "given": [
+        "#All_Example"
+      ],
+      "severity": "warn",
+      "then": {
+        "function": "xor",
+        "functionOptions": {
+          "properties": [
+            "externalValue",
+            "value"
+          ]
+        }
+      },
+      "description": "The `examples` object should include a `value` or `externalValue` field, but cannot include both.\r\n\r\n**Invalid Example**\r\n\r\nThis example includes both a `value` field and an `externalValue` field.\r\n\r\n```json lineNumbers\r\n{\r\n    \"examples\": {\r\n      \"example-1\": {\r\n        \"value\": {\r\n          \"id\": \"string\",\r\n          \"name\": \"string\"\r\n       },\r\n        \"externalValue\": {\r\n          \"id\": \"string\",\r\n           \"name\": \"string\"\r\n         }\r\n      }\r\n   }\r\n}\r\n```\r\n\r\n**Valid Example** \r\n\r\nThis example includes only a `value` field.\r\n\r\n```json lineNumbers\r\n{\r\n     \"examples\": {\r\n       \"example-1\": {\r\n         \"value\": {\r\n            \"id\": \"string\",\r\n            \"name\": \"string\"\r\n       }\r\n    }\r\n  }\r\n}",
+      "message": "Examples must have either \"value\" or \"externalValue\" field.",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "oas2-valid-schema-example": {
+      "given": [
+        "#All_Example_Schema"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasExample",
+        "functionOptions": {
+          "oasVersion": 2,
+          "schemaField": "$",
+          "type": "schema"
+        }
+      },
+      "description": "Examples must be valid against their defined schema. \r\n\r\n**Valid Example**\r\n\r\nThe following schema includes the `name` and `petType` properties.  \r\n\r\n```json lineNumbers\r\n{\r\n   \"Pet\":{\r\n      \"type\":\"object\",\r\n      \"properties\":{\r\n         \"name\":{\r\n            \"type\":\"string\"\r\n         },\r\n         \"petType\":{\r\n            \"type\":\"string\"\r\n         }\r\n      }\r\n   }\r\n}\r\n```\r\n\r\nWhen referenced in a response example, the property names on line 6 and 7 must match those in the schema (`petName` and `petType`).\r\n\r\n```json lineNumbers\r\n{\r\n   \"responses\":{\r\n      \"200\":{\r\n         \"content\":{\r\n            \"application/json\":{\r\n               \"examples\":{\r\n                  \"Pet Example\":{\r\n                     \"petName\":\"Bubbles\",\r\n                     \"petType\":\"Dog\"\r\n                  }\r\n               },\r\n               \"schema\":{\r\n                  \"$ref\":\"#/definitions/Pet\"\r\n               }\r\n            }\r\n         }\r\n      }\r\n   }\r\n}\r\n```",
+      "message": "{{error}}",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "oas3-valid-schema-example": {
+      "given": [
+        "#All_Example_Schema"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasExample",
+        "functionOptions": {
+          "oasVersion": 3,
+          "schemaField": "$",
+          "type": "schema"
+        }
+      },
+      "description": "Examples must be valid against their defined schema. \r\n\r\n**Valid Example**\r\n\r\nThe following schema includes the `name` and `petType` properties.  \r\n\r\n```json lineNumbers\r\n{\r\n   \"Pet\":{\r\n      \"type\":\"object\",\r\n      \"properties\":{\r\n         \"name\":{\r\n            \"type\":\"string\"\r\n         },\r\n         \"petType\":{\r\n            \"type\":\"string\"\r\n         }\r\n      }\r\n   }\r\n}\r\n```\r\n\r\nWhen referenced in a response example, the property names on line 6 and 7 must match those in the schema (`petName` and `petType`).\r\n\r\n```json lineNumbers\r\n{\r\n   \"responses\":{\r\n      \"200\":{\r\n         \"content\":{\r\n            \"application/json\":{\r\n               \"examples\":{\r\n                  \"Pet Example\":{\r\n                     \"petName\":\"Bubbles\",\r\n                     \"petType\":\"Dog\"\r\n                  }\r\n               },\r\n               \"schema\":{\r\n                  \"$ref\":\"#/definitions/Pet\"\r\n               }\r\n            }\r\n         }\r\n      }\r\n   }\r\n}\r\n```",
+      "message": "{{error}}",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "oas2-valid-media-example": {
+      "given": [
+        "#All_Example_Media"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasExample",
+        "functionOptions": {
+          "oasVersion": 2,
+          "schemaField": "schema",
+          "type": "media"
+        }
+      },
+      "description": "Examples must be valid against their defined schema. Common reasons you may see errors if:\r\n\r\n* The value used for property examples is not the same type indicated in the schema (string vs. integer, for example).\r\n* Examples contain properties not included in the schema.\r\n\r\n**Valid Example**\r\n\r\nThe following schema indicates that the `id` property is a `string` type.  \r\n\r\n```json lineNumbers\r\n\"User\":{\r\n   \"title\":\"User\",\r\n   \"type\":\"object\",\r\n   \"properties\":{\r\n      \"id\":{\r\n         \"type\":\"string\"\r\n      }\r\n   }\r\n}\r\n```\r\nWhen the example is referenced in a response, the `id` property must be `string`.\r\n\r\n```json lineNumbers\r\n{\r\n   \"responses\":{\r\n      \"200\":{\r\n         \"description\":\"User Found\",\r\n         \"schema\":{\r\n            \"$ref\":\"#/definitions/User\"\r\n         },\r\n         \"examples\":{\r\n            \"Get User Alice Smith\":{\r\n               \"id\": \"smith, alice\",\r\n            }\r\n         }\r\n      },\r\n```",
+      "message": "{{error}}",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "oas3-valid-media-example": {
+      "given": [
+        "#All_Example_Media"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "oasExample",
+        "functionOptions": {
+          "oasVersion": 3,
+          "schemaField": "schema",
+          "type": "media"
+        }
+      },
+      "description": "The following schema includes the `name` and `petType` properties.  \r\n\r\n**Valid Example**\r\n\r\n```json lineNumbers\r\n{\r\n   \"Pet\":{\r\n      \"type\":\"object\",\r\n      \"properties\":{\r\n         \"name\":{\r\n            \"type\":\"string\"\r\n         },\r\n         \"petType\":{\r\n            \"type\":\"string\"\r\n         }\r\n      }\r\n   }\r\n}\r\n```\r\n\r\nWhen referenced in a response example, the property names on line 6 and 7 must match those in the schema (`petName` and `petType`).\r\n\r\n```json lineNumbers\r\n{\r\n   \"responses\":{\r\n      \"200\":{\r\n         \"content\":{\r\n            \"application/json\":{\r\n               \"examples\":{\r\n                  \"Pet Example\":{\r\n                     \"petName\":\"Bubbles\",\r\n                     \"petType\":\"Dog\"\r\n                  }\r\n               },\r\n               \"schema\":{\r\n                  \"$ref\":\"#/definitions/Pet\"\r\n               }\r\n            }\r\n         }\r\n      }\r\n   }\r\n}\r\n```",
+      "message": "{{error}}",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "oas3-server-variables": {
+      "given": [
+        "#All_Servers"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "serverVariables",
+        "functionOptions": {
+          "checkSubstitutions": true
+        }
+      },
+      "description": "This rule ensures that server variables defined in OpenAPI Specification 3 (OAS3) and 3.1 are valid, not unused, and result in a valid URL. Properly defining and using server variables is crucial for the accurate representation of API endpoints and preventing potential misconfigurations or security issues.\n\n**Recommended**: Yes\n\n**Bad Examples**\n\n1. **Missing definition for a URL variable**:\n\n```yaml\nservers:\n  - url: \"https://api.{region}.example.com/v1\"\n    variables:\n      version:\n        default: \"v1\"\n```\n\nIn this example, the variable **`{region}`** in the URL is not defined within the **`variables`** object.\n\n2. **Unused URL variable:**\n\n```yaml\nservers:\n  - url: \"https://api.example.com/v1\"\n    variables:\n      region:\n        default: \"us-west\"\n```\n\nHere, the variable **`region`** is defined but not used in the server URL.\n\n3. **Invalid default value for an allowed value variable**:\n\n```yaml\nservers:\n  - url: \"https://api.{region}.example.com/v1\"\n    variables:\n      region:\n        default: \"us-south\"\n        enum:\n          - \"us-west\"\n          - \"us-east\"\n```\n\nThe default value 'us-south' isn't one of the allowed values in the **`enum`**.\n\n4. **Invalid resultant URL**:\n\n```yaml\nservers:\n  - url: \"https://api.example.com:{port}/v1\"\n    variables:\n      port:\n        default: \"8o80\"\n```\n\nSubstituting the default value of **`{port}`** results in an invalid URL.\n\n**Good Example**\n\n```yaml\nservers:\n  - url: \"https://api.{region}.example.com/{version}\"\n    variables:\n      region:\n        default: \"us-west\"\n        enum:\n          - \"us-west\"\n          - \"us-east\"\n      version:\n        default: \"v1\"\n```\n\nIn this example, both **`{region}`** and **`{version}`** variables are properly defined and used in the server URL. Also, the default value for **`region`** is within the allowed values.",
+      "message": "{{error}}",
+      "formats": [
+        "oas3"
+      ]
+    },
+    "array-items": {
+      "given": [
+        "#All_Array_Item"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "truthy",
+        "field": "items"
+      },
+      "description": "Schemas with `type: array`, require a sibling `items` field.\n\n**Recommended:** Yes\n\n**Good Example**\n\n```yaml\nTheGoodModel:\n  type: object\n  properties:\n    favoriteColorSets:\n      type: array\n      items:\n        type: array\n        items: {}\n```\n\n**Bad Example**\n\n```yaml\nTheBadModel:\n  type: object\n  properties:\n    favoriteColorSets:\n      type: array\n      items:\n        type: array\n```",
+      "message": "Schemas with \"type: array\", require a sibling \"items\" field"
+    },
+    "oas2-always-use-https": {
+      "given": [
+        "$.schemes[*]"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "enumeration",
+        "functionOptions": {
+          "values": [
+            "https"
+          ]
+        }
+      },
+      "description": "Host schemes must use the HTTPS protocol.\n\n`Applies to: OpenAPI 2.0`\n\n**Invalid Example**\n\n```json\n{  \n  \"schemes\": [\n    \"http\"\n  ],\n}\n```  \n\n**Valid Example**\n\n```json\n{  \n  \"schemes\": [\n    \"https\"\n  ],\n}\n```  ",
+      "message": "API host schemes must use the HTTPS protocol.",
+      "formats": [
+        "oas2"
+      ]
+    },
+    "oas3-always-use-https": {
+      "given": [
+        "$.servers[*].url"
+      ],
+      "severity": "error",
+      "then": {
+        "function": "pattern",
+        "functionOptions": {
+          "match": "(http:\\/\\/localhost)|(https).*"
+        }
+      },
+      "description": "Servers must use the HTTPS protocol, except when localhost is used.\n\n`Applies to: OpenAPI 3.0 and 3.1`\n\n**Invalid Example**\n\n```json lineNumbers\n{  \n  \"servers\": [\n    {\n      \"url\": \"http://acme.org/api/2.5\"\n    }\n  ]\n}\n```\n**Valid Examples**\n\nHTTPS example:\n\n```json lineNumbers\n{  \n  \"servers\": [\n    {\n      \"url\": \"https://acme.org/api/2.5\"\n    }\n  ],\n}\n```\nLocalhost example:\n\n```json lineNumbers\n{\n  \"servers\": [\n    {\n      \"url\": \"http://localhost:3000\"\n    }\n  ],\n}\n",
+      "message": "Servers must use the HTTPS protocol except when using localhost",
+      "formats": [
+        "oas3"
+      ]
+    }
+  },
+  "functions": [
+    "check-security",
+    "oasDiscriminator",
+    "oasDocumentSchema",
+    "oasExample",
+    "oasOpFormDataConsumeCheck",
+    "oasOpIdUnique",
+    "oasOpParams",
+    "oasOpSecurityDefined",
+    "oasOpSuccessResponse",
+    "oasPathParam",
+    "oasSchema",
+    "oasTagDefined",
+    "oasUnusedComponent",
+    "refSiblings",
+    "serverVariables",
+    "typedEnum"
+  ],
+  "functionsDir": "functions"
+}
