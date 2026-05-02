@@ -5,7 +5,6 @@ import logging
 from math import ceil
 from rich.table import Table
 from typing import (
-    cast,
     Annotated,
     Literal,
 )
@@ -63,7 +62,7 @@ async def list_users(
         db_users, total = await auth_ops.paginated_list_users(
             session, page=page, page_size=page_size, include_total=True
         )
-    total = cast(int, total)
+    assert total is not None
     result = cli_schemas.ItemList[cli_schemas.UserListItem](
         items=[cli_schemas.UserListItem.from_db_item(i) for i in db_users],
         meta=cli_schemas.ItemListMeta(

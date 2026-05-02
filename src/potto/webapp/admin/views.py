@@ -473,7 +473,7 @@ class CollectionView(_PottoAdminModelView):
                     session,
                     user,
                     auth_backend,
-                    to_create=CollectionCreate(**data),
+                    to_create=CollectionCreate.model_validate(data),
                 )
             except (pydantic.ValidationError, PottoException) as err:
                 return self.handle_exception(err)
@@ -616,7 +616,7 @@ class ServerMetadataModelView(_PottoAdminModelView):
                         )
                         if dp_data.get("name")
                         else None,
-                        point_of_contact=PointOfContact(**poc_values)
+                        point_of_contact=PointOfContact.model_validate(poc_values)
                         if any(poc_values.values())
                         else None,
                     ),

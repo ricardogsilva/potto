@@ -5,7 +5,6 @@ import sys
 from math import ceil
 from pathlib import Path
 from typing import (
-    cast,
     Annotated,
     Literal,
 )
@@ -87,7 +86,7 @@ async def import_collections_from_pygeoapi(
                 "scope to inherit them."
             )
             sys.exit(1)
-        collection_owner = existing_admins[0]
+        collection_owner = existing_admins[0].to_potto()
         existing_collections = await collection_queries.collect_all_user_collections(
             session
         )
@@ -143,7 +142,7 @@ async def list_collections(
             page_size=page_size,
             include_total=True,
         )
-    total = cast(int, total)
+    assert total is not None
     result = cli_schemas.ItemList[cli_schemas.CollectionListItem](
         items=[cli_schemas.CollectionListItem.from_db_item(i) for i in collections],
         meta=cli_schemas.ItemListMeta(
@@ -233,12 +232,13 @@ async def delete_collections(
                 collections_app.error_console.print(f"Collection {id_!r} not found.")
                 found_error = True
                 continue
+            assert db_collection.id is not None
             try:
                 await collection_ops.delete_collection(
                     session,
                     user,
                     settings.get_authorization_backend(),
-                    cast(int, db_collection.id),
+                    db_collection.id,
                 )
                 collections_app.console.print(f"Collection {id_!r} deleted")
             except PottoException as err:

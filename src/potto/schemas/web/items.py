@@ -2,8 +2,6 @@ import datetime as dt
 import json
 from typing import (
     Annotated,
-    Literal,
-    Mapping,
     Sequence,
 )
 
@@ -18,65 +16,7 @@ from .. import (
     pygeoapi_config,
     potto as potto_schemas,
 )
-from ..base import Link
-
-
-class ItemFilter(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra="allow")
-
-    # bbox, datetime are specified in oapif-part1
-    bbox: str | None = None
-    datetime_: Annotated[str | None, pydantic.Field(alias="datetime")] = None
-
-    bbox_crs: Annotated[str | None, pydantic.Field(alias="bbox-crs")] = None
-    cql_text: str | None = None
-    extra_properties: dict[str, str] | None = None
-    # filter, filter-lang, filter-crs are specified in oapif-part3
-    filter_: Annotated[str | None, pydantic.Field(alias="filter")] = None
-    filter_lang: str | None = None
-    filter_crs_uri: str | None = None
-
-    limit: int = 20
-    locale: Annotated[str | None, pydantic.Field(alias="language")] = None
-    offset: int = 0
-    query: str | None = None
-    result_type: Literal["hits", "results"] = "results"
-    select_properties: Annotated[
-        list[str] | None, pydantic.Field(alias="properties")
-    ] = None
-    skip_geometry: Annotated[bool | None, pydantic.Field(alias="skipGeometry")] = None
-    sort_by: Annotated[str | None, pydantic.Field(alias="sortby")] = None
-
-
-class FeatureFilter(ItemFilter):
-    crs: str | None = None
-
-    @classmethod
-    def from_query_parameters(
-        cls,
-        params: Mapping[str, str | Sequence[str]],
-    ) -> "FeatureFilter":
-        return cls(
-            bbox=params.get("bbox"),
-            bbox_crs=params.get("bbox-crs"),
-            crs=params.get("crs"),
-            datetime_=params.get("datetime"),
-            filter_=params.get("filter"),
-            filter_crs_uri=params.get("filter-crs"),
-            filter_lang=params.get("filter-lang"),
-            limit=int(params.get("limit", 20)),
-            offset=int(params.get("offset", 0)),
-            extra_properties=dict(params),
-            query=params.get("q"),
-            result_type=params.get("resulttype", "results"),
-            sort_by=params.get("sortby"),
-            skip_geometry=(
-                True
-                if params.get("skipGeometry", "").lower()
-                in ("true", "yes", "on", "t", "1")
-                else False
-            ),
-        )
+from ..base import FeatureFilter, Link
 
 
 class GeoJsonItem(pydantic.BaseModel):
@@ -145,6 +85,7 @@ class GeoJsonItemCollection(pydantic.BaseModel):
         potto_response: potto_schemas.FeatureListResponse,
         url_resolver: UrlResolver,
     ) -> "GeoJsonItemCollection":
+        now = dt.datetime.now(tz=dt.timezone.utc).isoformat()
         return cls(
             type="FeatureCollection",
             features=[
@@ -158,8 +99,10 @@ class GeoJsonItemCollection(pydantic.BaseModel):
             links=cls.get_links(url_resolver, potto_response),
             number_matched=potto_response.pagination.number_matched,
             number_returned=potto_response.pagination.number_returned,
-            time_stamp=potto_response.metadata.get(
-                "timestamp", dt.datetime.now(tz=dt.timezone.utc).isoformat()
+            time_stamp=(
+                potto_response.metadata.get("timestamp") or now
+                if potto_response.metadata is not None
+                else now
             ),
         )
 
@@ -207,18 +150,21 @@ class GeoJsonItemCollection(pydantic.BaseModel):
                     )
                 ),
                 # TODO: localize this
-                title=potto_response.collection.title,
+                title=(
+                    potto_response.collection.title.get("en", "")
+                    if isinstance(potto_response.collection.title, dict)
+                    else potto_response.collection.title
+                ),
             ),
             *pagination_links,
         ]
 
 
 class HtmlItemCollection(pydantic.BaseModel):
-    resource: pygeoapi_config.ItemCollectionConfig
-    provider: pygeoapi_config.ProviderConfig
+    collection: potto_schemas.Collection
     features: dict
     pagination: base.PaginationContext
-    filter_: FeatureFilter
+    filter_: FeatureFilter | None
     links: list[Link]
 
     @classmethod
@@ -231,21 +177,23 @@ class HtmlItemCollection(pydantic.BaseModel):
             str(
                 url_resolver(
                     "list-collection-items",
-                    collection_id=potto_response.resource.identifier,
+                    collection_id=potto_response.collection.identifier,
                 )
             ),
             target_media_type=constants.MEDIA_TYPE_HTML,
-            additional_query_params=potto_response.filter_.model_dump(by_alias=True),
+            additional_query_params=potto_response.filter_.model_dump(by_alias=True)
+            if potto_response.filter_
+            else None,
         )
         return cls(
-            resource=potto_response.resource,
-            provider=potto_response.provider,
+            collection=potto_response.collection,
             features={
                 "type": "FeatureCollection",
                 "features": [
                     GeoJsonItem.from_potto(
-                        feat,
-                        potto_response.resource,
+                        potto_schemas.FeatureResponse(
+                            collection=potto_response.collection, feature=feat
+                        ),
                         url_resolver,
                         exclude_link_relations=("collection",),
                     )
@@ -262,7 +210,7 @@ class HtmlItemCollection(pydantic.BaseModel):
                     href=str(
                         url_resolver(
                             "list-collection-items",
-                            collection_id=potto_response.resource.identifier,
+                            collection_id=potto_response.collection.identifier,
                         )
                     ),
                     title="This document",
@@ -273,7 +221,7 @@ class HtmlItemCollection(pydantic.BaseModel):
                     href=str(
                         url_resolver(
                             "api:list-collection-items",
-                            collection_id=potto_response.resource.identifier,
+                            collection_id=potto_response.collection.identifier,
                         )
                     ),
                     title="This document as JSON",

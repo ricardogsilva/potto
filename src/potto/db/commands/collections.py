@@ -1,5 +1,4 @@
 import logging
-from typing import cast
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -24,7 +23,8 @@ async def create_collection(
     session.add(instance)
     await session.commit()
     await session.refresh(instance)
-    if (created := await get_collection(session, cast(int, instance.id))) is None:
+    assert instance.id is not None
+    if (created := await get_collection(session, instance.id)) is None:
         raise PottoException("error creating collection")
     return created
 

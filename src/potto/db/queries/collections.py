@@ -33,6 +33,7 @@ async def collect_all_public_collections(
         collection_type_filter=collection_type_filter,
         include_total=True,
     )
+    assert num_total is not None
     items, _ = await list_public_collections(
         session,
         limit=num_total,
@@ -56,6 +57,7 @@ async def collect_all_user_collections(
         collection_type_filter=collection_type_filter,
         include_total=True,
     )
+    assert num_total is not None
     items, _ = await list_user_collections(
         session,
         limit=num_total,
@@ -130,14 +132,15 @@ async def list_public_collections(
     logger.debug(f"{locals()=}")
     statement = (
         select(Collection)
-        .options(selectinload(Collection.owner))
+        .options(selectinload(cast(QueryableAttribute, Collection.owner)))
         .where(Collection.is_public)
     )
     statement = _apply_common_filters(
         statement, identifier_filter, collection_type_filter, spatial_intersect
     )
     statement = statement.order_by(
-        Collection.created_at, Collection.resource_identifier.desc().nullslast()
+        Collection.created_at,
+        Collection.resource_identifier.desc().nullslast(),  # ty: ignore[unresolved-attribute]
     )
     items = (await session.exec(statement.offset(offset).limit(limit))).all()
     num_total = (
@@ -165,20 +168,23 @@ async def list_user_collections(
       by user_id, and collections whose identifier is in accessible_identifiers.
     """
     logger.debug(f"{locals()=}")
-    statement = select(Collection).options(selectinload(Collection.owner))
+    statement = select(Collection).options(
+        selectinload(cast(QueryableAttribute, Collection.owner))
+    )
     if accessible_identifiers is not None:
         statement = statement.where(
             or_(
                 Collection.is_public,
                 Collection.owner_id == user_id,
-                Collection.resource_identifier.in_(accessible_identifiers),
+                Collection.resource_identifier.in_(accessible_identifiers),  # ty: ignore[unresolved-attribute]
             )
         )
     statement = _apply_common_filters(
         statement, identifier_filter, collection_type_filter, spatial_intersect
     )
     statement = statement.order_by(
-        Collection.created_at, Collection.resource_identifier.desc().nullslast()
+        Collection.created_at,
+        Collection.resource_identifier.desc().nullslast(),  # ty: ignore[unresolved-attribute]
     )
     items = (await session.exec(statement.offset(offset).limit(limit))).all()
     num_total = (
@@ -192,7 +198,7 @@ def _apply_common_filters(
 ):
     if identifier_filter:
         statement = statement.where(
-            Collection.resource_identifier.ilike(f"%{identifier_filter}%")
+            Collection.resource_identifier.ilike(f"%{identifier_filter}%")  # ty: ignore[unresolved-attribute]
         )
     if collection_type_filter:
         statement = statement.where(
@@ -205,7 +211,7 @@ def _apply_common_filters(
                     Collection.spatial_extent,
                     func.ST_GeomFromText(spatial_intersect.wkt, 4326),
                 ),
-                Collection.spatial_extent.is_(None),
+                Collection.spatial_extent.is_(None),  # ty: ignore[unresolved-attribute]
             )
         )
     return statement
@@ -217,7 +223,7 @@ async def get_collection(
 ) -> Collection | None:
     statement = (
         select(Collection)
-        .options(selectinload(Collection.owner))
+        .options(selectinload(cast(QueryableAttribute, Collection.owner)))
         .where(Collection.id == collection_id)
     )
     return (await session.exec(statement)).first()
@@ -228,7 +234,7 @@ async def get_collection_editors(
     resource_identifier: str,
 ) -> list[User]:
     statement = select(User).where(
-        User.scopes.contains([f"collection-{resource_identifier}:editor"])
+        User.scopes.contains([f"collection-{resource_identifier}:editor"])  # ty: ignore[unresolved-attribute]
     )
     return list((await session.exec(statement)).all())
 
@@ -238,7 +244,7 @@ async def get_collection_viewers(
     resource_identifier: str,
 ) -> list[User]:
     statement = select(User).where(
-        User.scopes.contains([f"collection-{resource_identifier}:viewer"])
+        User.scopes.contains([f"collection-{resource_identifier}:viewer"])  # ty: ignore[unresolved-attribute]
     )
     return list((await session.exec(statement)).all())
 

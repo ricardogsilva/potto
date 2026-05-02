@@ -83,11 +83,6 @@ def create_app_from_settings(settings: config.PottoSettings) -> Starlette:
             ogc_api_common_routes.get_conformance_details,
             name="conformance-document",
         ),
-        Route(
-            "/openapi",
-            ogc_api_common_routes.get_openapi_document,
-            name="openapi-document",
-        ),
     ]
     if True:  # whether to enable ogc api features routes: let's make this controllable via server metadata
         routes.extend(

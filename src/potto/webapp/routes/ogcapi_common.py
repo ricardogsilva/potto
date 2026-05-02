@@ -89,23 +89,3 @@ async def get_conformance_details(request: Request) -> Response:
         )
     else:
         return JSONResponse(content=result.content, headers=result.metadata)
-
-
-async def get_openapi_document(request: Request) -> Response:
-    potto: Potto = request.state.potto
-    current_locale = babel.Locale.parse(request.state.language)
-    requested_format = util.get_accepted_info(request)[1]
-    result = await potto.api_get_openapi_document()
-    if requested_format == F_HTML:
-        return request.state.templates.TemplateResponse(
-            request,
-            "openapi/swagger.html",
-            context={
-                "data": {"openapi-document-path": request.url_for("openapi-document")},
-                "pygeoapi_config": await potto.get_localized_config(current_locale),
-            },
-        )
-    else:
-        return JSONResponse(
-            content=result.content,
-        )
