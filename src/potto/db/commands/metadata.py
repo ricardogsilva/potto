@@ -24,7 +24,9 @@ async def create_metadata(
     session.add(instance)
     await session.commit()
     await session.refresh(instance)
-    return await get_metadata(session)
+    if (created := await get_metadata(session)) is None:
+        raise PottoException("error creating metadata")
+    return created
 
 
 async def update_metadata(

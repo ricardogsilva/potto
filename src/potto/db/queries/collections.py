@@ -1,7 +1,11 @@
 import logging
+from typing import cast
 
 import shapely
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import (
+    QueryableAttribute,
+    selectinload,
+)
 from sqlmodel import (
     func,
     or_,
@@ -245,7 +249,7 @@ async def get_collection_by_resource_identifier(
 ) -> Collection | None:
     statement = (
         select(Collection)
-        .options(selectinload(Collection.owner))
+        .options(selectinload(cast(QueryableAttribute, Collection.owner)))
         .where(Collection.resource_identifier == resource_identifier)
     )
     return (await session.exec(statement)).first()

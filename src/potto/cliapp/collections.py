@@ -5,11 +5,14 @@ import sys
 from math import ceil
 from pathlib import Path
 from typing import (
+    cast,
     Annotated,
     Literal,
 )
 
+import cyclopts
 import yaml
+from cyclopts.types import NonNegativeInt
 from rich.table import Table
 
 from ..config import (
@@ -28,7 +31,6 @@ from ..schemas.auth import (
     PottoUser,
 )
 
-import cyclopts
 
 collections_app = cyclopts.App()
 logger = logging.getLogger(__name__)
@@ -127,8 +129,8 @@ async def import_collections_from_pygeoapi(
 
 @collections_app.command(name="list")
 async def list_collections(
-    page: int = 1,
-    page_size: int = 20,
+    page: NonNegativeInt = 1,
+    page_size: NonNegativeInt = 20,
     format: Literal["json", "table"] = "table",
     *,
     settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
@@ -141,6 +143,7 @@ async def list_collections(
             page_size=page_size,
             include_total=True,
         )
+    total = cast(int, total)
     result = cli_schemas.ItemList[cli_schemas.CollectionListItem](
         items=[cli_schemas.CollectionListItem.from_db_item(i) for i in collections],
         meta=cli_schemas.ItemListMeta(
@@ -235,7 +238,7 @@ async def delete_collections(
                     session,
                     user,
                     settings.get_authorization_backend(),
-                    db_collection.id,
+                    cast(int, db_collection.id),
                 )
                 collections_app.console.print(f"Collection {id_!r} deleted")
             except PottoException as err:
