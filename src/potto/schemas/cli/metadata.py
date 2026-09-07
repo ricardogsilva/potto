@@ -1,13 +1,11 @@
 import pydantic
 
-from ...db.models import (
-    ServerMetadata,
-)
 from ..base import (
     Title,
     MaybeDescription,
     MaybeKeywords,
 )
+from ..metadata import ServerMetadata
 
 
 class ServerMetadataDetail(pydantic.BaseModel):
@@ -36,10 +34,10 @@ class ServerMetadataDetail(pydantic.BaseModel):
     point_of_contact_contact_instructions: str | None
 
     @classmethod
-    def from_db_item(cls, item: ServerMetadata) -> "ServerMetadataDetail":
-        data_license = item.license or {}
-        data_provider = item.data_provider or {}
-        point_of_contact = item.point_of_contact or {}
+    def from_potto(cls, item: ServerMetadata) -> "ServerMetadataDetail":
+        data_license = item.license
+        data_provider = item.data_provider
+        point_of_contact = item.point_of_contact
         return cls(
             title=item.title,
             description=item.description,
@@ -47,25 +45,35 @@ class ServerMetadataDetail(pydantic.BaseModel):
             keywords_type=item.keywords_type,
             terms_of_service=item.terms_of_service,
             url=item.url,
-            license_name=data_license.get("name"),
-            license_url=data_license.get("url"),
-            data_provider_name=data_provider.get("name"),
-            data_provider_url=data_provider.get("url"),
-            point_of_contact_name=point_of_contact.get("name"),
-            point_of_contact_position=point_of_contact.get("position"),
-            point_of_contact_address=point_of_contact.get("address"),
-            point_of_contact_city=point_of_contact.get("city"),
-            point_of_contact_state_or_province=point_of_contact.get(
-                "state_or_province"
+            license_name=data_license.name if data_license else None,
+            license_url=data_license.url if data_license else None,
+            data_provider_name=data_provider.name if data_provider else None,
+            data_provider_url=data_provider.url if data_provider else None,
+            point_of_contact_name=point_of_contact.name if point_of_contact else None,
+            point_of_contact_position=point_of_contact.position
+            if point_of_contact
+            else None,
+            point_of_contact_address=point_of_contact.address
+            if point_of_contact
+            else None,
+            point_of_contact_city=point_of_contact.city if point_of_contact else None,
+            point_of_contact_state_or_province=(
+                point_of_contact.state_or_province if point_of_contact else None
             ),
-            point_of_contact_postal_code=point_of_contact.get("postal_code"),
-            point_of_contact_country=point_of_contact.get("country"),
-            point_of_contact_phone=point_of_contact.get("phone"),
-            point_of_contact_fax=point_of_contact.get("fax"),
-            point_of_contact_email=point_of_contact.get("email"),
-            point_of_contact_url=point_of_contact.get("url"),
-            point_of_contact_contact_hours=point_of_contact.get("contact_hours"),
-            point_of_contact_contact_instructions=point_of_contact.get(
-                "contact_instructions"
+            point_of_contact_postal_code=(
+                point_of_contact.postal_code if point_of_contact else None
+            ),
+            point_of_contact_country=point_of_contact.country
+            if point_of_contact
+            else None,
+            point_of_contact_phone=point_of_contact.phone if point_of_contact else None,
+            point_of_contact_fax=point_of_contact.fax if point_of_contact else None,
+            point_of_contact_email=point_of_contact.email if point_of_contact else None,
+            point_of_contact_url=point_of_contact.url if point_of_contact else None,
+            point_of_contact_contact_hours=(
+                point_of_contact.contact_hours if point_of_contact else None
+            ),
+            point_of_contact_contact_instructions=(
+                point_of_contact.contact_instructions if point_of_contact else None
             ),
         )

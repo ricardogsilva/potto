@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from potto.constants import CollectionType
-from potto.db.commands import collections as collection_commands
+from potto.managers.postgis.db.commands import collections as collection_commands
 from potto.schemas import (
     base as base_schemas,
     collections as collection_schemas,

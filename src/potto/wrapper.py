@@ -13,11 +13,6 @@ from .constants import (
     CRS_84,
 )
 from .config import PottoSettings
-from .db.alembic_utils import build_alembic_config
-from .operations import (
-    health as health_ops,
-    metadata as metadata_ops,
-)
 from .providers.features import get_feature_provider
 from .schemas.auth import PottoUser
 from .schemas.collections import (
@@ -67,11 +62,13 @@ class Potto:
         page = 1
         collection_manager = self._settings.get_collection_manager()
         collections, total = await collection_manager.paginated_list_collections(
-            user, page=page, include_total=True)
-        async with self._settings.get_db_session_maker()() as session:
-            server_metadata = await metadata_ops.get_server_metadata(session)
+            user, page=page, include_total=True
+        )
+        server_metadata = (
+            await self._settings.get_server_metadata_manager().get_server_metadata()
+        )
         return SystemOverview(
-            metadata=server_metadata.to_potto(),
+            metadata=server_metadata,
             collections=CollectionList(
                 collections=collections,
                 pagination=Pagination(
@@ -110,7 +107,10 @@ class Potto:
     ) -> CollectionList:
         collection_manager = self._settings.get_collection_manager()
         collections, total = await collection_manager.paginated_list_collections(
-            user, page=page, page_size=page_size, include_total=True,
+            user,
+            page=page,
+            page_size=page_size,
+            include_total=True,
         )
         return CollectionList(
             collections=collections,
@@ -130,7 +130,9 @@ class Potto:
         include_schema: bool = False,
     ) -> Collection | None:
         collection_manager = self._settings.get_collection_manager()
-        if (collection := await collection_manager.get_collection(collection_id, user)) is None:
+        if (
+            collection := await collection_manager.get_collection(collection_id, user)
+        ) is None:
             return None
         if not any((include_queryables, include_schema)):
             return collection
@@ -161,7 +163,9 @@ class Potto:
     ) -> FeatureList:
         feature_filter = filter_ or PottoFeatureFilter()
         collection_manager = self._settings.get_collection_manager()
-        if (collection := await collection_manager.get_collection(collection_id, user)) is None:
+        if (
+            collection := await collection_manager.get_collection(collection_id, user)
+        ) is None:
             raise potto_exceptions.PottoCollectionNotFoundException(collection_id)
         effective_pagination_limit = get_collection_pagination_limit(
             feature_filter.limit if feature_filter else None, collection, self._settings
@@ -207,7 +211,9 @@ class Potto:
     ) -> AugmentedFeature:
 
         collection_manager = self._settings.get_collection_manager()
-        if (collection := await collection_manager.get_collection(collection_id, user)) is None:
+        if (
+            collection := await collection_manager.get_collection(collection_id, user)
+        ) is None:
             raise potto_exceptions.PottoCollectionNotFoundException(collection_id)
         if (
             feature_provider := await get_feature_provider(collection, self._settings)

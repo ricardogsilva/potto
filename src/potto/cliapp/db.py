@@ -6,7 +6,7 @@ import alembic.util.exc
 import cyclopts
 
 from ..config import get_settings
-from ..db.alembic_utils import build_alembic_config
+from ..managers.postgis.db.alembic_utils import build_alembic_config
 
 db_app = cyclopts.App(name="db")
 
@@ -24,7 +24,9 @@ def launcher(
     additional_kwargs = {}
     if "alembic_config" in ignored:
         additional_kwargs = {
-            "alembic_config": build_alembic_config(get_settings()),
+            "alembic_config": build_alembic_config(
+                get_settings().database_dsn.unicode_string()
+            ),
         }
     return command(*bound.args, **bound.kwargs, **additional_kwargs)
 

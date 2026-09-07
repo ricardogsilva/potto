@@ -1,7 +1,14 @@
+import asyncio
+import concurrent.futures
 import logging
 import os
 import re
 import typing
+from typing import (
+    cast,
+    Coroutine,
+    TypeVar,
+)
 
 from .exceptions import PottoException
 from .constants import CollectionType
@@ -11,6 +18,19 @@ logger = logging.getLogger(__name__)
 if typing.TYPE_CHECKING:
     from .config import PottoSettings
     from .schemas.collections import Collection
+
+_T = TypeVar("_T")
+
+
+def run_sync(coro: Coroutine[typing.Any, typing.Any, _T]) -> _T:
+    """Run an awaitable from synchronous code, regardless of the caller's async context.
+
+    A plain ``asyncio.run()`` fails when called from within a running event loop
+    (e.g. uvicorn calling a sync app factory from its own loop). Running in a new
+    thread guarantees a fresh event loop regardless of the caller's context.
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return cast(_T, pool.submit(asyncio.run, coro).result())
 
 
 def get_collection_type(pygeoapi_collection: dict) -> CollectionType:

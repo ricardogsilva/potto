@@ -13,7 +13,7 @@ from fastapi import (
 from fastapi.security import OAuth2PasswordBearer
 
 from ... import config
-from ...authz.base import AuthorizationBackendProtocol
+from ...authz.protocols import AuthorizationBackendProtocol
 from ...schemas.auth import PottoUser
 from ...wrapper import Potto
 

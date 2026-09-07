@@ -17,7 +17,7 @@ def test_landing_page_healthy(db, webapp_test_client):
 
 def test_landing_page_outdated_schema(db, webapp_test_client, monkeypatch):
     async def fake_get_health_status(self):
-        return WebHealthCheck(status="error", database="outdated")
+        return WebHealthCheck(status="error", collection_manager="not-ready")
 
     monkeypatch.setattr(Potto, "get_health_status", fake_get_health_status)
 
@@ -30,7 +30,7 @@ def test_landing_page_outdated_schema(db, webapp_test_client, monkeypatch):
 
 def test_landing_page_db_unreachable(db, webapp_test_client, monkeypatch):
     async def fake_get_health_status(self):
-        return WebHealthCheck(status="error", database="error")
+        return WebHealthCheck(status="error", collection_manager="error")
 
     monkeypatch.setattr(Potto, "get_health_status", fake_get_health_status)
 

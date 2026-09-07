@@ -4,7 +4,7 @@ from starlette.templating import Jinja2Templates
 
 from .. import config
 from ..authn.oidc import OIDCProvider
-from ..authz.base import AuthorizationBackendProtocol
+from ..authz.protocols import AuthorizationBackendProtocol
 from ..wrapper import Potto
 
 

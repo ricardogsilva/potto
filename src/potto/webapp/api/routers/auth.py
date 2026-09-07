@@ -1,7 +1,6 @@
 import logging
 from typing import Annotated
 
-import bcrypt
 import pydantic
 from fastapi import (
     APIRouter,
@@ -12,8 +11,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from .. import responses
 from ....authn.jwt import create_access_token
-from ....db.queries.auth import get_user_by_username
-from ....schemas.auth import PottoUser
 from ..dependencies import SettingsDependency
 
 logger = logging.getLogger(__name__)
@@ -38,32 +35,13 @@ async def login(
     settings: SettingsDependency,
 ) -> LoginResponse:
     """Authenticate with username and password, receive a JWT access token."""
-    async with settings.get_db_session_maker()() as session:
-        if (db_user := await get_user_by_username(session, form_data.username)) is None:
-            logger.debug(f"Login failed: user {form_data.username!r} not found")
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not db_user.is_active:
-        logger.warning(f"Login failed: user {form_data.username!r} is inactive")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    if db_user.hashed_password is None:
-        logger.warning(
-            f"Login failed: user {form_data.username!r} has no local password"
-        )
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not bcrypt.checkpw(
-        form_data.password.encode(), db_user.hashed_password.encode()
-    ):
-        logger.debug(f"Login failed: wrong password for user {form_data.username!r}")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    potto_user = PottoUser(
-        id=db_user.id,
-        username=db_user.username,
-        email=db_user.email,
-        is_active=db_user.is_active,
-        scopes=db_user.scopes,
+    user = await settings.get_user_account_manager().authenticate(
+        form_data.username, form_data.password
     )
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(
-        potto_user,
+        user,
         settings.session_secret_key.get_secret_value(),
     )
     return LoginResponse(access_token=token)

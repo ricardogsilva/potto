@@ -6,12 +6,9 @@ mounted by our main starlette-based app. Therefore, lifespan is configured
 in the starlette app.
 """
 
-import asyncio
-import concurrent.futures
 from typing import (
     Annotated,
     Any,
-    cast,
 )
 
 from fastapi import (
@@ -29,7 +26,7 @@ from ... import (
     config,
     exceptions as potto_exceptions,
 )
-from ...operations.metadata import get_server_metadata
+from ...util import run_sync
 from ...schemas.auth import PottoUser
 from ...schemas.metadata import ServerMetadata
 from . import (
@@ -138,9 +135,7 @@ async def _fetch_api_metadata(settings: config.PottoSettings) -> ServerMetadata:
     This function only exists so that we can retrieve the metadata and use it when
     creating the OpenAPI document below, when the FastAPI app is created.
     """
-    async with settings.get_db_session_maker()() as session:
-        db_server_metadata = await get_server_metadata(session)
-    return db_server_metadata.to_potto()
+    return await settings.get_server_metadata_manager().get_server_metadata()
 
 
 def _handle_potto_bad_request_exception(
@@ -185,14 +180,7 @@ def create_api_app() -> FastAPI:
 
 
 def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
-    # asyncio.run() fails if called from a running event loop (e.g. uvicorn calls
-    # the app factory from within its own loop). Running in a new thread guarantees
-    # a fresh event loop regardless of the caller's async context.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        api_metadata: ServerMetadata = cast(
-            ServerMetadata,
-            pool.submit(asyncio.run, _fetch_api_metadata(settings)).result(),
-        )
+    api_metadata: ServerMetadata = run_sync(_fetch_api_metadata(settings))
     raw_title = api_metadata.title
     app_title = (
         raw_title.get("en") or next(iter(raw_title.values()))

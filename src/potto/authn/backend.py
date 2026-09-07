@@ -8,7 +8,6 @@ from starlette.authentication import (
 from starlette.requests import HTTPConnection
 
 from ..config import PottoSettings
-from ..db.queries import auth as auth_queries
 from ..schemas.auth import PottoUser
 from .jwt import decode_access_token
 from .oidc import OIDCProvider
@@ -54,15 +53,14 @@ class LocalAuthBackend(AuthenticationBackend):
         return None
 
     async def _get_user_from_db(self, user_id: str) -> PottoUser | None:
-        async with self._settings.get_db_session_maker()() as session:
-            db_user = await auth_queries.get_user(session, user_id)
-        if db_user is None:
+        user = await self._settings.get_user_account_manager().get_user(user_id)
+        if user is None:
             logger.debug(f"User {user_id!r} not found in database")
             return None
-        if not db_user.is_active:
-            logger.warning(f"User {db_user.username!r} is inactive, denying access")
+        if not user.is_active:
+            logger.warning(f"User {user.username!r} is inactive, denying access")
             return None
-        return db_user.to_potto()
+        return user
 
 
 class OIDCAuthBackend(AuthenticationBackend):
@@ -94,20 +92,20 @@ class OIDCAuthBackend(AuthenticationBackend):
                 claims = await self._oidc_provider.validate_access_token(token)
             except jwt.InvalidTokenError:
                 return None
-            async with self._settings.get_db_session_maker()() as session:
-                db_user = await auth_queries.get_user(session, claims["sub"])
-                if db_user is None:
-                    db_user = await self._oidc_provider.provision_user(session, claims)
-            if not db_user.is_active:
-                logger.warning(f"User {db_user.username!r} is inactive, denying access")
+            user_account_manager = self._settings.get_user_account_manager()
+            user = await user_account_manager.get_user(claims["sub"])
+            if user is None:
+                user = await self._oidc_provider.provision_user(self._settings, claims)
+            if not user.is_active:
+                logger.warning(f"User {user.username!r} is inactive, denying access")
                 return None
             # When roles_claim is configured, scopes come from the token directly
-            scopes = self._oidc_provider.extract_scopes(claims) or db_user.scopes
+            scopes = self._oidc_provider.extract_scopes(claims) or user.scopes
             potto_user = PottoUser(
-                id=db_user.id,
-                username=db_user.username,
-                email=db_user.email,
-                is_active=db_user.is_active,
+                id=user.id,
+                username=user.username,
+                email=user.email,
+                is_active=user.is_active,
                 scopes=scopes,
             )
             return AuthCredentials(potto_user.scopes), potto_user
@@ -115,12 +113,11 @@ class OIDCAuthBackend(AuthenticationBackend):
         return None
 
     async def _get_user_from_db(self, user_id: str) -> PottoUser | None:
-        async with self._settings.get_db_session_maker()() as session:
-            db_user = await auth_queries.get_user(session, user_id)
-        if db_user is None:
+        user = await self._settings.get_user_account_manager().get_user(user_id)
+        if user is None:
             logger.debug(f"User {user_id!r} not found in database")
             return None
-        if not db_user.is_active:
-            logger.warning(f"User {db_user.username!r} is inactive, denying access")
+        if not user.is_active:
+            logger.warning(f"User {user.username!r} is inactive, denying access")
             return None
-        return db_user.to_potto()
+        return user

@@ -1,6 +1,5 @@
 from urllib.parse import urlencode
 
-import bcrypt
 from starlette.requests import Request
 from starlette.responses import (
     RedirectResponse,
@@ -10,7 +9,6 @@ from starlette_admin.auth import AdminUser, AuthProvider
 from starlette_admin.exceptions import LoginFailed
 
 from ...config import PottoSettings
-from ...db.queries import auth as auth_queries
 
 
 class LocalAdminAuthProvider(AuthProvider):
@@ -28,16 +26,12 @@ class LocalAdminAuthProvider(AuthProvider):
         request: Request,
         response: Response,
     ) -> Response:
-        async with self._settings.get_db_session_maker()() as session:
-            db_user = await auth_queries.get_user_by_username(session, username)
-        if (
-            db_user is None
-            or not db_user.is_active
-            or db_user.hashed_password is None
-            or not bcrypt.checkpw(password.encode(), db_user.hashed_password.encode())
-        ):
+        user = await self._settings.get_user_account_manager().authenticate(
+            username, password
+        )
+        if user is None:
             raise LoginFailed("Invalid credentials")
-        request.session["user_id"] = str(db_user.id)
+        request.session["user_id"] = str(user.id)
         return response
 
     async def is_authenticated(self, request: Request) -> bool:
@@ -108,16 +102,15 @@ async def _check_session(request: Request, settings: PottoSettings) -> bool:
     user_id = request.session.get("user_id")
     if not user_id:
         return False
-    async with settings.get_db_session_maker()() as session:
-        db_user = await auth_queries.get_user(session, user_id)
-    if db_user is None or not db_user.is_active:
+    user = await settings.get_user_account_manager().get_user(user_id)
+    if user is None or not user.is_active:
         return False
-    request.state.admin_db_user = db_user
+    request.state.admin_user = user
     return True
 
 
 def _get_admin_user(request: Request) -> AdminUser | None:
-    db_user = getattr(request.state, "admin_db_user", None)
-    if db_user is None:
+    user = getattr(request.state, "admin_user", None)
+    if user is None:
         return None
-    return AdminUser(username=db_user.username)
+    return AdminUser(username=user.username)

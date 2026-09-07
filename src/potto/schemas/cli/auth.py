@@ -1,6 +1,6 @@
 import pydantic
 
-from ...db.models import User
+from ..auth import PottoUser
 
 
 class UserListItem(pydantic.BaseModel):
@@ -9,11 +9,11 @@ class UserListItem(pydantic.BaseModel):
     scopes: list[str]
 
     @classmethod
-    def from_db_item(cls, user: User) -> "UserListItem":
-        return cls(**user.model_dump())
+    def from_potto(cls, user: PottoUser) -> "UserListItem":
+        return cls(id=user.id, username=user.username, scopes=user.scopes)
 
 
 class UserDetail(UserListItem):
     @classmethod
-    def from_db_item(cls, user: User) -> "UserDetail":
-        return cls(**user.model_dump())
+    def from_potto(cls, user: PottoUser) -> "UserDetail":
+        return cls(id=user.id, username=user.username, scopes=user.scopes)

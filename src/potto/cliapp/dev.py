@@ -20,10 +20,6 @@ from ..constants import (
     CollectionType,
     ProvidedDataType,
 )
-from ..operations import (
-    auth as auth_ops,
-    collections as collection_ops,
-)
 from ..schemas.collections import CollectionCreate
 from ..schemas.base import PottoProvider
 from ..schemas.cli import CollectionDetail
@@ -68,48 +64,45 @@ async def generate_feature_collection_from_file(
     if not await dataset_file.exists():
         dev_app.error_console.print("[red]Error:[/red] dataset file does not exist.")
         sys.exit(1)
-    async with settings.get_db_session_maker()() as session:
-        existing_admins, total_admins = await auth_ops.paginated_list_users(
-            session, include_total=True, admin_filter=True
+    user_account_manager = settings.get_user_account_manager()
+    existing_admins, total_admins = await user_account_manager.paginated_list_users(
+        include_total=True, admin_filter=True
+    )
+    if not total_admins:
+        dev_app.error_console.print(
+            "Cannot import collections without there being at least one user with 'admin' "
+            "scope to inherit them."
         )
-        if not total_admins:
-            dev_app.error_console.print(
-                "Cannot import collections without there being at least one user with 'admin' "
-                "scope to inherit them."
-            )
-            sys.exit(1)
-        collection_owner = existing_admins[0].to_potto()
-        provider_conf: dict[str, str | dict[str, str]] = {
-            "data_source_uri": str(await dataset_file.absolute()),
+        sys.exit(1)
+    collection_owner = existing_admins[0]
+    provider_conf: dict[str, str | dict[str, str]] = {
+        "data_source_uri": str(await dataset_file.absolute()),
+    }
+    if gdal_open_options_driver_name:
+        provider_conf["gdal_open_options"] = {
+            "driver_name": gdal_open_options_driver_name,
         }
-        if gdal_open_options_driver_name:
-            provider_conf["gdal_open_options"] = {
-                "driver_name": gdal_open_options_driver_name,
-            }
-        to_create = CollectionCreate(
-            resource_identifier=identifier or dataset_file.stem,
-            owner_id=collection_owner.id,
-            is_public=is_public,
-            collection_type=CollectionType.FEATURE_COLLECTION,
-            title=(identifier or dataset_file.stem).title(),
-            providers={
-                ProvidedDataType.FEATURE.value: PottoProvider(
-                    provider_name="pyogrio", config=provider_conf
-                ),
-            },
+    to_create = CollectionCreate(
+        resource_identifier=identifier or dataset_file.stem,
+        owner_id=collection_owner.id,
+        is_public=is_public,
+        collection_type=CollectionType.FEATURE_COLLECTION,
+        title=(identifier or dataset_file.stem).title(),
+        providers={
+            ProvidedDataType.FEATURE.value: PottoProvider(
+                provider_name="pyogrio", config=provider_conf
+            ),
+        },
+    )
+    try:
+        created = await settings.get_collection_manager().create_collection(
+            to_create,
+            collection_owner,
         )
-        try:
-            created = await collection_ops.create_collection(
-                session,
-                collection_owner,
-                settings.get_authorization_backend(),
-                to_create,
-                settings,
-            )
-        except potto_exceptions.PottoException as err:
-            dev_app.console.print(f"[red]Error:[/red] {err}")
-            sys.exit(1)
-        result = CollectionDetail.from_db_item(created)
+    except potto_exceptions.PottoException as err:
+        dev_app.console.print(f"[red]Error:[/red] {err}")
+        sys.exit(1)
+    result = CollectionDetail.from_potto(created)
     if format == "json":
         dev_app.console.print_json(result.model_dump_json(indent=2))
     else:

@@ -1,6 +1,5 @@
 import copy
 import logging
-from typing import cast
 
 from fastapi import (
     APIRouter,
@@ -15,7 +14,6 @@ from ....constants import (
     MediaType,
 )
 from ....exceptions import PottoException
-from ....operations import collections as collection_operations
 from ....schemas import (
     base as base_schemas,
     collections as collections_schemas,
@@ -29,7 +27,6 @@ from .. import (
     tags,
 )
 from ..dependencies import (
-    AuthorizationBackendDependency,
     CollectionIdPath,
     LocaleDependency,
     PaginationLimitDependency,
@@ -70,9 +67,7 @@ async def list_collections(
     - Private collections are visible to their owner and to any users that
       have the 'collection-{collection_identifier}:{editor|viewer}' scope
     """
-    collections = await potto.list_collections(
-        user=user, page_size=limit
-    )
+    collections = await potto.list_collections(user=user, page_size=limit)
     result = JsonCollectionList.from_potto(collections, request.url_for)
     response.headers.update(
         {"Link": ",".join((li.serialize_as_http_header() for li in result.links))}
@@ -107,9 +102,7 @@ async def get_collection_details(
     - Private collections are visible to their owner and to any users that
       have the 'collection-{collection_identifier}:{editor|viewer}' scope
     """
-    if (
-        collection := await potto.get_collection(collection_id, user=user)
-    ) is None:
+    if (collection := await potto.get_collection(collection_id, user=user)) is None:
         raise HTTPException(status_code=404, detail="Collection not found.")
     result = JsonCollection.from_potto(collection, request.url_for)
     response.headers.update(
@@ -135,11 +128,11 @@ async def get_collection_queryables(
     Get a list of properties that can be used to query a collection's contents.
     """
     if (
-            collection := await potto.get_collection(
-                collection_id,
-                user=user,
-                include_queryables=True,
-            )
+        collection := await potto.get_collection(
+            collection_id,
+            user=user,
+            include_queryables=True,
+        )
     ) is None:
         raise HTTPException(status_code=404, detail="Collection not found.")
     assert collection.queryables is not None
@@ -186,11 +179,11 @@ async def get_collection_schema(
     """Get the schema of a collection."""
 
     if (
-            collection := await potto.get_collection(
-                collection_id,
-                user=user,
-                include_schema=True,
-            )
+        collection := await potto.get_collection(
+            collection_id,
+            user=user,
+            include_schema=True,
+        )
     ) is None:
         raise HTTPException(
             status_code=404, detail=f"Collection {collection_id} not found"
@@ -236,14 +229,14 @@ async def create_collection(
     to_create: collections_schemas.CollectionCreate,
     settings: SettingsDependency,
     user: UserDependency,
-    authorization_backend: AuthorizationBackendDependency,
 ):
     """Create a new collection."""
-    async with settings.get_db_session_maker()() as session:
-        db_collection = await collection_operations.create_collection(
-            session, user, authorization_backend, to_create, settings
-        )
-    return JsonCollection.from_db_item(db_collection, request.url_for)
+    if user is None:
+        raise HTTPException(status_code=404, detail="An authenticated user is required")
+    collection = await settings.get_collection_manager().create_collection(
+        to_create, user
+    )
+    return JsonCollection.from_potto(collection, request.url_for)
 
 
 @router.delete(
@@ -255,21 +248,16 @@ async def create_collection(
 async def delete_collection(
     collection_id: CollectionIdPath,
     user: UserDependency,
-    authorization_backend: AuthorizationBackendDependency,
     settings: SettingsDependency,
 ):
     """Delete collection."""
     if user is None:
         raise HTTPException(status_code=404, detail="An authenticated user is required")
-    async with settings.get_db_session_maker()() as session:
-        collection = await collection_operations.get_collection_by_resource_identifier(
-            session, user, authorization_backend, collection_id
-        )
-        if collection is None:
-            raise HTTPException(status_code=404, detail="Collection not found")
-        await collection_operations.delete_collection(
-            session, user, authorization_backend, cast(int, collection.id)
-        )
+    collection_manager = settings.get_collection_manager()
+    collection = await collection_manager.get_collection(collection_id, user)
+    if collection is None:
+        raise HTTPException(status_code=404, detail="Collection not found")
+    await collection_manager.delete_collection(collection_id, user)
 
 
 @router.put(
@@ -284,7 +272,6 @@ async def grant_collection_access(
     user_id: UserIdPath,
     body: collections_schemas.CollectionAccessGrant,
     user: UserDependency,
-    authorization_backend: AuthorizationBackendDependency,
     settings: SettingsDependency,
 ):
     """Grant access to a private collection.
@@ -295,15 +282,16 @@ async def grant_collection_access(
     """
     if user is None:
         raise HTTPException(status_code=404, detail="An authenticated user is required")
-    async with settings.get_db_session_maker()() as session:
-        collection = await collection_operations.get_collection_by_resource_identifier(
-            session, user, authorization_backend, collection_id
-        )
-        if collection is None:
-            raise PottoException(f"Collection {collection_id!r} not found.")
-        await collection_operations.grant_collection_access(
-            session, user, authorization_backend, user_id, collection, body.role
-        )
+    collection_manager = settings.get_collection_manager()
+    collection = await collection_manager.get_collection(collection_id, user)
+    if collection is None:
+        raise PottoException(f"Collection {collection_id!r} not found.")
+    await collection_manager.grant_collection_access(
+        granting_user=user,
+        target_user_id=user_id,
+        collection=collection,
+        role=body.role,
+    )
 
 
 @router.delete(
@@ -317,7 +305,6 @@ async def revoke_collection_access(
     collection_id: CollectionIdPath,
     user_id: UserIdPath,
     user: UserDependency,
-    authorization_backend: AuthorizationBackendDependency,
     settings: SettingsDependency,
 ):
     """Revoke access to a collection.
@@ -327,12 +314,12 @@ async def revoke_collection_access(
     """
     if user is None:
         raise HTTPException(status_code=404, detail="An authenticated user is required")
-    async with settings.get_db_session_maker()() as session:
-        collection = await collection_operations.get_collection_by_resource_identifier(
-            session, user, authorization_backend, collection_id
-        )
-        if collection is None:
-            raise PottoException(f"Collection {collection_id!r} not found.")
-        await collection_operations.revoke_collection_access(
-            session, user, authorization_backend, user_id, collection
-        )
+    collection_manager = settings.get_collection_manager()
+    collection = await collection_manager.get_collection(collection_id, user)
+    if collection is None:
+        raise PottoException(f"Collection {collection_id!r} not found.")
+    await collection_manager.revoke_collection_access(
+        revoking_user=user,
+        target_user_id=user_id,
+        collection=collection,
+    )
