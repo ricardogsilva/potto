@@ -23,7 +23,6 @@ from ..config import (
 from .banner import BANNER
 from .cite import cite_app
 from .collections import collections_app
-from .db import db_app
 from .dev import dev_app
 from .metadata import metadata_app
 from .openapi import app as openapi_app
@@ -40,8 +39,6 @@ cite_app.console = _console
 cite_app.error_console = _error_console
 collections_app.console = _console
 collections_app.error_console = _error_console
-db_app.console = _console
-db_app.error_console = _error_console
 dev_app.console = _console
 dev_app.error_console = _error_console
 metadata_app.console = _console
@@ -52,12 +49,39 @@ user_app.console = _console
 user_app.error_console = _error_console
 
 potto_app.command(collections_app.meta, name="collection")
-potto_app.command(db_app.meta, name="db")
 potto_app.command(dev_app.meta, name="dev")
 potto_app.command(metadata_app.meta, name="metadata")
 potto_app.command(user_app.meta, name="user")
 potto_app.command(cite_app.meta, name="cite-testing")
 potto_app.command(openapi_app.meta, name="openapi")
+
+
+async def _register_manager_cli_groups(settings: PottoSettings) -> None:
+    """Register each configured manager's own CLI commands under its own group.
+
+    Constructing the managers here also validates their settings_model dicts
+    eagerly, so a misconfigured manager fails fast on any ``potto ...``
+    invocation rather than deep inside whatever command first happens to touch
+    it. Managers are deduped by potto_cli_group name since, in the default
+    all-postgis deployment, all three protocol getters return the same cached
+    PostgisManager instance.
+    """
+    cli_groups: dict[str, cyclopts.App] = {}
+    seen_group_names: set[str] = set()
+    for manager in (
+        settings.get_collection_manager(),
+        settings.get_server_metadata_manager(),
+        settings.get_user_account_manager(),
+    ):
+        if manager.potto_cli_group in seen_group_names:
+            continue
+        seen_group_names.add(manager.potto_cli_group)
+        if (group := await manager.get_cli_group()) is not None:
+            cli_groups[manager.potto_cli_group] = group
+    for name, group in cli_groups.items():
+        group.console = potto_app.console
+        group.error_console = potto_app.error_console
+        potto_app.command(group, name=name)
 
 
 @potto_app.meta.default
@@ -84,6 +108,7 @@ def launcher(
             level=logging.DEBUG if settings.debug else logging.INFO,
             handlers=[rich_log_handler],
         )
+    asyncio.run(_register_manager_cli_groups(settings))
     command, bound, ignored = potto_app.parse_args(tokens)
     additional_kwargs = {}
     if "settings" in ignored:

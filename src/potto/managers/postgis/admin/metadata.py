@@ -116,6 +116,9 @@ class ServerMetadataModelView(_PottoAdminModelView):
         settings = cast("PottoSettings", request.app.state.SETTINGS)
         return await settings.get_server_metadata_manager().get_server_metadata()
 
+    async def find_by_pks(self, request: Request, pks: list[Any]) -> list[Any]:
+        return [await self.find_by_pk(request, pk) for pk in pks]
+
     async def serialize_field_value(
         self, value: Any, field: BaseField, action: RequestAction, request: Request
     ) -> Any:

@@ -11,6 +11,7 @@ from ..config import (
     PottoSettings,
 )
 from ._shared import get_cli_system_user
+from ..useraccountmanager import UserFilter
 
 from ..schemas import (
     base as base_schemas,
@@ -78,7 +79,7 @@ async def bootstrap_for_cite_ogcapi_features(
         )
         raise SystemExit(1)
     admin_users, _ = await user_account_manager.paginated_list_users(
-        admin_filter=True, include_total=False
+        filter_=UserFilter(is_admin=True), include_total=False
     )
     if len(admin_users) == 0:
         cite_app.error_console.print(

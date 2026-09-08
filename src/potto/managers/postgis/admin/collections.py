@@ -184,6 +184,10 @@ class CollectionView(_PottoAdminModelView):
         object.__setattr__(collection, "viewers", viewers)
         return collection
 
+    async def find_by_pks(self, request: Request, pks: list[Any]) -> list[Any]:
+        collections = [await self.find_by_pk(request, pk) for pk in pks]
+        return [c for c in collections if c is not None]
+
     async def find_all(
         self,
         request: Request,

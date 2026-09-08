@@ -1,16 +1,13 @@
 import asyncio
 import inspect
-import logging
 import sys
 from math import ceil
-from pathlib import Path
 from typing import (
     Annotated,
     Literal,
 )
 
 import cyclopts
-import yaml
 from cyclopts.types import NonNegativeInt
 from rich.table import Table
 
@@ -24,17 +21,15 @@ from ..config import (
 )
 from ._shared import get_cli_system_user
 from ..exceptions import PottoException
-from ..managers.postgis import operations as postgis_operations
-from ..managers.postgis.db.queries import collections as collection_queries
 from ..schemas import (
     base as base_schemas,
     cli as cli_schemas,
 )
 from ..schemas.collections import CollectionCreate
+from ..useraccountmanager import UserFilter
 
 
 collections_app = cyclopts.App()
-logger = logging.getLogger(__name__)
 
 
 @collections_app.meta.default
@@ -57,80 +52,6 @@ def launcher(
             return asyncio.run(
                 command(*bound.args, **bound.kwargs, **additional_kwargs)
             )
-
-
-@collections_app.command(name="import-from-pygeoapi")
-async def import_collections_from_pygeoapi(
-    pygeoapi_configuration: Path,
-    resource: list[str] | None = None,
-    overwrite: bool = False,
-    *,
-    settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
-) -> None:
-    """Import collections from pygeoapi."""
-    if not pygeoapi_configuration.is_file():
-        collections_app.error_console.print(
-            "Error: pygeoapi configuration file not found."
-        )
-        sys.exit(1)
-
-    raw_config = await asyncio.to_thread(Path(pygeoapi_configuration).read_text)
-    pygeoapi_config = await asyncio.to_thread(yaml.safe_load, raw_config)
-
-    num_imported = 0
-    # This command imports directly from a pygeoapi configuration file into the
-    # default postgis backend's own storage - it is deliberately postgis-specific
-    # tooling (like `potto db upgrade`), not a generic CollectionManagerProtocol
-    # operation, so it reaches into the private postgis operations module directly.
-    async with settings.get_db_session_maker()() as session:
-        existing_admins, total_admins = await postgis_operations.paginated_list_users(
-            session, include_total=True, admin_filter=True
-        )
-        if not total_admins:
-            collections_app.error_console.print(
-                "Cannot import collections without there being at least one user with 'admin' "
-                "scope to inherit them."
-            )
-            sys.exit(1)
-        collection_owner = existing_admins[0]
-        existing_collections = await collection_queries.collect_all_user_collections(
-            session
-        )
-        relevant_collections = {
-            id_: res
-            for id_, res in pygeoapi_config.get("resources", {}).items()
-            if res.get("type") == "collection"
-            and (resource is None or id_ in resource)
-            and (
-                overwrite
-                or id_ not in [c.resource_identifier for c in existing_collections]
-            )
-        }
-        for idx, (identifier, relevant_collection) in enumerate(
-            relevant_collections.items()
-        ):
-            logger.debug(
-                f"[{idx + 1}/{len(relevant_collections)}]Processing "
-                f"collection {identifier!r}..."
-            )
-            try:
-                await postgis_operations.import_pygeoapi_collection(
-                    session,
-                    collection_owner,
-                    settings.get_authorization_backend(),
-                    identifier,
-                    relevant_collection,
-                    settings,
-                    overwrite=overwrite,
-                )
-                num_imported += 1
-            except PottoException as err:
-                collections_app.error_console.print(
-                    f"Could not import collection {identifier!r} - {err}"
-                )
-    collections_app.console.print(
-        f"Done! Imported [{num_imported}/{len(relevant_collections)}] collections"
-    )
 
 
 @collections_app.command(name="list")
@@ -226,7 +147,7 @@ async def create_feature_collection(
     """Create a new feature collection."""
     user_account_manager = settings.get_user_account_manager()
     existing_admins, total_admins = await user_account_manager.paginated_list_users(
-        include_total=True, admin_filter=True
+        include_total=True, filter_=UserFilter(is_admin=True)
     )
     if not total_admins:
         collections_app.error_console.print(

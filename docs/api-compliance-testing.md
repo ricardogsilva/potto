@@ -220,7 +220,9 @@ docker compose --env-file docker/local.env -f docker/compose.dev.yaml --profile 
     uv run potto cite-testing bootstrap-ogcapi-features-1
 
     # launch potto with a suitable configuration
-    POTTO__DATABASE_DSN="postgresql+psycopg://potto:pottopass@localhost:55432/potto" \
+    POTTO__COLLECTION_MANAGER__SETTINGS_MODEL__DATABASE_DSN="postgresql+psycopg://potto:pottopass@localhost:55432/potto" \
+        POTTO__SERVER_METADATA_MANAGER__SETTINGS_MODEL__DATABASE_DSN="postgresql+psycopg://potto:pottopass@localhost:55432/potto" \
+        POTTO__USER_ACCOUNT_MANAGER__SETTINGS_MODEL__DATABASE_DSN="postgresql+psycopg://potto:pottopass@localhost:55432/potto" \
         POTTO__BIND_HOST=0.0.0.0 \
         POTTO__PUBLIC_URL=http://host.docker.internal:3001 \
         POTTO__USE_OAS30_FIXES=true \

@@ -10,6 +10,7 @@ from typing import (
 )
 
 if TYPE_CHECKING:
+    import cyclopts
     import shapely
     from starlette_admin.contrib.sqlmodel import ModelView
 
@@ -21,12 +22,6 @@ if TYPE_CHECKING:
         CollectionUpdate,
     )
     from .constants import CollectionType
-
-
-class PottoCollectionManagerError(Exception): ...
-
-
-class CollectionManagerCapabilityNotSupported(PottoCollectionManagerError): ...
 
 
 @dataclasses.dataclass(frozen=True)
@@ -53,6 +48,13 @@ class CollectionManagerProtocol(Protocol):
 
     async def set_up(self) -> bool:
         """Ensure the manager is ready to be used by potto."""
+
+    @property
+    def potto_cli_group(self) -> str:
+        """The name this manager's CLI commands are grouped under (``potto <name> ...``)."""
+
+    async def get_cli_group(self) -> "cyclopts.App | None":
+        """Return a cyclopts app of this manager's own CLI commands, or None if it has none."""
 
     async def get_collection_admin_view(self) -> "ModelView | None":
         """Return a starlette_admin view suitable for use in potto's admin ui."""
@@ -86,7 +88,7 @@ class CollectionManagerProtocol(Protocol):
         """Create a new collection.
 
         When the manager does not support creating collections this should raise
-        ``potto.collectionmanager.CollectionManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
     async def update_collection(
@@ -98,7 +100,7 @@ class CollectionManagerProtocol(Protocol):
         """Update an existing collection.
 
         When the manager does not support updating collections this should raise
-        ``potto.collectionmanager.CollectionManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
     async def delete_collection(
@@ -109,7 +111,7 @@ class CollectionManagerProtocol(Protocol):
         """Delete a collection.
 
         When the manager does not support deleting collections this should raise
-        ``potto.collectionmanager.CollectionManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
     async def grant_collection_access(
@@ -123,7 +125,7 @@ class CollectionManagerProtocol(Protocol):
         """Grant a role on the input collection to the target user.
 
         When the manager does not support granting collection access this should raise
-        ``potto.collectionmanager.CollectionManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
     async def revoke_collection_access(
@@ -136,7 +138,7 @@ class CollectionManagerProtocol(Protocol):
         """Revoke a user's access to a collection.
 
         When the manager does not support revoking collection access this should raise
-        ``potto.collectionmanager.CollectionManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
 

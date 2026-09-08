@@ -9,16 +9,17 @@ from typing import (
 )
 
 if TYPE_CHECKING:
+    import cyclopts
     from starlette_admin.contrib.sqlmodel import ModelView
 
     from .config import PottoSettings
     from .schemas.auth import PottoUser, UserCreate, UserCreateFromOidc, UserUpdate
 
 
-class PottoUserAccountManagerError(Exception): ...
-
-
-class UserAccountManagerCapabilityNotSupported(PottoUserAccountManagerError): ...
+@dataclasses.dataclass(frozen=True)
+class UserFilter:
+    username: str | None = None
+    is_admin: bool | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -36,6 +37,13 @@ class UserAccountProtocol(Protocol):
 
     async def set_up(self) -> bool:
         """Ensure the manager is ready to be used by potto."""
+
+    @property
+    def potto_cli_group(self) -> str:
+        """The name this manager's CLI commands are grouped under (``potto <name> ...``)."""
+
+    async def get_cli_group(self) -> "cyclopts.App | None":
+        """Return a cyclopts app of this manager's own CLI commands, or None if it has none."""
 
     async def get_user_account_admin_view(self) -> "ModelView | None":
         """Return a starlette_admin view suitable for use in potto's admin ui."""
@@ -55,7 +63,7 @@ class UserAccountProtocol(Protocol):
         page: int = 1,
         page_size: int = 20,
         include_total: bool = False,
-        admin_filter: bool = False,
+        filter_: UserFilter | None = None,
     ) -> tuple[list["PottoUser"], int | None]:
         """Retrieve a list of users."""
 
@@ -67,7 +75,7 @@ class UserAccountProtocol(Protocol):
         """Create a new local user.
 
         When the manager does not support creating users this should raise
-        ``potto.useraccountmanager.UserAccountManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
     async def update_user(
@@ -79,7 +87,7 @@ class UserAccountProtocol(Protocol):
         """Update an existing user.
 
         When the manager does not support updating users this should raise
-        ``potto.useraccountmanager.UserAccountManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
     async def delete_user(
@@ -90,7 +98,7 @@ class UserAccountProtocol(Protocol):
         """Delete a user.
 
         When the manager does not support deleting users this should raise
-        ``potto.useraccountmanager.UserAccountManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
     async def provision_oidc_user(self, to_create: "UserCreateFromOidc") -> "PottoUser":

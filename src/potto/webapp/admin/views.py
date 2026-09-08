@@ -32,5 +32,5 @@ class _PottoAdminModelView(ModelView):
             raise FormValidationError({"title": str(exc)})
         if isinstance(exc, PottoCannotCreateUserException):
             raise FormValidationError({"username": str(exc)})
-        logger.exception("An error occurred", exc)
+        logger.exception(f"An error occurred: {exc}")
         return super().handle_exception(exc)

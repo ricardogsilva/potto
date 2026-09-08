@@ -18,6 +18,7 @@ async def collect_all_users(
 async def paginated_list_users(
     session: AsyncSession,
     *,
+    username_filter: str | None = None,
     admin_filter: bool = False,
     page: int = 1,
     page_size: int = 20,
@@ -25,6 +26,8 @@ async def paginated_list_users(
 ) -> tuple[list[User], int | None]:
     statement = select(User).order_by(User.username)
     offset = page_size * (page - 1)
+    if username_filter:
+        statement = statement.where(User.username.ilike(f"%{username_filter}%"))  # ty: ignore[unresolved-attribute]
     if admin_filter:
         statement = statement.where(User.scopes.contains([PottoScope.ADMIN.value]))  # ty: ignore[unresolved-attribute]
     items = (await session.exec(statement.offset(offset).limit(page_size))).all()

@@ -9,17 +9,12 @@ from typing import (
 )
 
 if TYPE_CHECKING:
+    import cyclopts
     from starlette_admin.contrib.sqlmodel import ModelView
 
     from .config import PottoSettings
     from .schemas.auth import PottoUser
     from .schemas.metadata import ServerMetadata, ServerMetadataUpdate
-
-
-class PottoServerMetadataManagerError(Exception): ...
-
-
-class ServerMetadataManagerCapabilityNotSupported(PottoServerMetadataManagerError): ...
 
 
 @dataclasses.dataclass(frozen=True)
@@ -35,6 +30,13 @@ class ServerMetadataProtocol(Protocol):
 
     async def set_up(self) -> bool:
         """Ensure the manager is ready to be used by potto."""
+
+    @property
+    def potto_cli_group(self) -> str:
+        """The name this manager's CLI commands are grouped under (``potto <name> ...``)."""
+
+    async def get_cli_group(self) -> "cyclopts.App | None":
+        """Return a cyclopts app of this manager's own CLI commands, or None if it has none."""
 
     async def get_server_metadata_admin_view(self) -> "ModelView | None":
         """Return a starlette_admin view suitable for use in potto's admin ui."""
@@ -55,7 +57,7 @@ class ServerMetadataProtocol(Protocol):
         """Update the server's metadata.
 
         When the manager does not support updating metadata this should raise
-        ``potto.servermetadatamanager.ServerMetadataManagerCapabilityNotSupported``.
+        ``potto.exceptions.CapabilityNotSupported``.
         """
 
 

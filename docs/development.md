@@ -146,7 +146,7 @@ remotes:
     docker compose \
         --env-file docker/local.env \
         -f docker/compose.dev.yaml \
-        exec potto uv run potto db upgrade
+        exec potto uv run potto postgis-manager upgrade
     ```
 
     !!! note

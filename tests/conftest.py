@@ -10,6 +10,7 @@ from starlette.routing import Mount
 from playwright.sync_api import expect
 from potto import config
 from potto.constants import CollectionType
+from potto.managers.postgis.config import PostgisManagerConfiguration
 from potto.managers.postgis.db.alembic_utils import build_alembic_config
 from potto.schemas import (
     auth as auth_schemas,
@@ -30,22 +31,35 @@ _TRACING_VALUES = ("on", "retain-on-failure")
 @pytest.fixture
 def settings() -> config.PottoSettings:
     original_settings = config.get_settings()
-    original_settings.database_dsn = original_settings.test_database_dsn
+    # The postgis manager owns its own settings_model dict independently of
+    # PottoSettings, so it needs pointing at the test DB too.
+    test_dsn = original_settings.test_database_dsn.unicode_string()
+    for manager_settings in (
+        original_settings.collection_manager,
+        original_settings.server_metadata_manager,
+        original_settings.user_account_manager,
+    ):
+        manager_settings.settings_model["database_dsn"] = test_dsn
     return original_settings
 
 
 @pytest.fixture
-def sync_db_engine(settings: config.PottoSettings):
-    yield settings.get_sync_db_engine()
+def postgis_config(settings: config.PottoSettings) -> PostgisManagerConfiguration:
+    return PostgisManagerConfiguration(database_dsn=settings.test_database_dsn)
 
 
 @pytest.fixture
-def db_session_maker(settings: config.PottoSettings):
-    yield settings.get_db_session_maker()
+def sync_db_engine(postgis_config: PostgisManagerConfiguration):
+    yield postgis_config.get_sync_db_engine()
 
 
 @pytest.fixture
-def db(sync_db_engine, settings):
+def db_session_maker(postgis_config: PostgisManagerConfiguration):
+    yield postgis_config.get_db_session_maker()
+
+
+@pytest.fixture
+def db(sync_db_engine, postgis_config: PostgisManagerConfiguration):
     """Provides a clean database.
 
     Also stamps the alembic version table at ``head`` - the tables are
@@ -55,7 +69,7 @@ def db(sync_db_engine, settings):
     """
     sqlmodel.SQLModel.metadata.create_all(sync_db_engine)
     alembic.command.stamp(
-        build_alembic_config(settings.database_dsn.unicode_string()), "head"
+        build_alembic_config(postgis_config.database_dsn.unicode_string()), "head"
     )
     yield
     sqlmodel.SQLModel.metadata.drop_all(sync_db_engine)

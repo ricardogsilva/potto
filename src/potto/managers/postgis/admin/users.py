@@ -14,6 +14,7 @@ from ....schemas.auth import (
     UserCreate,
     UserUpdate,
 )
+from ....useraccountmanager import UserFilter
 from ....webapp.admin.views import _PottoAdminModelView
 from ..db.models import User
 
@@ -53,6 +54,53 @@ class UserView(_PottoAdminModelView):
     exclude_fields_from_list = ("password",)
     exclude_fields_from_create = ("id",)
     exclude_fields_from_edit = ("id",)
+
+    async def find_by_pk(self, request: Request, pk: Any) -> Any:
+        settings = cast("PottoSettings", request.app.state.SETTINGS)
+        return await settings.get_user_account_manager().get_user(pk)
+
+    async def find_by_pks(self, request: Request, pks: list[Any]) -> list[Any]:
+        users = [await self.find_by_pk(request, pk) for pk in pks]
+        return [u for u in users if u is not None]
+
+    async def find_all(
+        self,
+        request: Request,
+        skip: int = 0,
+        limit: int = 100,
+        where: Any = None,
+        order_by: list[str] | None = None,
+    ) -> list[Any]:
+        settings = cast("PottoSettings", request.app.state.SETTINGS)
+        page = (skip // limit) + 1
+        users, _ = await settings.get_user_account_manager().paginated_list_users(
+            page=page,
+            page_size=limit,
+            filter_=UserFilter(username=where if isinstance(where, str) else None),
+        )
+        return users
+
+    async def count(self, request: Request, where: Any = None) -> int:
+        settings = cast("PottoSettings", request.app.state.SETTINGS)
+        _, total = await settings.get_user_account_manager().paginated_list_users(
+            page_size=1,
+            include_total=True,
+            filter_=UserFilter(username=where if isinstance(where, str) else None),
+        )
+        return cast(int, total)
+
+    async def delete(self, request: Request, pks: list[Any]) -> int | None:
+        user = cast(PottoUser, request.user)
+        settings = cast("PottoSettings", request.app.state.SETTINGS)
+        user_account_manager = settings.get_user_account_manager()
+        num_deleted = 0
+        for pk in pks:
+            try:
+                await user_account_manager.delete_user(pk, requesting_user=user)
+            except PottoException as err:
+                return self.handle_exception(err)
+            num_deleted += 1
+        return num_deleted
 
     async def create(self, request: Request, data: dict[str, Any]) -> Any:
         user = cast(PottoUser, request.user)

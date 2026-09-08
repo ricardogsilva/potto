@@ -16,15 +16,11 @@ from ...authz.protocols import AuthorizationBackendProtocol
 from ...collectionmanager import (
     CollectionFilter,
     CollectionManagerCapabilities,
-    CollectionManagerProtocol,
 )
-from ...servermetadatamanager import (
-    ServerMetadataManagerCapabilities,
-    ServerMetadataProtocol,
-)
+from ...servermetadatamanager import ServerMetadataManagerCapabilities
 from ...useraccountmanager import (
     UserAccountManagerCapabilities,
-    UserAccountProtocol,
+    UserFilter,
 )
 from ...schemas.auth import (
     PottoUser,
@@ -54,15 +50,16 @@ from .db.models import (
 )
 
 if TYPE_CHECKING:
+    import cyclopts
+
     from ...config import PottoSettings
 
 
 class PostgisManager:
-    """A potto collection/server-metadata/user-account manager backed by a PostGIS DB.
+    """A potto manager for collections, server-metadata and user-accounts backed by a PostGIS DB.
 
     A single instance implements ``CollectionManagerProtocol``, ``ServerMetadataProtocol``
-    and ``UserAccountProtocol`` at once, since potto's default deployment backs all three
-    with the same database.
+    and ``UserAccountProtocol`` at once.
     """
 
     authorization_backend: AuthorizationBackendProtocol
@@ -70,24 +67,28 @@ class PostgisManager:
     settings: "PottoSettings"
 
     def __init__(self, config: PostgisManagerConfiguration, settings: "PottoSettings"):
-        assert config.database_dsn is not None, (
-            "database_dsn must be resolved (see _get_or_create_manager) before "
-            "constructing a PostgisManager"
-        )
         self.authorization_backend = settings.get_authorization_backend()
         self.config = config
         self.settings = settings
 
     async def check_health(self) -> Literal["ok", "not-ready", "error"]:
         """Check whether the manager is healthy."""
-        # database_dsn is guaranteed non-None here - see the assert in __init__.
         return await _check_health(
-            build_alembic_config(self.config.database_dsn.unicode_string())  # ty: ignore[unresolved-attribute]
+            build_alembic_config(self.config.database_dsn.unicode_string())
         )
 
     async def set_up(self) -> bool:
         """Ensure the manager is ready to be used by potto."""
         raise NotImplementedError
+
+    @property
+    def potto_cli_group(self) -> str:
+        return "postgis-manager"
+
+    async def get_cli_group(self) -> "cyclopts.App | None":
+        from .cli import build_cli_group
+
+        return build_cli_group(self)
 
     # --- collections ---------------------------------------------------------
 
@@ -283,12 +284,13 @@ class PostgisManager:
         page: int = 1,
         page_size: int = 20,
         include_total: bool = False,
-        admin_filter: bool = False,
+        filter_: UserFilter | None = None,
     ) -> tuple[list[PottoUser], int | None]:
         async with self.config.get_db_session_maker()() as db_session:
             return await operations.paginated_list_users(
                 db_session,
-                admin_filter=admin_filter,
+                username_filter=filter_.username if filter_ else None,
+                admin_filter=bool(filter_ and filter_.is_admin),
                 page=page,
                 page_size=page_size,
                 include_total=include_total,
@@ -366,38 +368,18 @@ class PostgisManager:
 _manager_cache: dict[str, PostgisManager] = {}
 
 
-def _get_or_create_manager(
+def get_postgis_manager(
     raw_config: dict[str, Any],
     settings: "PottoSettings",
 ) -> PostgisManager:
+    # PostgisManager implements all three ...Protocol types, so this one factory
+    # satisfies CollectionManagerFactoryProtocol/ServerMetadataManagerFactoryProtocol/
+    # UserAccountManagerFactoryProtocol at once - no separate wrapper per protocol needed.
     config = PostgisManagerConfiguration.model_validate(raw_config)
-    if config.database_dsn is None:
-        config.database_dsn = settings.database_dsn
     key = config.database_dsn.unicode_string()
     if key not in _manager_cache:
         _manager_cache[key] = PostgisManager(config, settings)
     return _manager_cache[key]
-
-
-def get_postgis_collection_manager(
-    raw_config: dict[str, Any],
-    settings: "PottoSettings",
-) -> CollectionManagerProtocol:
-    return _get_or_create_manager(raw_config, settings)
-
-
-def get_postgis_server_metadata_manager(
-    raw_config: dict[str, Any],
-    settings: "PottoSettings",
-) -> ServerMetadataProtocol:
-    return _get_or_create_manager(raw_config, settings)
-
-
-def get_postgis_user_account_manager(
-    raw_config: dict[str, Any],
-    settings: "PottoSettings",
-) -> UserAccountProtocol:
-    return _get_or_create_manager(raw_config, settings)
 
 
 def _get_current_and_head_revisions(

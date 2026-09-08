@@ -17,6 +17,7 @@ import jwt
 import pytest
 
 from potto import config
+from potto.managers.postgis.config import PostgisManagerConfiguration
 import sqlmodel
 
 _LIVE_SERVER_USERNAME = "e2e-admin"
@@ -85,14 +86,20 @@ def live_server(request):
         return
 
     live_settings = config.get_settings()
-    live_settings.database_dsn = live_settings.test_database_dsn
-    sync_engine = live_settings.get_sync_db_engine()
+    test_dsn = live_settings.test_database_dsn.unicode_string()
+    postgis_config = PostgisManagerConfiguration(database_dsn=test_dsn)
+    sync_engine = postgis_config.get_sync_db_engine()
     sqlmodel.SQLModel.metadata.create_all(sync_engine)
 
     port = request.config.getoption("--live-server-port")
     base_url = f"http://127.0.0.1:{port}"
     env = os.environ | {
-        "POTTO__DATABASE_DSN": live_settings.database_dsn.unicode_string(),
+        # The postgis manager owns its own settings_model independently of
+        # PottoSettings, so the spawned server needs pointing at the test DB
+        # for each manager individually.
+        "POTTO__COLLECTION_MANAGER__SETTINGS_MODEL__DATABASE_DSN": test_dsn,
+        "POTTO__SERVER_METADATA_MANAGER__SETTINGS_MODEL__DATABASE_DSN": test_dsn,
+        "POTTO__USER_ACCOUNT_MANAGER__SETTINGS_MODEL__DATABASE_DSN": test_dsn,
         "POTTO__BIND_HOST": "127.0.0.1",
         "POTTO__BIND_PORT": str(port),
         "POTTO__PUBLIC_URL": base_url,

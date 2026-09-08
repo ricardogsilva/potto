@@ -606,6 +606,7 @@ async def delete_user(
 async def paginated_list_users(
     session: AsyncSession,
     *,
+    username_filter: str | None = None,
     admin_filter: bool = False,
     page: int = 1,
     page_size: int = 20,
@@ -617,6 +618,7 @@ async def paginated_list_users(
         page=page,
         page_size=page_size,
         include_total=include_total,
+        username_filter=username_filter,
         admin_filter=admin_filter,
     )
     return [u.to_potto() for u in users], count
