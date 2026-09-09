@@ -20,7 +20,7 @@ from potto.schemas import (
 from potto.webapp.main import create_app_from_settings
 from potto.webapp.api import dependencies
 
-pytest_plugins = ("live_server",)
+pytest_plugins = ("live_server", "manager_contract")
 
 # This module deals with playwright tracing options manually because some
 # tests need the `authenticated_context` fixture, which creates a new

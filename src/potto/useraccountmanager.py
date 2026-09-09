@@ -35,9 +35,6 @@ class UserAccountProtocol(Protocol):
     async def check_health(self) -> Literal["ok", "not-ready", "error"]:
         """Check whether the manager is healthy."""
 
-    async def set_up(self) -> bool:
-        """Ensure the manager is ready to be used by potto."""
-
     @property
     def potto_cli_group(self) -> str:
         """The name this manager's CLI commands are grouped under (``potto <name> ...``)."""

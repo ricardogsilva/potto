@@ -77,10 +77,6 @@ class PostgisManager:
             build_alembic_config(self.config.database_dsn.unicode_string())
         )
 
-    async def set_up(self) -> bool:
-        """Ensure the manager is ready to be used by potto."""
-        raise NotImplementedError
-
     @property
     def potto_cli_group(self) -> str:
         return "postgis-manager"

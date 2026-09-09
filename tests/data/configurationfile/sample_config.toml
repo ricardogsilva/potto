@@ -1,0 +1,107 @@
+[[user_account]]
+id = "admin-1"
+username = "admin"
+email = "admin@example.com"
+is_active = true
+scopes = ["admin"]
+hashed_password = "$2b$12$t9LVm5oCBPethlxDqW07pOlV6r5l7P6r/WvuorNs3iQ2/OGZIhk/."
+
+[[user_account]]
+id = "user-1"
+username = "alice"
+email = "alice@example.com"
+is_active = true
+scopes = []
+hashed_password = "$2b$12$PWCD.uWMx2lBaQuP.J.IuOhKZuMP4Dan8FBbS2sDr4B.IqhhOoJp2"
+
+[[user_account]]
+id = "user-2"
+username = "bob"
+email = "bob@example.com"
+is_active = true
+scopes = ["collection-private-collection:viewer"]
+
+[[user_account]]
+id = "user-3"
+username = "carol"
+email = "carol@example.com"
+is_active = false
+scopes = []
+hashed_password = "$2b$12$PYRQu6yKIkUx5dhhMVNh9OXJIr1wy4zRMtjM75qjJB/pcH3pIj4Cm"
+
+[[user_account]]
+id = "user-4"
+username = "dave"
+email = "dave@example.com"
+is_active = true
+scopes = ["collection-private-collection:editor"]
+
+[[user_account]]
+id = "user-5"
+username = "erin"
+email = "erin@example.com"
+is_active = true
+scopes = []
+
+[[collection]]
+identifier = "public-collection"
+type_ = "feature"
+title = "Public collection"
+owner_id = "user-1"
+is_public = true
+crs = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
+created_at = 2024-01-01T00:00:00Z
+updated_at = 2024-01-01T00:00:00Z
+
+[[collection]]
+identifier = "private-collection"
+type_ = "feature"
+title = "Private collection"
+owner_id = "user-1"
+is_public = false
+crs = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
+created_at = 2024-01-02T00:00:00Z
+updated_at = 2024-01-02T00:00:00Z
+
+[[collection]]
+identifier = "geo-collection"
+type_ = "feature"
+title = "Geo collection"
+owner_id = "admin-1"
+is_public = true
+crs = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
+created_at = 2024-01-03T00:00:00Z
+updated_at = 2024-01-03T00:00:00Z
+spatial_extent = "POLYGON ((-10 40, -10 50, 5 50, 5 40, -10 40))"
+
+[collection.providers.feature]
+provider_name = "collection-config"
+config = { datetime_field = "datetime", raw_features = [] }
+
+[[collection]]
+identifier = "distant-collection"
+type_ = "feature"
+title = "Distant collection"
+owner_id = "admin-1"
+is_public = true
+crs = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
+created_at = 2024-01-04T00:00:00Z
+updated_at = 2024-01-04T00:00:00Z
+spatial_extent = "POLYGON ((100 -40, 100 -30, 120 -30, 120 -40, 100 -40))"
+
+[server_metadata]
+title = "Sample potto server"
+description = "A server backed by a TOML configuration file."
+keywords = ["geo", "data"]
+
+[server_metadata.license]
+name = "CC-BY-4.0"
+url = "https://creativecommons.org/licenses/by/4.0/"
+
+[server_metadata.data_provider]
+name = "Geobeyond"
+url = "https://geobeyond.it"
+
+[server_metadata.point_of_contact]
+name = "Jane Doe"
+email = "jane@example.com"
