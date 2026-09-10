@@ -54,15 +54,12 @@ class CollectionView(_PottoAdminModelView):
     names, since this view only ever works with schema instances.
     """
 
-    # The schema's natural key is the resource identifier, not the ORM's numeric
-    # "id" column. Setting pk_attr as a class attribute isn't enough: the
-    # SQLAlchemy contrib ModelView's __init__ always calls _setup_primary_key(),
-    # which unconditionally derives pk_attr/pk_field from the bound ORM model's
-    # actual primary key column, overwriting it - so that method is overridden
-    # below instead.
-    def _setup_primary_key(self) -> None:
-        self.pk_field = next(f for f in self.fields if f.name == "identifier")
-        self.pk_attr = "identifier"
+    # The schema's natural key is the resource identifier, not an ORM row id.
+    pk_attr = "identifier"
+    identity = "collection_item"
+    icon = "fa fa-database"
+    label = "Collections"
+    name = "Collection"
 
     fields = (
         StringField("identifier", label="Resource identifier"),

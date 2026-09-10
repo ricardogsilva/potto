@@ -12,7 +12,7 @@ from typing import (
 if TYPE_CHECKING:
     import cyclopts
     import shapely
-    from starlette_admin.contrib.sqlmodel import ModelView
+    from starlette_admin.views import BaseModelView
 
     from .config import PottoSettings
     from .schemas.auth import PottoUser
@@ -53,7 +53,7 @@ class CollectionManagerProtocol(Protocol):
     async def get_cli_group(self) -> "cyclopts.App | None":
         """Return a cyclopts app of this manager's own CLI commands, or None if it has none."""
 
-    async def get_collection_admin_view(self) -> "ModelView | None":
+    async def get_collection_admin_view(self) -> "BaseModelView | None":
         """Return a starlette_admin view suitable for use in potto's admin ui."""
 
     async def get_collection_capabilities(self) -> CollectionManagerCapabilities:

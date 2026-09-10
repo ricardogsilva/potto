@@ -27,6 +27,7 @@ from ..schemas import (
 )
 from ..schemas.collections import CollectionCreate
 from ..useraccountmanager import UserFilter
+from ..util import run_sync
 
 
 collections_app = cyclopts.App()
@@ -137,7 +138,6 @@ async def get_collection(
         collections_app.console.print(detail_table)
 
 
-@collections_app.command(name="create-feature")
 async def create_feature_collection(
     *,
     collection: cli_schemas.SimplifiedFeatureCollectionCreate,
@@ -203,7 +203,6 @@ async def create_feature_collection(
         collections_app.console.print(detail_table)
 
 
-@collections_app.command(name="delete")
 async def delete_collections(
     *collection_identifier: str,
     settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
@@ -227,7 +226,6 @@ async def delete_collections(
     sys.exit(0 if not found_error else 1)
 
 
-@collections_app.command(name="grant-access")
 async def grant_collection_access(
     collection_identifier: str,
     user_id: str,
@@ -255,7 +253,6 @@ async def grant_collection_access(
     )
 
 
-@collections_app.command(name="revoke-access")
 async def revoke_collection_access(
     collection_identifier: str,
     user_id: str,
@@ -279,3 +276,18 @@ async def revoke_collection_access(
     collections_app.console.print(
         f"Revoked access on {collection_identifier!r} from user {user_id!r}."
     )
+
+
+# See the equivalent comment in cliapp/metadata.py: this must run at import time (before
+# argv is parsed) for `--help` to reflect it, since cyclopts resolves `--help` without ever
+# invoking the meta.default launcher.
+_collection_manager = get_settings().get_collection_manager()
+_collection_capabilities = run_sync(_collection_manager.get_collection_capabilities())
+if _collection_capabilities.supports_creation:
+    collections_app.command(create_feature_collection, name="create-feature")
+if _collection_capabilities.supports_deletion:
+    collections_app.command(delete_collections, name="delete")
+if _collection_capabilities.supports_granting_access:
+    collections_app.command(grant_collection_access, name="grant-access")
+if _collection_capabilities.supports_revoking_access:
+    collections_app.command(revoke_collection_access, name="revoke-access")

@@ -86,7 +86,10 @@ def live_server(request):
         return
 
     live_settings = config.get_settings()
-    test_dsn = live_settings.test_database_dsn.unicode_string()
+    postgis_settings = PostgisManagerConfiguration.model_validate(
+        live_settings.collection_manager.settings_model
+    )
+    test_dsn = postgis_settings.test_database_dsn.unicode_string()
     postgis_config = PostgisManagerConfiguration(database_dsn=test_dsn)
     sync_engine = postgis_config.get_sync_db_engine()
     sqlmodel.SQLModel.metadata.create_all(sync_engine)

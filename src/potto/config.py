@@ -5,7 +5,6 @@ from typing import Any
 import jinja2
 import pydantic
 import pydantic_settings
-from pydantic.networks import PostgresDsn
 from pygeoapi import __version__ as pygeoapi_version
 from starlette_babel import get_translator
 from starlette_babel.contrib.jinja import configure_jinja_env
@@ -57,11 +56,6 @@ class CollectionManagerSettings(pydantic.BaseModel):
     manager_factory: pydantic.ImportString[CollectionManagerFactoryProtocol] = (
         get_postgis_manager
     )
-    # A plain dict, not a validated pydantic model - it's only ever validated
-    # inside whatever manager_factory actually consumes it (e.g. get_postgis_manager
-    # calls PostgisManagerConfiguration.model_validate(...)). This is what lets
-    # pydantic-settings' nested env vars (POTTO__COLLECTION_MANAGER__SETTINGS_MODEL__*)
-    # merge cleanly regardless of which backend's config shape they're targeting.
     settings_model: dict[str, Any] = pydantic.Field(
         default_factory=lambda: PostgisManagerConfiguration().model_dump()
     )
@@ -94,18 +88,8 @@ class PottoSettings(pydantic_settings.BaseSettings):
 
     bind_host: str = "127.0.0.1"
     bind_port: int = 3001
-    retriever_collections: str = "potto.retrievers.retrieve_collections"
-    retriever_server_metadata: str = "potto.retrievers.retrieve_server_metadata"
-    # Only ever read directly by the test suite (tests/conftest.py, tests/live_server.py)
-    # to build its own PostgisManagerConfiguration - not a "settings owns a DB
-    # connection" concern like database_dsn used to be, since nothing here inherits
-    # from it.
-    test_database_dsn: PostgresDsn = PostgresDsn(
-        "postgresql+psycopg://potto:pottopass@localhost/potto_test"
-    )
     debug: bool = False
     public_url: str = "http://localhost:3001"
-    pygeoapi_config_file: Path = Path.home() / "pygeoapi-config.yml"
     env_whitelist: list[str] = pydantic.Field(default_factory=list)
     templates_dir: Path | None = None
     admin_templates_dir: Path | None = None
@@ -119,9 +103,9 @@ class PottoSettings(pydantic_settings.BaseSettings):
     local_data_root: Path = Path.home() / "potto_data"
     oidc: OIDCSettings | None = None
     opa: OPASettings | None = None
-    # default_factory (rather than an eagerly-instantiated default) defers
-    # construction until PottoSettings() is actually called, by which point the
-    # model_rebuild() calls below have resolved these settings models' forward
+
+    # these use default_factory in order to defer construction until PottoSettings() is actually called,
+    # by which point the model_rebuild() calls below have resolved these settings models' forward
     # reference to "PottoSettings" itself.
     collection_manager: CollectionManagerSettings = pydantic.Field(
         default_factory=lambda: CollectionManagerSettings()
@@ -214,10 +198,9 @@ class PottoSettings(pydantic_settings.BaseSettings):
         return self._user_account_manager
 
 
-# CollectionManagerSettings/ServerMetadataManagerSettings/UserAccountManagerSettings
-# each have a manager_factory field typed against a Callable whose signature
-# references "PottoSettings" as a forward reference (to avoid a circular import at
-# module load time). Pydantic can't resolve that forward reference until
+# These each have a manager_factory field typed against a Callable whose signature
+# references "PottoSettings" as a forward reference (to avoid a circular imports.
+# Pydantic can't resolve that forward reference until
 # PottoSettings itself is fully defined, so these models are rebuilt here.
 CollectionManagerSettings.model_rebuild()
 ServerMetadataManagerSettings.model_rebuild()

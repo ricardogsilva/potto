@@ -20,6 +20,7 @@ from ..schemas.metadata import (
     unflatten_server_metadata_update,
 )
 from ..schemas import cli as cli_schemas
+from ..util import run_sync
 
 metadata_app = cyclopts.App()
 logger = logging.getLogger(__name__)
@@ -63,7 +64,6 @@ async def get_metadata_detail(
         metadata_app.console.print(detail_table)
 
 
-@metadata_app.command(name="update")
 async def update_metadata(
     to_update: Annotated[
         ServerMetadataFlattenedUpdate | None, cyclopts.Parameter(name="*")
@@ -88,6 +88,17 @@ async def update_metadata(
     else:
         detail_table = _prepare_detail_table(result)
         metadata_app.console.print(detail_table)
+
+
+# Registering commands here (at import time, before `potto ...` parses argv) rather than
+# inside `launcher()` is required for `--help` to reflect it: cyclopts resolves `--help`
+# without ever invoking the meta.default launcher, at any nesting level.
+_server_metadata_manager = get_settings().get_server_metadata_manager()
+_server_metadata_capabilities = run_sync(
+    _server_metadata_manager.get_server_metadata_capabilities()
+)
+if _server_metadata_capabilities.supports_modification:
+    metadata_app.command(update_metadata, name="update")
 
 
 def _prepare_detail_table(instance: cli_schemas.ServerMetadataDetail):

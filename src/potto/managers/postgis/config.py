@@ -22,6 +22,13 @@ class PostgisManagerConfiguration(pydantic.BaseModel):
         "postgresql+psycopg://potto:pottopass@localhost/potto"
     )
 
+    # Only ever read directly by the test suite (tests/conftest.py, tests/live_server.py)
+    # to override this manager's own database_dsn when running tests - not used by any
+    # production code path.
+    test_database_dsn: PostgresDsn = PostgresDsn(
+        "postgresql+psycopg://potto:pottopass@localhost/potto_test"
+    )
+
     def get_db_engine(self) -> AsyncEngine:
         if self._db_engine is None:
             self._db_engine = create_async_engine(self.database_dsn.unicode_string())

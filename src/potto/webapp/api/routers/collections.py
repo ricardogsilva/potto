@@ -9,6 +9,7 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 
+from ....collectionmanager import CollectionManagerCapabilities
 from ....constants import (
     LinkRelation,
     MediaType,
@@ -217,13 +218,6 @@ async def get_collection_schema(
     )
 
 
-@router.post(
-    "/collections",
-    name="create-collection",
-    response_model=JsonCollection,
-    tags=[tags.COLLECTIONS],
-    responses=responses.ERROR_RESPONSES,
-)
 async def create_collection(
     request: Request,
     to_create: collections_schemas.CollectionCreate,
@@ -239,12 +233,6 @@ async def create_collection(
     return JsonCollection.from_potto(collection, request.url_for)
 
 
-@router.delete(
-    "/collections/{collection_id}",
-    name="delete-collection",
-    tags=[tags.COLLECTIONS],
-    responses=responses.ERROR_RESPONSES,
-)
 async def delete_collection(
     collection_id: CollectionIdPath,
     user: UserDependency,
@@ -260,13 +248,6 @@ async def delete_collection(
     await collection_manager.delete_collection(collection_id, user)
 
 
-@router.put(
-    "/collections/{collection_id}/access/{user_id}",
-    name="grant-collection-access",
-    status_code=204,
-    tags=[tags.COLLECTIONS],
-    responses=responses.ERROR_RESPONSES,
-)
 async def grant_collection_access(
     collection_id: CollectionIdPath,
     user_id: UserIdPath,
@@ -294,13 +275,6 @@ async def grant_collection_access(
     )
 
 
-@router.delete(
-    "/collections/{collection_id}/access/{user_id}",
-    name="revoke-collection-access",
-    status_code=204,
-    tags=[tags.COLLECTIONS],
-    responses=responses.ERROR_RESPONSES,
-)
 async def revoke_collection_access(
     collection_id: CollectionIdPath,
     user_id: UserIdPath,
@@ -323,3 +297,45 @@ async def revoke_collection_access(
         target_user_id=user_id,
         collection=collection,
     )
+
+
+def register_mutating_routes(
+    target_router: APIRouter, capabilities: CollectionManagerCapabilities
+) -> None:
+    """Attach collection-mutating routes to `target_router`, per manager capabilities.
+
+    Kept separate from the module-level `router` (which only ever holds the always-available
+    read routes) so each FastAPI app build can decide independently which mutating routes to
+    include, without permanently mutating a module-level singleton shared across app builds.
+    """
+    if capabilities.supports_creation:
+        target_router.post(
+            "/collections",
+            name="create-collection",
+            response_model=JsonCollection,
+            tags=[tags.COLLECTIONS],
+            responses=responses.ERROR_RESPONSES,
+        )(create_collection)
+    if capabilities.supports_deletion:
+        target_router.delete(
+            "/collections/{collection_id}",
+            name="delete-collection",
+            tags=[tags.COLLECTIONS],
+            responses=responses.ERROR_RESPONSES,
+        )(delete_collection)
+    if capabilities.supports_granting_access:
+        target_router.put(
+            "/collections/{collection_id}/access/{user_id}",
+            name="grant-collection-access",
+            status_code=204,
+            tags=[tags.COLLECTIONS],
+            responses=responses.ERROR_RESPONSES,
+        )(grant_collection_access)
+    if capabilities.supports_revoking_access:
+        target_router.delete(
+            "/collections/{collection_id}/access/{user_id}",
+            name="revoke-collection-access",
+            status_code=204,
+            tags=[tags.COLLECTIONS],
+            responses=responses.ERROR_RESPONSES,
+        )(revoke_collection_access)

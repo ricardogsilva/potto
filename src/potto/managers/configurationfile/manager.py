@@ -28,7 +28,7 @@ from . import parsing
 
 if TYPE_CHECKING:
     import cyclopts
-    from starlette_admin.contrib.sqlmodel import ModelView
+    from starlette_admin.views import BaseModelView
 
     from ...config import PottoSettings
     from ...schemas.auth import UserCreate, UserCreateFromOidc, UserUpdate
@@ -99,9 +99,11 @@ class ConfigurationFileManager:
 
     # --- collections ---------------------------------------------------------
 
-    async def get_collection_admin_view(self) -> "ModelView | None":
+    async def get_collection_admin_view(self) -> "BaseModelView | None":
         """Return a starlette_admin view suitable for use in potto's admin ui."""
-        return None
+        from .admin.collections import CollectionView
+
+        return CollectionView()
 
     async def get_collection_capabilities(self) -> CollectionManagerCapabilities:
         """Return the manager's capabilities."""
@@ -234,9 +236,11 @@ class ConfigurationFileManager:
 
     # --- server metadata -------------------------------------------------------
 
-    async def get_server_metadata_admin_view(self) -> "ModelView | None":
+    async def get_server_metadata_admin_view(self) -> "BaseModelView | None":
         """Return a starlette_admin view suitable for use in potto's admin ui."""
-        return None
+        from .admin.metadata import ServerMetadataModelView
+
+        return ServerMetadataModelView()
 
     async def get_server_metadata_capabilities(
         self,
@@ -264,9 +268,11 @@ class ConfigurationFileManager:
 
     # --- user accounts -----------------------------------------------------------
 
-    async def get_user_account_admin_view(self) -> "ModelView | None":
+    async def get_user_account_admin_view(self) -> "BaseModelView | None":
         """Return a starlette_admin view suitable for use in potto's admin ui."""
-        return None
+        from .admin.users import UserView
+
+        return UserView()
 
     async def get_user_account_capabilities(self) -> UserAccountManagerCapabilities:
         """Return the manager's capabilities."""

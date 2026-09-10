@@ -20,6 +20,52 @@ from potto.managers.configurationfile import manager as configurationfile_manage
 from potto.managers.configurationfile import parsing
 from potto.schemas.auth import PottoUser, UserCreateFromOidc
 
+
+class _FakeAdminRequestState:
+    def __init__(self, manager: configurationfile_manager.ConfigurationFileManager):
+        self.SETTINGS = _FakeAdminSettings(manager)
+
+
+class _FakeAdminSettings:
+    """Just enough of PottoSettings' interface for the admin view under test.
+
+    The admin view only ever reaches settings via ``request.app.state.SETTINGS``, so
+    there's no need to construct a fully-wired ``PottoSettings`` pointing at this
+    manager - this stands in for it, delegating every manager getter to the same
+    ``ConfigurationFileManager`` instance (which implements all three protocols).
+    """
+
+    def __init__(self, manager: configurationfile_manager.ConfigurationFileManager):
+        self._manager = manager
+
+    def get_collection_manager(self):
+        return self._manager
+
+    def get_server_metadata_manager(self):
+        return self._manager
+
+    def get_user_account_manager(self):
+        return self._manager
+
+    def get_authorization_backend(self):
+        return self._manager.authorization_backend
+
+
+class _FakeAdminRequestApp:
+    def __init__(self, manager: configurationfile_manager.ConfigurationFileManager):
+        self.state = _FakeAdminRequestState(manager)
+
+
+class _FakeAdminRequest:
+    def __init__(
+        self,
+        manager: configurationfile_manager.ConfigurationFileManager,
+        user: PottoUser,
+    ):
+        self.app = _FakeAdminRequestApp(manager)
+        self.user = user
+
+
 SAMPLE_CONFIG_FILE = (
     Path(__file__).parent / "data" / "configurationfile" / "sample_config.toml"
 )
@@ -73,8 +119,65 @@ class TestParsing:
 
 class TestCollections:
     @pytest.mark.asyncio
-    async def test_get_collection_admin_view_is_none(self, manager):
-        assert await manager.get_collection_admin_view() is None
+    async def test_get_collection_admin_view_is_read_only(self, manager):
+        view = await manager.get_collection_admin_view()
+        assert view is not None
+        assert view.pk_attr == "identifier"
+        assert view.can_create(None) is False
+        assert view.can_edit(None) is False
+        assert view.can_delete(None) is False
+
+    @pytest.mark.asyncio
+    async def test_collection_admin_view_find_all(self, manager, admin_user):
+        view = await manager.get_collection_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        results = await view.find_all(request)
+        assert {c.identifier for c in results} == set(manager.collections.keys())
+
+    @pytest.mark.asyncio
+    async def test_collection_admin_view_find_by_pk(self, manager, admin_user):
+        view = await manager.get_collection_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        collection = await view.find_by_pk(request, "public-collection")
+        assert collection is not None
+        assert collection.identifier == "public-collection"
+        assert collection.editors == []
+        assert collection.viewers == []
+
+    @pytest.mark.asyncio
+    async def test_collection_admin_view_count(self, manager, admin_user):
+        view = await manager.get_collection_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        assert await view.count(request) == len(manager.collections)
+
+
+class TestServerMetadata:
+    @pytest.mark.asyncio
+    async def test_get_server_metadata_admin_view_is_read_only(self, manager):
+        view = await manager.get_server_metadata_admin_view()
+        assert view is not None
+        assert view.pk_attr == "id"
+        assert view.can_create(None) is False
+        assert view.can_edit(None) is False
+        assert view.can_delete(None) is False
+
+    @pytest.mark.asyncio
+    async def test_server_metadata_admin_view_find_all_and_find_by_pk(
+        self, manager, admin_user
+    ):
+        view = await manager.get_server_metadata_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        results = await view.find_all(request)
+        assert results == [manager.server_metadata]
+
+        found = await view.find_by_pk(request, "anything")
+        assert found == manager.server_metadata
+
+    @pytest.mark.asyncio
+    async def test_server_metadata_admin_view_count(self, manager, admin_user):
+        view = await manager.get_server_metadata_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        assert await view.count(request) == 1
 
 
 class TestUserAccounts:
@@ -94,6 +197,45 @@ class TestUserAccounts:
             await manager.provision_oidc_user(
                 UserCreateFromOidc(id="oidc-1", username="oidcuser")
             )
+
+    @pytest.mark.asyncio
+    async def test_get_user_account_admin_view_is_read_only(self, manager):
+        view = await manager.get_user_account_admin_view()
+        assert view is not None
+        assert view.pk_attr == "id"
+        assert view.can_create(None) is False
+        assert view.can_edit(None) is False
+        assert view.can_delete(None) is False
+
+    @pytest.mark.asyncio
+    async def test_user_account_admin_view_find_all(self, manager, admin_user):
+        view = await manager.get_user_account_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        results = await view.find_all(request)
+        assert {u.id for u in results} == set(manager.user_accounts.keys())
+
+    @pytest.mark.asyncio
+    async def test_user_account_admin_view_find_all_filters_by_username(
+        self, manager, admin_user
+    ):
+        view = await manager.get_user_account_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        results = await view.find_all(request, where="ali")
+        assert {u.username for u in results} == {"alice"}
+
+    @pytest.mark.asyncio
+    async def test_user_account_admin_view_find_by_pk(self, manager, admin_user):
+        view = await manager.get_user_account_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        found = await view.find_by_pk(request, "admin-1")
+        assert found is not None
+        assert found.username == "admin"
+
+    @pytest.mark.asyncio
+    async def test_user_account_admin_view_count(self, manager, admin_user):
+        view = await manager.get_user_account_admin_view()
+        request = _FakeAdminRequest(manager, admin_user)
+        assert await view.count(request) == len(manager.user_accounts)
 
 
 class TestCommon:

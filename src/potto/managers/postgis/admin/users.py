@@ -6,7 +6,12 @@ from typing import (
 
 import pydantic
 from starlette.requests import Request
-from starlette_admin.fields import PasswordField
+from starlette_admin.fields import (
+    BooleanField,
+    JSONField,
+    PasswordField,
+    StringField,
+)
 
 from ....exceptions import PottoException
 from ....schemas.auth import (
@@ -16,7 +21,6 @@ from ....schemas.auth import (
 )
 from ....useraccountmanager import UserFilter
 from ....webapp.admin.views import _PottoAdminModelView
-from ..db.models import User
 
 if TYPE_CHECKING:
     from ....config import PottoSettings
@@ -33,18 +37,24 @@ class UserView(_PottoAdminModelView):
     authorization backend (not supported with OPA).
     """
 
+    pk_attr = "id"
+    identity = "user"
+    icon = "fa fa-users"
+    label = "Users"
+    name = "User"
+
     async def async_can_create(self, request: Request) -> bool:
         user = cast(PottoUser, request.user)
         settings = cast("PottoSettings", request.app.state.SETTINGS)
         return await settings.get_authorization_backend().can_create_user(user)
 
     fields = (
-        User.id,
-        User.username,
-        User.email,
+        StringField("id"),
+        StringField("username"),
+        StringField("email"),
         PasswordField("password"),
-        User.is_active,
-        User.scopes,
+        BooleanField("is_active"),
+        JSONField("scopes"),
     )
     exclude_fields_from_detail = ("password", "id")
     # "id" must stay visible in the list view: starlette-admin's order_by

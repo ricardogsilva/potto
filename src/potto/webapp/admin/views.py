@@ -1,7 +1,7 @@
 import logging
 
-from starlette_admin.contrib.sqlmodel import ModelView
 from starlette_admin.exceptions import FormValidationError
+from starlette_admin.views import BaseModelView
 
 from ...exceptions import (
     PottoCannotChangeCollectionOwnerException,
@@ -16,7 +16,7 @@ from ...exceptions import (
 logger = logging.getLogger(__name__)
 
 
-class _PottoAdminModelView(ModelView):
+class _PottoAdminModelView(BaseModelView):
     def handle_exception(self, exc: Exception) -> None:
         if isinstance(
             exc, (PottoCannotSetAdminScopeException, PottoCannotSetScopesException)
@@ -33,4 +33,4 @@ class _PottoAdminModelView(ModelView):
         if isinstance(exc, PottoCannotCreateUserException):
             raise FormValidationError({"username": str(exc)})
         logger.exception(f"An error occurred: {exc}")
-        return super().handle_exception(exc)
+        raise exc

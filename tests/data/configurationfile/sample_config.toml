@@ -4,7 +4,8 @@ username = "admin"
 email = "admin@example.com"
 is_active = true
 scopes = ["admin"]
-hashed_password = "$2b$12$t9LVm5oCBPethlxDqW07pOlV6r5l7P6r/WvuorNs3iQ2/OGZIhk/."
+# plaintext: adminpass
+hashed_password = "$2b$12$R3NfrLGjUvDukBqegdF6Ve9JYdNcjYVGILW3ksAjBrnKtFTctzA8u"
 
 [[user_account]]
 id = "user-1"
@@ -12,7 +13,8 @@ username = "alice"
 email = "alice@example.com"
 is_active = true
 scopes = []
-hashed_password = "$2b$12$PWCD.uWMx2lBaQuP.J.IuOhKZuMP4Dan8FBbS2sDr4B.IqhhOoJp2"
+# plaintext: alicepass
+hashed_password = "$2b$12$KYupkTo7izevFoytl4ii4u.0FRVOhjT2k7zjbUHLpQ7kkjvdiSuAu"
 
 [[user_account]]
 id = "user-2"
@@ -27,7 +29,8 @@ username = "carol"
 email = "carol@example.com"
 is_active = false
 scopes = []
-hashed_password = "$2b$12$PYRQu6yKIkUx5dhhMVNh9OXJIr1wy4zRMtjM75qjJB/pcH3pIj4Cm"
+# plaintext: carolpass
+hashed_password = "$2b$12$yHdaG/ZGT6YlAKyh45pHEu2BMJ9d13asU9SaX5KKYlSaD/9PjavuO"
 
 [[user_account]]
 id = "user-4"

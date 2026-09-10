@@ -21,6 +21,7 @@ from ..config import (
 from ._shared import get_cli_system_user
 from ..schemas.auth import UserCreate
 from ..schemas import cli as cli_schemas
+from ..util import run_sync
 
 
 user_app = cyclopts.App()
@@ -92,7 +93,6 @@ async def list_users(
         user_app.console.print(serialized)
 
 
-@user_app.command(name="create")
 async def create_user(
     username: str,
     *,
@@ -127,3 +127,14 @@ async def create_user(
         to_create, requesting_user=get_cli_system_user()
     )
     user_app.console.print(f"User {created.username!r} created (id: {created.id})")
+
+
+# See the equivalent comment in cliapp/metadata.py: this must run at import time (before
+# argv is parsed) for `--help` to reflect it, since cyclopts resolves `--help` without ever
+# invoking the meta.default launcher.
+_user_account_manager = get_settings().get_user_account_manager()
+_user_account_capabilities = run_sync(
+    _user_account_manager.get_user_account_capabilities()
+)
+if _user_account_capabilities.supports_creation:
+    user_app.command(create_user, name="create")

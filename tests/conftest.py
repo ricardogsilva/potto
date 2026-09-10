@@ -31,21 +31,27 @@ _TRACING_VALUES = ("on", "retain-on-failure")
 @pytest.fixture
 def settings() -> config.PottoSettings:
     original_settings = config.get_settings()
-    # The postgis manager owns its own settings_model dict independently of
-    # PottoSettings, so it needs pointing at the test DB too.
-    test_dsn = original_settings.test_database_dsn.unicode_string()
+    # Each manager owns its own settings_model dict independently of PottoSettings,
+    # so each one needs pointing at its own test DB too.
     for manager_settings in (
         original_settings.collection_manager,
         original_settings.server_metadata_manager,
         original_settings.user_account_manager,
     ):
-        manager_settings.settings_model["database_dsn"] = test_dsn
+        postgis_settings = PostgisManagerConfiguration.model_validate(
+            manager_settings.settings_model
+        )
+        manager_settings.settings_model["database_dsn"] = (
+            postgis_settings.test_database_dsn.unicode_string()
+        )
     return original_settings
 
 
 @pytest.fixture
 def postgis_config(settings: config.PottoSettings) -> PostgisManagerConfiguration:
-    return PostgisManagerConfiguration(database_dsn=settings.test_database_dsn)
+    return PostgisManagerConfiguration.model_validate(
+        settings.collection_manager.settings_model
+    )
 
 
 @pytest.fixture

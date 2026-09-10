@@ -10,7 +10,6 @@ import alembic.config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine
-from starlette_admin.contrib.sqlmodel import ModelView
 
 from ...authz.protocols import AuthorizationBackendProtocol
 from ...collectionmanager import (
@@ -43,14 +42,10 @@ from .admin.metadata import ServerMetadataModelView
 from .admin.users import UserView
 from .config import PostgisManagerConfiguration
 from .db.alembic_utils import build_alembic_config
-from .db.models import (
-    Collection as CollectionModel,
-    ServerMetadata as ServerMetadataModel,
-    User as UserModel,
-)
 
 if TYPE_CHECKING:
     import cyclopts
+    from starlette_admin.views import BaseModelView
 
     from ...config import PottoSettings
 
@@ -88,13 +83,8 @@ class PostgisManager:
 
     # --- collections ---------------------------------------------------------
 
-    async def get_collection_admin_view(self) -> "ModelView | None":
-        return CollectionView(
-            CollectionModel,
-            icon="fa fa-database",
-            label="Collections",
-            identity="collection_item",
-        )
+    async def get_collection_admin_view(self) -> "BaseModelView | None":
+        return CollectionView()
 
     async def get_collection_capabilities(self) -> CollectionManagerCapabilities:
         return CollectionManagerCapabilities(
@@ -219,13 +209,8 @@ class PostgisManager:
 
     # --- server metadata -------------------------------------------------------
 
-    async def get_server_metadata_admin_view(self) -> "ModelView | None":
-        return ServerMetadataModelView(
-            ServerMetadataModel,
-            icon="fa fa-server",
-            label="Server Metadata",
-            identity="server_metadata",
-        )
+    async def get_server_metadata_admin_view(self) -> "BaseModelView | None":
+        return ServerMetadataModelView()
 
     async def get_server_metadata_capabilities(
         self,
@@ -251,13 +236,8 @@ class PostgisManager:
 
     # --- user accounts -----------------------------------------------------------
 
-    async def get_user_account_admin_view(self) -> "ModelView | None":
-        return UserView(
-            UserModel,
-            icon="fa fa-users",
-            label="Users",
-            identity="user",
-        )
+    async def get_user_account_admin_view(self) -> "BaseModelView | None":
+        return UserView()
 
     async def get_user_account_capabilities(self) -> UserAccountManagerCapabilities:
         return UserAccountManagerCapabilities(

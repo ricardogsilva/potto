@@ -17,14 +17,6 @@ from starlette_admin.fields import (
     URLField,
 )
 
-from ....exceptions import PottoException
-from ....schemas.auth import PottoUser
-from ....schemas.metadata import (
-    DataProviderInformation,
-    LicenseInformation,
-    PointOfContact,
-    ServerMetadataUpdate,
-)
 from ....webapp.admin.views import _PottoAdminModelView
 
 if TYPE_CHECKING:
@@ -32,11 +24,11 @@ if TYPE_CHECKING:
 
 
 class ServerMetadataModelView(_PottoAdminModelView):
-    """Custom starlette-admin view for managing server metadata.
+    """Read-only starlette-admin view for server metadata.
 
-    The server can only have a single ServerMetadata instance, so this view skips
-    the list page entirely (redirecting straight to edit) and disables create/delete.
-    Starlette-admin's field and form machinery is reused for the edit form.
+    The configuration-file manager never supports metadata mutations and there is
+    only ever a single ServerMetadata instance, so this view skips the list page
+    entirely (redirecting straight to the detail page) and disables create/edit/delete.
     """
 
     skip_list = True
@@ -53,6 +45,9 @@ class ServerMetadataModelView(_PottoAdminModelView):
     def can_create(self, request: Request) -> bool:
         return False
 
+    def can_edit(self, request: Request) -> bool:
+        return False
+
     def can_delete(self, request: Request) -> bool:
         return False
 
@@ -62,15 +57,10 @@ class ServerMetadataModelView(_PottoAdminModelView):
     async def get_serialized_pk_value(self, request: Request, obj: Any) -> Any:
         return "server-metadata"
 
-    async def async_can_edit(self, request: Request) -> bool:
-        user = cast(PottoUser, request.user)
-        settings = cast("PottoSettings", request.app.state.SETTINGS)
-        return await settings.get_authorization_backend().can_edit_server_metadata(user)
-
-    async def is_row_action_allowed(self, request: Request, name: str) -> bool:
-        if name == "edit":
-            return await self.async_can_edit(request)
-        return await super().is_row_action_allowed(request, name)
+    async def edit(self, request: Request, pk: Any, data: dict[str, Any]) -> Any:
+        raise NotImplementedError(
+            "Editing server metadata is not supported by the configuration file manager."
+        )
 
     fields = (
         StringField("title", required=True),
@@ -142,41 +132,3 @@ class ServerMetadataModelView(_PottoAdminModelView):
         ):
             return json.dumps(value)
         return await super().serialize_field_value(value, field, action, request)
-
-    async def edit(self, request: Request, pk: Any, data: dict[str, Any]) -> Any:
-        user = cast(PottoUser, request.user)
-        settings = cast("PottoSettings", request.app.state.SETTINGS)
-        server_metadata_manager = settings.get_server_metadata_manager()
-        lic_data = data.get("license") or {}
-        dp_data = data.get("data_provider") or {}
-        poc_data = data.get("point_of_contact") or {}
-        poc_values = {k: v or None for k, v in poc_data.items()}
-        try:
-            return await server_metadata_manager.update_server_metadata(
-                ServerMetadataUpdate(
-                    title=data.get("title") or None,
-                    description=data.get("description") or None,
-                    keywords=data.get("keywords"),
-                    keywords_type=data.get("keywords_type") or None,
-                    terms_of_service=data.get("terms_of_service") or None,
-                    url=data.get("url") or None,
-                    license=LicenseInformation(
-                        name=lic_data["name"],
-                        url=lic_data.get("url") or None,
-                    )
-                    if lic_data.get("name")
-                    else None,
-                    data_provider=DataProviderInformation(
-                        name=dp_data["name"],
-                        url=dp_data.get("url") or None,
-                    )
-                    if dp_data.get("name")
-                    else None,
-                    point_of_contact=PointOfContact.model_validate(poc_values)
-                    if any(poc_values.values())
-                    else None,
-                ),
-                user,
-            )
-        except PottoException as err:
-            self.handle_exception(err)
