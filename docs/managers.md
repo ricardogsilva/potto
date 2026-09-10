@@ -2,7 +2,38 @@
 icon: lucide/plug
 ---
 
-# Managers
+# Resource managers
+
+potto resources are handled by _resource managers_. These are pluggable entities which respect a
+known protocol.
+
+A resource manager
+
+## Server metadata manager
+
+## User account manager
+
+## Collection manager
+
+The collection manager deals with collections. It implements the
+``potto.collectionmanager.CollectionManagerProtocol``, which defines a set of capabilities:
+
+- Read access to collections. This comprises listing, searching and filtering and getting details about existing
+  collections
+- Mutating the set of collections known to potto. This comprises creating new collections, deleting and modifying
+  existing collections.
+- Managing users' access controls over private collections. This comprises granting and revoking access
+
+
+# Builtin resource managers
+
+## Postgis manager
+
+## Configuration file manager
+
+
+# Implementing custom managers
+
 
 potto keeps all storage for collections, server metadata, and user accounts behind
 three `Protocol` interfaces, so the storage backend can be swapped without touching
