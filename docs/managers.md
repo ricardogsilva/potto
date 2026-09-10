@@ -297,15 +297,10 @@ by the manager.
 The configuration file manager does not provide any CLI commands.
 
 
-
-
-
-
-
 ## Implementing custom managers
 
 1. Implement whichever protocol(s) it should back - one class may implement all of them.
-2. Write a factory function that implements `potto.managers.ManagerFactoryProtocol`, which basically is just a function that takes two arguments:
+2. Write a factory function that implements the respective factory protocol, which basically is just a function that takes two arguments:
        - `raw_config: dict` - whatever specific configuration the manager needs
        - `settings: PottoSettings` - the main potto settings
 
