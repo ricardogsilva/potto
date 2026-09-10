@@ -7,8 +7,8 @@
 {% block body %}
 
 {% if not contents %}
-<div class="alert alert-{{ 'warning' if health.database == 'outdated' else 'danger' }} my-4" role="alert">
-    {% if health.database == 'outdated' %}
+<div class="alert alert-{{ 'warning' if health.collection_manager == 'not-ready' else 'danger' }} my-4" role="alert">
+    {% if health.collection_manager == 'not-ready' %}
         The database schema is out of date. An administrator needs to run pending migrations.
     {% else %}
         The system is currently unavailable due to a database problem. Please try again later.

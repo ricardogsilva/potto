@@ -3,7 +3,9 @@ import re
 import typing
 
 import pydantic
+from jinja2 import Template
 from starlette.authentication import BaseUser
+from starlette.requests import Request
 
 _DYNAMIC_SCOPE_PATTERN = re.compile(r"^collection-.+:(editor|viewer)$")
 
@@ -52,6 +54,14 @@ class PottoUser(pydantic.BaseModel, BaseUser):
     @property
     def identity(self) -> str:
         return str(self.id)
+
+    def __admin_repr__(self, request: Request) -> str:
+        return self.username
+
+    def __admin_select2_repr__(self, request: Request) -> str:
+        return Template("<span>{{ name }}</span>", autoescape=True).render(
+            name=self.username,
+        )
 
 
 ValidScope = typing.Annotated[str, pydantic.AfterValidator(_validate_scope)]

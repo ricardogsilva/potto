@@ -100,7 +100,7 @@ jobs:
 
       - name: "Initialize potto database"
         run: |
-          docker compose --file docker/compose.ci.yaml --profile app run --rm -T potto db upgrade
+          docker compose --file docker/compose.ci.yaml --profile app run --rm -T potto postgis-manager upgrade
 
       - name: "Validate OpenAPI schema with declared conformance classes"
         run: |

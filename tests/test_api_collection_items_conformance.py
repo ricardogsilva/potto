@@ -15,8 +15,7 @@ def test_bbox_comma_separated_returns_200(
 ):
     """OGC API - Features requires bbox as a single comma-separated value."""
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
-        "?bbox=-76,44,-74,46"
+        f"/api/collections/{obs_feature_collection.identifier}/items?bbox=-76,44,-74,46"
     )
     assert response.status_code == 200
     ids = {feat["id"] for feat in response.json()["features"]}
@@ -28,7 +27,7 @@ def test_bbox_repeated_params_also_returns_200(
 ):
     """The repeated-key form must keep working alongside the comma-separated one."""
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
+        f"/api/collections/{obs_feature_collection.identifier}/items"
         "?bbox=-76&bbox=44&bbox=-74&bbox=46"
     )
     assert response.status_code == 200
@@ -41,7 +40,7 @@ def test_bbox_with_6_values_returns_200(
 ):
     """A 3D bbox (with z-min/z-max) is valid per the spec; the z values are ignored."""
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
+        f"/api/collections/{obs_feature_collection.identifier}/items"
         "?bbox=-76,44,0,-74,46,100"
     )
     assert response.status_code == 200
@@ -53,8 +52,7 @@ def test_bbox_with_invalid_number_of_values_returns_400(
     db, admin_user, obs_feature_collection, webapp_test_client_as_admin
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
-        "?bbox=-76,44,-74"
+        f"/api/collections/{obs_feature_collection.identifier}/items?bbox=-76,44,-74"
     )
     assert response.status_code == 400
 
@@ -63,7 +61,7 @@ def test_unknown_query_parameter_returns_400(
     db, admin_user, obs_feature_collection, webapp_test_client_as_admin
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
+        f"/api/collections/{obs_feature_collection.identifier}/items"
         "?not-a-real-parameter=1"
     )
     assert response.status_code == 400
@@ -74,7 +72,7 @@ def test_datetime_filter_selects_matching_items(
 ):
     """Items outside a datetime interval are excluded from the response."""
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
+        f"/api/collections/{obs_feature_collection.identifier}/items"
         "?datetime=2001-01-01T00:00:00Z/2003-12-31T23:59:59Z"
     )
     assert response.status_code == 200
@@ -86,7 +84,7 @@ def test_datetime_filter_supports_open_ended_interval(
     db, admin_user, obs_feature_collection, webapp_test_client_as_admin
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
+        f"/api/collections/{obs_feature_collection.identifier}/items"
         "?datetime=2007-01-01T00:00:00Z/.."
     )
     assert response.status_code == 200
@@ -98,7 +96,7 @@ def test_datetime_filter_supports_single_instant(
     db, admin_user, obs_feature_collection, webapp_test_client_as_admin
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
+        f"/api/collections/{obs_feature_collection.identifier}/items"
         "?datetime=2001-10-30T14:24:55Z"
     )
     assert response.status_code == 200

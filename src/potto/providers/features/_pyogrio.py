@@ -7,6 +7,7 @@ from typing import (
     Any,
     Literal,
     Protocol,
+    TYPE_CHECKING,
 )
 
 import geopandas as gpd
@@ -18,7 +19,6 @@ import pyogrio.errors
 import pyproj
 from pydantic.json_schema import JsonSchemaValue
 
-from ...config import PottoSettings
 from ...schemas.base import (
     AdditionalExtent,
     CountedItems,
@@ -32,6 +32,9 @@ from ...schemas.features import (
     Feature,
     PottoFeatureFilter,
 )
+
+if TYPE_CHECKING:
+    from ...config import PottoSettings
 
 logger = logging.getLogger(__name__)
 
@@ -402,10 +405,10 @@ class PyogrioFeatureProviderConfiguration(pydantic.BaseModel):
 
 class PyogrioFeatureProvider:
     config: PyogrioFeatureProviderConfiguration
-    potto_config: PottoSettings
+    potto_config: "PottoSettings"
 
     def __init__(
-        self, config: PyogrioFeatureProviderConfiguration, potto_config: PottoSettings
+        self, config: PyogrioFeatureProviderConfiguration, potto_config: "PottoSettings"
     ):
         """A feature provider that uses pyogrio to retrieve data.
 
@@ -495,7 +498,7 @@ class PyogrioFeatureProvider:
 def pyogrio_provider_factory(
     collection: Collection,
     raw_config: dict[str, Any],
-    potto_config: PottoSettings,
+    potto_config: "PottoSettings",
 ) -> PyogrioFeatureProvider:
     config = PyogrioFeatureProviderConfiguration.model_validate(raw_config)
     return PyogrioFeatureProvider(config, potto_config)

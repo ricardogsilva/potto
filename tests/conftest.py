@@ -9,11 +9,9 @@ from starlette.routing import Mount
 
 from playwright.sync_api import expect
 from potto import config
-from potto.authz.backend import LocalAuthorizationBackend
 from potto.constants import CollectionType
-from potto.db.alembic_utils import build_alembic_config
-from potto.db.commands.auth import create_user
-from potto.operations.collections import create_collection
+from potto.managers.postgis.config import PostgisManagerConfiguration
+from potto.managers.postgis.db.alembic_utils import build_alembic_config
 from potto.schemas import (
     auth as auth_schemas,
     base as base_schemas,
@@ -22,7 +20,7 @@ from potto.schemas import (
 from potto.webapp.main import create_app_from_settings
 from potto.webapp.api import dependencies
 
-pytest_plugins = ("live_server",)
+pytest_plugins = ("live_server", "manager_contract")
 
 # This module deals with playwright tracing options manually because some
 # tests need the `authenticated_context` fixture, which creates a new
@@ -33,22 +31,41 @@ _TRACING_VALUES = ("on", "retain-on-failure")
 @pytest.fixture
 def settings() -> config.PottoSettings:
     original_settings = config.get_settings()
-    original_settings.database_dsn = original_settings.test_database_dsn
+    # Each manager owns its own settings_model dict independently of PottoSettings,
+    # so each one needs pointing at its own test DB too.
+    for manager_settings in (
+        original_settings.collection_manager,
+        original_settings.server_metadata_manager,
+        original_settings.user_account_manager,
+    ):
+        postgis_settings = PostgisManagerConfiguration.model_validate(
+            manager_settings.settings_model
+        )
+        manager_settings.settings_model["database_dsn"] = (
+            postgis_settings.test_database_dsn.unicode_string()
+        )
     return original_settings
 
 
 @pytest.fixture
-def sync_db_engine(settings: config.PottoSettings):
-    yield settings.get_sync_db_engine()
+def postgis_config(settings: config.PottoSettings) -> PostgisManagerConfiguration:
+    return PostgisManagerConfiguration.model_validate(
+        settings.collection_manager.settings_model
+    )
 
 
 @pytest.fixture
-def db_session_maker(settings: config.PottoSettings):
-    yield settings.get_db_session_maker()
+def sync_db_engine(postgis_config: PostgisManagerConfiguration):
+    yield postgis_config.get_sync_db_engine()
 
 
 @pytest.fixture
-def db(sync_db_engine, settings):
+def db_session_maker(postgis_config: PostgisManagerConfiguration):
+    yield postgis_config.get_db_session_maker()
+
+
+@pytest.fixture
+def db(sync_db_engine, postgis_config: PostgisManagerConfiguration):
     """Provides a clean database.
 
     Also stamps the alembic version table at ``head`` - the tables are
@@ -57,7 +74,9 @@ def db(sync_db_engine, settings):
     that, which the health check relies on.
     """
     sqlmodel.SQLModel.metadata.create_all(sync_db_engine)
-    alembic.command.stamp(build_alembic_config(settings), "head")
+    alembic.command.stamp(
+        build_alembic_config(postgis_config.database_dsn.unicode_string()), "head"
+    )
     yield
     sqlmodel.SQLModel.metadata.drop_all(sync_db_engine)
     with sync_db_engine.connect() as connection:
@@ -93,18 +112,26 @@ def webapp_test_client_as_admin(webapp, admin_user):
 
 
 @pytest_asyncio.fixture
-async def admin_user(db, db_session_maker):
-    async with db_session_maker() as session:
-        db_user = await create_user(
-            session,
-            auth_schemas.UserCreate(
-                username="test-admin",
-                scopes=[auth_schemas.PottoScope.ADMIN],
-                email="test@test.test",
-                password=SecretStr("testpass"),
-            ),
-        )
-        yield db_user
+async def admin_user(db, settings):
+    # A trusted bootstrap caller, analogous to the CLI's synthetic system user -
+    # there is no admin yet to authorize creating the very first one.
+    bootstrap_user = auth_schemas.PottoUser(
+        id="bootstrap",
+        username="bootstrap",
+        is_active=True,
+        scopes=[auth_schemas.PottoScope.ADMIN.value],
+    )
+    user_account_manager = settings.get_user_account_manager()
+    created = await user_account_manager.create_user(
+        auth_schemas.UserCreate(
+            username="test-admin",
+            scopes=[auth_schemas.PottoScope.ADMIN],
+            email="test@test.test",
+            password=SecretStr("testpass"),
+        ),
+        requesting_user=bootstrap_user,
+    )
+    yield created
 
 
 @pytest.fixture(scope="session")
@@ -197,75 +224,72 @@ def fresh_authenticated_page(browser, auth_credentials, base_url):
 
 
 @pytest_asyncio.fixture
-async def obs_feature_collection(db, db_session_maker, admin_user, settings):
-    async with db_session_maker() as session:
-        yield await create_collection(
-            session,
-            admin_user,
-            LocalAuthorizationBackend(),
-            collections_schemas.CollectionCreate(
-                resource_identifier="obs-test",
-                owner_id=admin_user.id,
-                is_public=False,
-                collection_type=CollectionType.FEATURE_COLLECTION,
-                title="Testing obs feature collection",
-                spatial_extent="POLYGON ((-122 43, -122 49, -75 49, -75 43, -122 43))",
-                spatial_extent_crs="http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                providers={
-                    "feature": base_schemas.PottoProvider(
-                        provider_name="collection-config",
-                        config={
-                            "datetime_field": "datetime",
-                            "raw_features": [
-                                {
-                                    "id": "371",
-                                    "geometry": "POINT (-75 45)",
-                                    "properties": {
-                                        "stn_id": 35,
-                                        "datetime": "2001-10-30T14:24:55Z",
-                                        "value": 89.9,
-                                    },
+async def obs_feature_collection(db, admin_user, settings):
+    collection_manager = settings.get_collection_manager()
+    yield await collection_manager.create_collection(
+        collections_schemas.CollectionCreate(
+            resource_identifier="obs-test",
+            owner_id=admin_user.id,
+            is_public=False,
+            collection_type=CollectionType.FEATURE_COLLECTION,
+            title="Testing obs feature collection",
+            spatial_extent="POLYGON ((-122 43, -122 49, -75 49, -75 43, -122 43))",
+            spatial_extent_crs="http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+            providers={
+                "feature": base_schemas.PottoProvider(
+                    provider_name="collection-config",
+                    config={
+                        "datetime_field": "datetime",
+                        "raw_features": [
+                            {
+                                "id": "371",
+                                "geometry": "POINT (-75 45)",
+                                "properties": {
+                                    "stn_id": 35,
+                                    "datetime": "2001-10-30T14:24:55Z",
+                                    "value": 89.9,
                                 },
-                                {
-                                    "id": "377",
-                                    "geometry": "POINT (-75 45)",
-                                    "properties": {
-                                        "stn_id": 35,
-                                        "datetime": "2002-10-30T18:31:38Z",
-                                        "value": 93.9,
-                                    },
+                            },
+                            {
+                                "id": "377",
+                                "geometry": "POINT (-75 45)",
+                                "properties": {
+                                    "stn_id": 35,
+                                    "datetime": "2002-10-30T18:31:38Z",
+                                    "value": 93.9,
                                 },
-                                {
-                                    "id": "238",
-                                    "geometry": "POINT (-79 43)",
-                                    "properties": {
-                                        "stn_id": 2147,
-                                        "datetime": "2007-10-30T08:57:29Z",
-                                        "value": 103.5,
-                                    },
+                            },
+                            {
+                                "id": "238",
+                                "geometry": "POINT (-79 43)",
+                                "properties": {
+                                    "stn_id": 2147,
+                                    "datetime": "2007-10-30T08:57:29Z",
+                                    "value": 103.5,
                                 },
-                                {
-                                    "id": "297",
-                                    "geometry": "POINT (-79 43)",
-                                    "properties": {
-                                        "stn_id": 2147,
-                                        "datetime": "2003-10-30T07:37:29Z",
-                                        "value": 93.5,
-                                    },
+                            },
+                            {
+                                "id": "297",
+                                "geometry": "POINT (-79 43)",
+                                "properties": {
+                                    "stn_id": 2147,
+                                    "datetime": "2003-10-30T07:37:29Z",
+                                    "value": 93.5,
                                 },
-                                {
-                                    "id": "964",
-                                    "geometry": "POINT (-122 49)",
-                                    "properties": {
-                                        "stn_id": 604,
-                                        "datetime": "2000-10-30T18:24:39Z",
-                                        "value": 99.9,
-                                    },
+                            },
+                            {
+                                "id": "964",
+                                "geometry": "POINT (-122 49)",
+                                "properties": {
+                                    "stn_id": 604,
+                                    "datetime": "2000-10-30T18:24:39Z",
+                                    "value": 99.9,
                                 },
-                            ],
-                        },
-                    )
-                },
-            ),
-            settings,
-        )
+                            },
+                        ],
+                    },
+                )
+            },
+        ),
+        admin_user,
+    )

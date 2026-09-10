@@ -13,10 +13,7 @@ def test_api_collection_list_body(
 ):
     response = webapp_test_client_as_admin.get("/api/collections")
     assert response.status_code == 200
-    assert (
-        response.json()["collections"][0]["id"]
-        == obs_feature_collection.resource_identifier
-    )
+    assert response.json()["collections"][0]["id"] == obs_feature_collection.identifier
 
 
 def test_api_collection_list_headers(
@@ -56,11 +53,11 @@ def test_api_collection_get_body(
     webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}"
+        f"/api/collections/{obs_feature_collection.identifier}"
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["id"] == obs_feature_collection.resource_identifier
+    assert payload["id"] == obs_feature_collection.identifier
     assert payload["itemType"] == "feature"
 
 
@@ -71,7 +68,7 @@ def test_api_collection_get_headers(
     webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}"
+        f"/api/collections/{obs_feature_collection.identifier}"
     )
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/json"
@@ -85,12 +82,12 @@ def test_api_collection_get_oapif_part2(
     webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}"
+        f"/api/collections/{obs_feature_collection.identifier}"
     )
     assert response.status_code == 200
     payload = response.json()
     print(f"{json.dumps(payload, indent=2)}")
-    assert payload["id"] == obs_feature_collection.resource_identifier
+    assert payload["id"] == obs_feature_collection.identifier
     assert "http://www.opengis.net/def/crs/OGC/1.3/CRS84" in payload["crs"]
     assert payload["storageCrs"] == "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
 
@@ -102,11 +99,11 @@ def test_api_collection_get_links(
     webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}"
+        f"/api/collections/{obs_feature_collection.identifier}"
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["id"] == obs_feature_collection.resource_identifier
+    assert payload["id"] == obs_feature_collection.identifier
     links = payload["links"]
     home_link = [li for li in links if li["rel"] == "home"][0]
     assert home_link["type"] == "application/json"
@@ -114,12 +111,12 @@ def test_api_collection_get_links(
     self_link = [li for li in links if li["rel"] == "self"][0]
     assert self_link["type"] == "application/json"
     assert self_link["href"].endswith(
-        f"/api/collections/{obs_feature_collection.resource_identifier}"
+        f"/api/collections/{obs_feature_collection.identifier}"
     )
     items_link = [li for li in links if li["rel"] == "items"][0]
     assert items_link["type"] == "application/geo+json"
     assert items_link["href"].endswith(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/items"
+        f"/api/collections/{obs_feature_collection.identifier}/items"
     )
     schema_link = [
         li
@@ -128,7 +125,7 @@ def test_api_collection_get_links(
     ][0]
     assert schema_link["type"] == "application/schema+json"
     assert schema_link["href"].endswith(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/schema"
+        f"/api/collections/{obs_feature_collection.identifier}/schema"
     )
     queryables_link = [
         li
@@ -137,7 +134,7 @@ def test_api_collection_get_links(
     ][0]
     assert queryables_link["type"] == "application/schema+json"
     assert queryables_link["href"].endswith(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/queryables"
+        f"/api/collections/{obs_feature_collection.identifier}/queryables"
     )
 
 
@@ -148,12 +145,12 @@ def test_api_collection_get_schema_body(
     webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/schema"
+        f"/api/collections/{obs_feature_collection.identifier}/schema"
     )
     assert response.status_code == 200
     payload = response.json()
     assert payload["$id"].endswith(
-        f"/api/collections/{obs_feature_collection.resource_identifier}"
+        f"/api/collections/{obs_feature_collection.identifier}"
     )
     assert payload["type"] == "object"
     assert payload["properties"]["datetime"]["type"] == "string"
@@ -170,7 +167,7 @@ def test_api_collection_get_schema_headers(
     webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/schema"
+        f"/api/collections/{obs_feature_collection.identifier}/schema"
     )
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/schema+json"
@@ -184,12 +181,12 @@ def test_api_collection_get_queryables_body(
     webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/queryables"
+        f"/api/collections/{obs_feature_collection.identifier}/queryables"
     )
     assert response.status_code == 200
     payload = response.json()
     assert payload["$id"].endswith(
-        f"/api/collections/{obs_feature_collection.resource_identifier}"
+        f"/api/collections/{obs_feature_collection.identifier}"
     )
     assert payload["type"] == "object"
     assert payload["properties"]["datetime"]["type"] == "string"
@@ -205,7 +202,7 @@ def test_api_collection_get_queryables_headers(
     webapp_test_client_as_admin,
 ):
     response = webapp_test_client_as_admin.get(
-        f"/api/collections/{obs_feature_collection.resource_identifier}/queryables"
+        f"/api/collections/{obs_feature_collection.identifier}/queryables"
     )
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/schema+json"

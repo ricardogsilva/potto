@@ -74,6 +74,6 @@ markers = [
 
 [tool.ty.src]
 exclude = [
-    "src/potto/db/migrations",
+    "src/potto/managers/postgis/db/migrations",
     "tests"
 ]

@@ -7,7 +7,7 @@ pytestmark = pytest.mark.integration
 def test_health_check(db, webapp_test_client):
     response = webapp_test_client.get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "database": "ok"}
+    assert response.json() == {"status": "ok", "collection_manager": "ok"}
 
 
 def test_health_check_outdated_schema(db, sync_db_engine, webapp_test_client):
@@ -19,4 +19,4 @@ def test_health_check_outdated_schema(db, sync_db_engine, webapp_test_client):
     response = webapp_test_client.get("/api/health")
 
     assert response.status_code == 503
-    assert response.json() == {"status": "error", "database": "outdated"}
+    assert response.json() == {"status": "error", "collection_manager": "not-ready"}

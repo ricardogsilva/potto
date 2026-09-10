@@ -18,10 +18,10 @@ from ..config import (
     get_settings,
     PottoSettings,
 )
-from ..db.commands import auth as auth_commands
-from ..operations import auth as auth_ops
+from ._shared import get_cli_system_user
 from ..schemas.auth import UserCreate
 from ..schemas import cli as cli_schemas
+from ..util import run_sync
 
 
 user_app = cyclopts.App()
@@ -59,16 +59,15 @@ async def list_users(
     settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """List existing users."""
-    async with settings.get_db_session_maker()() as session:
-        db_users, total = await auth_ops.paginated_list_users(
-            session, page=page, page_size=page_size, include_total=True
-        )
+    users, total = await settings.get_user_account_manager().paginated_list_users(
+        page=page, page_size=page_size, include_total=True
+    )
     assert total is not None
     result = cli_schemas.ItemList[cli_schemas.UserListItem](
-        items=[cli_schemas.UserListItem.from_db_item(i) for i in db_users],
+        items=[cli_schemas.UserListItem.from_potto(u) for u in users],
         meta=cli_schemas.ItemListMeta(
             page=page,
-            page_size=len(db_users),
+            page_size=len(users),
             total_items=total,
             total_pages=ceil(total / page_size),
         ),
@@ -94,7 +93,6 @@ async def list_users(
         user_app.console.print(serialized)
 
 
-@user_app.command(name="create")
 async def create_user(
     username: str,
     *,
@@ -125,6 +123,18 @@ async def create_user(
         )
     except Exception as err:
         raise SystemExit(f"Error: {err}") from err
-    async with settings.get_db_session_maker()() as session:
-        db_user = await auth_commands.create_user(session, to_create)
-    user_app.console.print(f"User {db_user.username!r} created (id: {db_user.id})")
+    created = await settings.get_user_account_manager().create_user(
+        to_create, requesting_user=get_cli_system_user()
+    )
+    user_app.console.print(f"User {created.username!r} created (id: {created.id})")
+
+
+# See the equivalent comment in cliapp/metadata.py: this must run at import time (before
+# argv is parsed) for `--help` to reflect it, since cyclopts resolves `--help` without ever
+# invoking the meta.default launcher.
+_user_account_manager = get_settings().get_user_account_manager()
+_user_account_capabilities = run_sync(
+    _user_account_manager.get_user_account_capabilities()
+)
+if _user_account_capabilities.supports_creation:
+    user_app.command(create_user, name="create")

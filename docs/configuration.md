@@ -14,6 +14,4 @@ from the world.
 Port on which the uvicorn web server started by potto when running `potto run-server`
 
 ##### debug: bool = False
-##### database_dsn: PostgresDsn = "postgresql+psycopg://potto:pottopass@localhost/potto"
-##### test_database_dsn: PostgresDsn = "postgresql+psycopg://potto:pottopass@localhost/potto_test"
 ##### public_url: str = "http://localhost:3001"

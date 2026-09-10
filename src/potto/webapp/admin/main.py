@@ -6,23 +6,17 @@ from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
-from starlette_admin import RequestAction
-from starlette_admin.contrib.sqlmodel import Admin
+from starlette_admin import BaseAdmin, RequestAction
 from starlette_admin.views import Link
 
 from ...config import PottoSettings
-from ...db.models import (
-    Collection,
-    ServerMetadata,
-    User,
-)
-from . import views
+from ...util import run_sync
 from .auth import LocalAdminAuthProvider, OIDCAdminAuthProvider
 
 logger = logging.getLogger(__name__)
 
 
-class PottoAdmin(Admin):
+class PottoAdmin(BaseAdmin):
     potto_settings: PottoSettings
 
     def __init__(self, *args, potto_settings: PottoSettings, **kwargs):
@@ -107,7 +101,7 @@ class PottoAdmin(Admin):
         return str(request.url_for("static", path="js/admin/listRender.js"))
 
 
-def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
+def create_admin_app_from_settings(settings: PottoSettings) -> BaseAdmin:
     templates_dir = str(
         settings.admin_templates_dir or Path(__file__).parents[1] / "templates/admin"
     )
@@ -117,7 +111,6 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
         else LocalAdminAuthProvider(settings)
     )
     app = PottoAdmin(
-        settings.get_sync_db_engine(),
         potto_settings=settings,
         auth_provider=auth_provider,
         templates_dir=templates_dir,
@@ -125,28 +118,19 @@ def create_admin_app_from_settings(settings: PottoSettings) -> Admin:
         title="Potto admin",
     )
     app.add_view(Link(label="Back to front page", url="/", icon="fa fa-home"))
-    app.add_view(
-        views.ServerMetadataModelView(
-            ServerMetadata,
-            icon="fa fa-server",
-            label="Server Metadata",
-            identity="server_metadata",
+
+    async def _get_views():
+        return (
+            await settings.get_server_metadata_manager().get_server_metadata_admin_view(),
+            await settings.get_user_account_manager().get_user_account_admin_view(),
+            await settings.get_collection_manager().get_collection_admin_view(),
         )
-    )
-    app.add_view(
-        views.UserView(
-            User,
-            icon="fa fa-users",
-            label="Users",
-            identity="user",
-        )
-    )
-    app.add_view(
-        views.CollectionView(
-            Collection,
-            icon="fa fa-database",
-            label="Collections",
-            identity="collection_item",
-        )
-    )
+
+    server_metadata_view, user_account_view, collection_view = run_sync(_get_views())
+    if server_metadata_view is not None:
+        app.add_view(server_metadata_view)
+    if user_account_view is not None:
+        app.add_view(user_account_view)
+    if collection_view is not None:
+        app.add_view(collection_view)
     return app

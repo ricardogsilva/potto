@@ -21,17 +21,17 @@ from sqlmodel import (
 )
 from starlette.requests import Request
 
-from ..constants import (
+from ....constants import (
     CRS_84,
     CollectionType,
     ProvidedDataType,
 )
-from ..schemas.auth import PottoUser
-from ..schemas import (
+from ....schemas.auth import PottoUser
+from ....schemas import (
     collections as collection_schemas,
     metadata as metadata_schemas,
 )
-from ..schemas.base import (
+from ....schemas.base import (
     PottoProvider,
     Title,
     MaybeDescription,
@@ -135,7 +135,12 @@ class Collection(SQLModel, table=True):
         return collection_schemas.Collection(
             type_=self.collection_type,
             identifier=self.resource_identifier,
+            created_at=self.created_at,  # ty: ignore[invalid-argument-type]
+            # updated_at's column has no INSERT-time default (only onupdate), so a
+            # freshly created row has it as None until the first update.
+            updated_at=self.updated_at or self.created_at,  # ty: ignore[invalid-argument-type]
             title=self.title,
+            is_public=self.is_public,
             description=self.description,
             owner=self.owner.to_potto(),
             keywords=self.keywords,

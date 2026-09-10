@@ -11,11 +11,11 @@ from geoalchemy2 import (
 )
 from sqlmodel import SQLModel
 
-from potto.db.models import ShapelyGeometryAdapter
+from potto.managers.postgis.db.models import ShapelyGeometryAdapter
 
 # this import is crucial for SQLModel.metadata to be populated
 # with our models, do not remove!
-from potto.db import models  # noqa
+from potto.managers.postgis.db import models  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

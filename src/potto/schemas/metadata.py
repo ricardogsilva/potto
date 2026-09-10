@@ -96,3 +96,76 @@ class ServerMetadata:
     license: LicenseInformation | None = None
     data_provider: DataProviderInformation | None = None
     point_of_contact: PointOfContact | None = None
+
+
+def unflatten_server_metadata_update(
+    existing: ServerMetadata,
+    flattened: ServerMetadataFlattenedUpdate,
+) -> ServerMetadataUpdate:
+    """Merge a flat, CLI-friendly update onto existing metadata's nested shape."""
+    set_fields = flattened.model_dump(exclude_unset=True)
+    unflattened_license = {}
+    unflattened_data_provider = {}
+    unflattened_point_of_contact = {}
+    for key, value in set_fields.items():
+        if key.startswith("license_"):
+            unflattened_license[key[len("license_") :]] = value
+        elif key.startswith("data_provider_"):
+            unflattened_data_provider[key[len("data_provider_") :]] = value
+        elif key.startswith("point_of_contact_"):
+            unflattened_point_of_contact[key[len("point_of_contact_") :]] = value
+
+    update_kwargs: dict = {
+        "title": flattened.title or existing.title,
+        "description": flattened.description or existing.description,
+        "keywords": flattened.keywords,
+    }
+    for scalar_field in ("keywords_type", "terms_of_service", "url"):
+        if scalar_field in set_fields:
+            update_kwargs[scalar_field] = set_fields[scalar_field]
+
+    existing_license = existing.license
+    if unflattened_license:
+        update_kwargs["license"] = LicenseInformation(
+            name=unflattened_license.get(
+                "name", existing_license.name if existing_license else None
+            ),
+            url=unflattened_license.get(
+                "url", existing_license.url if existing_license else None
+            ),
+        )
+    existing_data_provider = existing.data_provider
+    if unflattened_data_provider:
+        update_kwargs["data_provider"] = DataProviderInformation(
+            name=unflattened_data_provider.get(
+                "name",
+                existing_data_provider.name if existing_data_provider else None,
+            ),
+            url=unflattened_data_provider.get(
+                "url", existing_data_provider.url if existing_data_provider else None
+            ),
+        )
+    existing_poc = existing.point_of_contact
+    if unflattened_point_of_contact:
+
+        def _poc(field: str) -> str | None:
+            return unflattened_point_of_contact.get(
+                field, getattr(existing_poc, field) if existing_poc else None
+            )
+
+        update_kwargs["point_of_contact"] = PointOfContact(
+            name=_poc("name"),
+            position=_poc("position"),
+            address=_poc("address"),
+            city=_poc("city"),
+            state_or_province=_poc("state_or_province"),
+            postal_code=_poc("postal_code"),
+            country=_poc("country"),
+            phone=_poc("phone"),
+            fax=_poc("fax"),
+            email=_poc("email"),
+            url=_poc("url"),
+            contact_hours=_poc("contact_hours"),
+            contact_instructions=_poc("contact_instructions"),
+        )
+    return ServerMetadataUpdate.model_validate(update_kwargs)

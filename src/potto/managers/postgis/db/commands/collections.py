@@ -2,9 +2,9 @@ import logging
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ... import constants
-from ...exceptions import PottoException
-from ...schemas.collections import (
+from ..... import constants
+from .....exceptions import PottoException
+from .....schemas.collections import (
     CollectionCreate,
     CollectionUpdate,
 )
@@ -58,7 +58,10 @@ async def update_collection(
     session.add(db_collection)
     await session.commit()
     await session.refresh(db_collection)
-    return db_collection
+    assert db_collection.id is not None
+    if (updated := await get_collection(session, db_collection.id)) is None:
+        raise PottoException(f"error updating collection {db_collection.id}")
+    return updated
 
 
 async def delete_collection(

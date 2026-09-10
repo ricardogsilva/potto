@@ -3,8 +3,8 @@ import logging
 import bcrypt
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ...exceptions import PottoException
-from ...schemas.auth import (
+from .....exceptions import PottoException
+from .....schemas.auth import (
     UserCreate,
     UserCreateFromOidc,
     UserUpdate,

@@ -24,6 +24,7 @@ from .pagination import Pagination
 from ..constants import (
     CollectionType,
     CRS_84,
+    ProvidedDataType,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,8 +35,11 @@ logger = logging.getLogger(__name__)
 class Collection:
     type_: CollectionType
     identifier: str
+    created_at: dt.datetime
+    updated_at: dt.datetime
     title: Title
     owner: PottoUser
+    is_public: bool
     crs: list[str]
     description: MaybeDescription = None
     keywords: MaybeKeywords = None
@@ -47,7 +51,7 @@ class Collection:
     temporal_extent_begin: dt.datetime | None = None
     temporal_extent_end: dt.datetime | None = None
     additional_links: list[dict[str, str | dict[str, str]]] | None = None
-    providers: dict[str, PottoProvider] | None = None
+    providers: dict[ProvidedDataType, PottoProvider] | None = None
     queryables: dict[str, Any] | None = None
     schema: dict[str, Any] | None = None
 

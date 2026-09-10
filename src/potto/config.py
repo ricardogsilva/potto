@@ -1,27 +1,33 @@
 import warnings
 from pathlib import Path
+from typing import Any
 
 import jinja2
 import pydantic
 import pydantic_settings
-import sqlmodel
-from pydantic.networks import PostgresDsn
 from pygeoapi import __version__ as pygeoapi_version
-from sqlalchemy import Engine
-from sqlalchemy.ext.asyncio.session import async_sessionmaker
-from sqlalchemy.ext.asyncio.engine import (
-    AsyncEngine,
-    create_async_engine,
-)
-from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette_babel import get_translator
 from starlette_babel.contrib.jinja import configure_jinja_env
 
 from . import jinjafilters
 from .authn.oidc import OIDCProvider
-from .authz.base import AuthorizationBackendProtocol
+from .authz.protocols import AuthorizationBackendProtocol
 from .authz.backend import LocalAuthorizationBackend
 from .authz.opa import OPAAuthorizationBackend
+from .collectionmanager import (
+    CollectionManagerProtocol,
+    CollectionManagerFactoryProtocol,
+)
+from .servermetadatamanager import (
+    ServerMetadataProtocol,
+    ServerMetadataManagerFactoryProtocol,
+)
+from .useraccountmanager import (
+    UserAccountProtocol,
+    UserAccountManagerFactoryProtocol,
+)
+from .managers.postgis.config import PostgisManagerConfiguration
+from .managers.postgis.manager import get_postgis_manager
 
 warnings.filterwarnings(
     "ignore",
@@ -46,6 +52,33 @@ class OIDCSettings(pydantic.BaseModel):
     access_token_audience: str | None = None
 
 
+class CollectionManagerSettings(pydantic.BaseModel):
+    manager_factory: pydantic.ImportString[CollectionManagerFactoryProtocol] = (
+        get_postgis_manager
+    )
+    settings_model: dict[str, Any] = pydantic.Field(
+        default_factory=lambda: PostgisManagerConfiguration().model_dump()
+    )
+
+
+class ServerMetadataManagerSettings(pydantic.BaseModel):
+    manager_factory: pydantic.ImportString[ServerMetadataManagerFactoryProtocol] = (
+        get_postgis_manager
+    )
+    settings_model: dict[str, Any] = pydantic.Field(
+        default_factory=lambda: PostgisManagerConfiguration().model_dump()
+    )
+
+
+class UserAccountManagerSettings(pydantic.BaseModel):
+    manager_factory: pydantic.ImportString[UserAccountManagerFactoryProtocol] = (
+        get_postgis_manager
+    )
+    settings_model: dict[str, Any] = pydantic.Field(
+        default_factory=lambda: PostgisManagerConfiguration().model_dump()
+    )
+
+
 class PottoSettings(pydantic_settings.BaseSettings):
     model_config = pydantic_settings.SettingsConfigDict(
         env_prefix="potto__",
@@ -55,17 +88,8 @@ class PottoSettings(pydantic_settings.BaseSettings):
 
     bind_host: str = "127.0.0.1"
     bind_port: int = 3001
-    retriever_collections: str = "potto.retrievers.retrieve_collections"
-    retriever_server_metadata: str = "potto.retrievers.retrieve_server_metadata"
-    database_dsn: PostgresDsn = PostgresDsn(
-        "postgresql+psycopg://potto:pottopass@localhost/potto"
-    )
-    test_database_dsn: PostgresDsn = PostgresDsn(
-        "postgresql+psycopg://potto:pottopass@localhost/potto_test"
-    )
     debug: bool = False
     public_url: str = "http://localhost:3001"
-    pygeoapi_config_file: Path = Path.home() / "pygeoapi-config.yml"
     env_whitelist: list[str] = pydantic.Field(default_factory=list)
     templates_dir: Path | None = None
     admin_templates_dir: Path | None = None
@@ -79,6 +103,19 @@ class PottoSettings(pydantic_settings.BaseSettings):
     local_data_root: Path = Path.home() / "potto_data"
     oidc: OIDCSettings | None = None
     opa: OPASettings | None = None
+
+    # these use default_factory in order to defer construction until PottoSettings() is actually called,
+    # by which point the model_rebuild() calls below have resolved these settings models' forward
+    # reference to "PottoSettings" itself.
+    collection_manager: CollectionManagerSettings = pydantic.Field(
+        default_factory=lambda: CollectionManagerSettings()
+    )
+    server_metadata_manager: ServerMetadataManagerSettings = pydantic.Field(
+        default_factory=lambda: ServerMetadataManagerSettings()
+    )
+    user_account_manager: UserAccountManagerSettings = pydantic.Field(
+        default_factory=lambda: UserAccountManagerSettings()
+    )
     page_size: int = 20
     page_size_max: int = 100
     use_oas30_fixes: bool = pydantic.Field(
@@ -101,10 +138,10 @@ class PottoSettings(pydantic_settings.BaseSettings):
         ),
     )
 
+    _collection_manager: CollectionManagerProtocol | None = None
+    _server_metadata_manager: ServerMetadataProtocol | None = None
+    _user_account_manager: UserAccountProtocol | None = None
     _jinja_env: jinja2.Environment | None = None
-    _db_engine: AsyncEngine | None = None
-    _sync_db_engine: Engine | None = None
-    _db_session_maker: async_sessionmaker | None = None
     _oidc_provider: OIDCProvider | None = None
     _authorization_backend: AuthorizationBackendProtocol | None = None
 
@@ -112,18 +149,6 @@ class PottoSettings(pydantic_settings.BaseSettings):
         if self._jinja_env is None:
             self._jinja_env = _get_jinja_env(self)
         return self._jinja_env
-
-    def get_db_engine(self) -> AsyncEngine:
-        if self._db_engine is None:
-            self._db_engine = create_async_engine(self.database_dsn.unicode_string())
-        return self._db_engine
-
-    def get_sync_db_engine(self) -> Engine:
-        if self._sync_db_engine is None:
-            self._sync_db_engine = sqlmodel.create_engine(
-                self.database_dsn.unicode_string()
-            )
-        return self._sync_db_engine
 
     def get_oidc_provider(self) -> OIDCProvider | None:
         if self.oidc is None:
@@ -149,16 +174,37 @@ class PottoSettings(pydantic_settings.BaseSettings):
                 self._authorization_backend = LocalAuthorizationBackend()
         return self._authorization_backend
 
-    def get_db_session_maker(self) -> async_sessionmaker:
-        if self._db_session_maker is None:
-            self._db_session_maker = async_sessionmaker(
-                autocommit=False,
-                autoflush=False,
-                bind=self.get_db_engine(),
-                expire_on_commit=False,
-                class_=AsyncSession,
+    def get_collection_manager(self) -> CollectionManagerProtocol:
+        if self._collection_manager is None:
+            self._collection_manager = self.collection_manager.manager_factory(
+                self.collection_manager.settings_model, self
             )
-        return self._db_session_maker
+        return self._collection_manager
+
+    def get_server_metadata_manager(self) -> ServerMetadataProtocol:
+        if self._server_metadata_manager is None:
+            self._server_metadata_manager = (
+                self.server_metadata_manager.manager_factory(
+                    self.server_metadata_manager.settings_model, self
+                )
+            )
+        return self._server_metadata_manager
+
+    def get_user_account_manager(self) -> UserAccountProtocol:
+        if self._user_account_manager is None:
+            self._user_account_manager = self.user_account_manager.manager_factory(
+                self.user_account_manager.settings_model, self
+            )
+        return self._user_account_manager
+
+
+# These each have a manager_factory field typed against a Callable whose signature
+# references "PottoSettings" as a forward reference (to avoid a circular imports.
+# Pydantic can't resolve that forward reference until
+# PottoSettings itself is fully defined, so these models are rebuilt here.
+CollectionManagerSettings.model_rebuild()
+ServerMetadataManagerSettings.model_rebuild()
+UserAccountManagerSettings.model_rebuild()
 
 
 def get_settings() -> PottoSettings:

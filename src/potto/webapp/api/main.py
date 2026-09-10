@@ -6,15 +6,13 @@ mounted by our main starlette-based app. Therefore, lifespan is configured
 in the starlette app.
 """
 
-import asyncio
-import concurrent.futures
 from typing import (
     Annotated,
     Any,
-    cast,
 )
 
 from fastapi import (
+    APIRouter,
     Depends,
     FastAPI,
     Request,
@@ -29,7 +27,8 @@ from ... import (
     config,
     exceptions as potto_exceptions,
 )
-from ...operations.metadata import get_server_metadata
+from ...collectionmanager import CollectionManagerCapabilities
+from ...util import run_sync
 from ...schemas.auth import PottoUser
 from ...schemas.metadata import ServerMetadata
 from . import (
@@ -131,16 +130,20 @@ def _fix_oas30_query_param_style(schema: dict[str, Any]) -> None:
                     param["style"] = "form"
 
 
-async def _fetch_api_metadata(settings: config.PottoSettings) -> ServerMetadata:
+async def _fetch_api_startup_data(
+    settings: config.PottoSettings,
+) -> tuple[ServerMetadata, CollectionManagerCapabilities]:
     """
-    Small helper to allow retrieving server metadata from a sync context.
+    Small helper to allow retrieving startup-time manager data from a sync context.
 
-    This function only exists so that we can retrieve the metadata and use it when
-    creating the OpenAPI document below, when the FastAPI app is created.
+    This function only exists so that we can retrieve the metadata (used when creating the
+    OpenAPI document below) and the collection manager's capabilities (used to decide which
+    mutating collection routes to register) when the FastAPI app is created.
     """
-    async with settings.get_db_session_maker()() as session:
-        db_server_metadata = await get_server_metadata(session)
-    return db_server_metadata.to_potto()
+    return (
+        await settings.get_server_metadata_manager().get_server_metadata(),
+        await settings.get_collection_manager().get_collection_capabilities(),
+    )
 
 
 def _handle_potto_bad_request_exception(
@@ -185,14 +188,7 @@ def create_api_app() -> FastAPI:
 
 
 def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
-    # asyncio.run() fails if called from a running event loop (e.g. uvicorn calls
-    # the app factory from within its own loop). Running in a new thread guarantees
-    # a fresh event loop regardless of the caller's async context.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        api_metadata: ServerMetadata = cast(
-            ServerMetadata,
-            pool.submit(asyncio.run, _fetch_api_metadata(settings)).result(),
-        )
+    api_metadata, collection_capabilities = run_sync(_fetch_api_startup_data(settings))
     raw_title = api_metadata.title
     app_title = (
         raw_title.get("en") or next(iter(raw_title.values()))
@@ -305,6 +301,11 @@ def create_api_app_from_settings(settings: config.PottoSettings) -> FastAPI:
         app.openapi = oidc_openapi  # ty: ignore[invalid-assignment]
 
     app.include_router(collections.router)
+    mutating_collections_router = APIRouter()
+    collections.register_mutating_routes(
+        mutating_collections_router, collection_capabilities
+    )
+    app.include_router(mutating_collections_router)
     app.include_router(items.router)
     app.include_router(base.router)
 

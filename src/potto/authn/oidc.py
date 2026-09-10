@@ -3,17 +3,17 @@ import time
 from typing import (
     Any,
     cast,
+    TYPE_CHECKING,
 )
 from urllib.parse import urlencode
 
 import httpx
 import jwt
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..db.models import User
-from ..db.commands import auth as auth_commands
-from ..db.queries.auth import get_user
-from ..schemas.auth import UserCreateFromOidc
+from ..schemas.auth import PottoUser, UserCreateFromOidc
+
+if TYPE_CHECKING:
+    from ..config import PottoSettings
 
 logger = logging.getLogger(__name__)
 
@@ -170,15 +170,17 @@ class OIDCProvider:
             return [str(r) for r in value if r]
         return []
 
-    async def provision_user(self, session: AsyncSession, claims: dict) -> User:
-        """Find or JIT-provision a local User from OIDC token claims."""
+    async def provision_user(
+        self, settings: "PottoSettings", claims: dict
+    ) -> PottoUser:
+        """Find or JIT-provision a local user from OIDC token claims."""
         sub = claims["sub"]
-        if (db_user := await get_user(session, sub)) is not None:
-            return db_user
+        user_account_manager = settings.get_user_account_manager()
+        if (user := await user_account_manager.get_user(sub)) is not None:
+            return user
 
-        db_user = await auth_commands.provision_oidc_user(
-            session,
-            to_create=UserCreateFromOidc(
+        user = await user_account_manager.provision_oidc_user(
+            UserCreateFromOidc(
                 id=sub,
                 username=_derive_username(claims),
                 is_active=True,
@@ -186,8 +188,8 @@ class OIDCProvider:
                 email=claims.get("email"),
             ),
         )
-        logger.info(f"JIT-provisioned OIDC user {db_user.username!r} (sub={sub!r})")
-        return db_user
+        logger.info(f"JIT-provisioned OIDC user {user.username!r} (sub={sub!r})")
+        return user
 
 
 def _match_key(jwks: list[dict], kid: str | None) -> jwt.PyJWK | None:

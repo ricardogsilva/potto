@@ -1,21 +1,17 @@
 import logging
 
 import shapely
-from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ..collectionmanager import CollectionFilter
 from ..config import PottoSettings
-from ..db.models import Collection
 from ..schemas.auth import PottoUser
-from ..schemas.base import PottoProvider
+from ..schemas.collections import Collection
 from ..util import interpolate_configuration_value
-from . import metadata as metadata_ops
-from . import collections as collection_ops
 
 logger = logging.getLogger(__name__)
 
 
 async def get_pygeoapi_config(
-    session: AsyncSession,
     settings: PottoSettings,
     user: PottoUser | None,
     *,
@@ -24,7 +20,7 @@ async def get_pygeoapi_config(
     collection_page_size: int = 20,
     debug: bool = False,
 ) -> dict:
-    metadata = await metadata_ops.get_server_metadata(session)
+    metadata = await settings.get_server_metadata_manager().get_server_metadata()
     server_conf = {
         "map": {
             "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -39,9 +35,9 @@ async def get_pygeoapi_config(
             "on_exceed": "throttle",
         },
     }
-    data_license = metadata.license or {}
-    data_provider = metadata.data_provider or {}
-    point_of_contact = metadata.point_of_contact or {}
+    data_license = metadata.license
+    data_provider = metadata.data_provider
+    point_of_contact = metadata.point_of_contact
     unknown_detail = "unknown"
 
     pygeoapi_config = {
@@ -66,64 +62,81 @@ async def get_pygeoapi_config(
                 "url": metadata.url or unknown_detail,
             },
             "license": {
-                "name": data_license.get("name", unknown_detail),
-                "url": data_license.get("url", unknown_detail),
+                "name": (data_license.name if data_license else None) or unknown_detail,
+                "url": (data_license.url if data_license else None) or unknown_detail,
             },
             "provider": {
-                "name": data_provider.get("name", "Organization Name"),
-                "url": data_provider.get("url"),
+                "name": (data_provider.name if data_provider else None)
+                or "Organization Name",
+                "url": data_provider.url if data_provider else None,
             },
             "contact": {
-                "name": point_of_contact.get("name", "Lastname, Firstname"),
-                "position": point_of_contact.get("position", "Position Title"),
-                "address": point_of_contact.get("address", "Mailing Address"),
-                "city": point_of_contact.get("city", "City"),
-                "stateorprovince": point_of_contact.get(
-                    "stateorprovince", "Administrative Area"
-                ),
-                "postalcode": point_of_contact.get("postalcode", "Zip or Postal Code"),
-                "country": point_of_contact.get("country", "Country"),
-                "phone": point_of_contact.get("phone", "+xx-xxx-xxx-xxxx"),
-                "fax": point_of_contact.get("fax", "+xx-xxx-xxx-xxxx"),
-                "email": point_of_contact.get("email", "you@example.org"),
-                "url": point_of_contact.get("url", "Contact URL"),
-                "hours": point_of_contact.get("hours", "Mo-Fr 08:00-17:00"),
-                "instructions": point_of_contact.get(
-                    "instructions", "During hours of service. Off on weekends."
-                ),
-                "role": point_of_contact.get("role", "pointOfContact"),
+                "name": (point_of_contact.name if point_of_contact else None)
+                or "Lastname, Firstname",
+                "position": (point_of_contact.position if point_of_contact else None)
+                or "Position Title",
+                "address": (point_of_contact.address if point_of_contact else None)
+                or "Mailing Address",
+                "city": (point_of_contact.city if point_of_contact else None) or "City",
+                "stateorprovince": (
+                    point_of_contact.state_or_province if point_of_contact else None
+                )
+                or "Administrative Area",
+                "postalcode": (
+                    point_of_contact.postal_code if point_of_contact else None
+                )
+                or "Zip or Postal Code",
+                "country": (point_of_contact.country if point_of_contact else None)
+                or "Country",
+                "phone": (point_of_contact.phone if point_of_contact else None)
+                or "+xx-xxx-xxx-xxxx",
+                "fax": (point_of_contact.fax if point_of_contact else None)
+                or "+xx-xxx-xxx-xxxx",
+                "email": (point_of_contact.email if point_of_contact else None)
+                or "you@example.org",
+                "url": (point_of_contact.url if point_of_contact else None)
+                or "Contact URL",
+                "hours": (point_of_contact.contact_hours if point_of_contact else None)
+                or "Mo-Fr 08:00-17:00",
+                "instructions": (
+                    point_of_contact.contact_instructions if point_of_contact else None
+                )
+                or "During hours of service. Off on weekends.",
+                "role": "pointOfContact",
             },
         },
         "resources": {},
     }
-    collections, total = await collection_ops.paginated_list_collections(
-        session,
-        user=user,
-        identifier_filter=collection_identifier,
+    (
+        collections,
+        total,
+    ) = await settings.get_collection_manager().paginated_list_collections(
+        user,
         page=collection_page,
         page_size=collection_page_size,
-        authorization_backend=settings.get_authorization_backend(),
+        filter_=CollectionFilter(
+            identifiers=[collection_identifier] if collection_identifier else None,
+        ),
     )
 
-    for db_collection in collections:
-        pygeoapi_config["resources"][db_collection.resource_identifier] = (
-            _convert_collection_to_pygeoapi_resource(db_collection, settings)
+    for collection in collections:
+        pygeoapi_config["resources"][collection.identifier] = (
+            _convert_collection_to_pygeoapi_resource(collection, settings)
         )
     # TODO: validate the config
     return pygeoapi_config
 
 
 def _convert_collection_to_pygeoapi_resource(
-    db_collection: Collection, settings: PottoSettings
+    collection: Collection, settings: PottoSettings
 ) -> dict:
     links = []
-    for collection_link in db_collection.additional_links or []:
+    for collection_link in collection.additional_links or []:
         link_ = dict(collection_link)
         type_ = link_.pop("media_type", "")
         links.append({"type": type_, **link_})
     converted_providers = []
-    for type_, raw_provider in (db_collection.providers or {}).items():
-        provider = PottoProvider.model_validate(raw_provider)
+    for type_, provider in (collection.providers or {}).items():
         if provider.provider_name == "pygeoapi":
             raw_data = provider.config["data"]
             data = (
@@ -133,45 +146,43 @@ def _convert_collection_to_pygeoapi_resource(
             )
             converted_providers.append(
                 {
-                    "type": type_,
+                    "type": type_.value,
                     "name": provider.config["python_callable"],
                     "data": data,
                     **provider.config.get("options", {}),
                 }
             )
 
-    extents = {}
-    # add any custom extents to the collection - this is done before the
-    # adding the 'spatial' and 'temporal' extents to disallow overriding them
-    for name, info in (db_collection.additional_extents or {}).items():
-        extents[name] = info
+    # NOTE: per-collection custom extents (schemas.collections.Collection has no
+    # additional_extents field yet - see the "TODO: Add support for additional
+    # extents" marker on that class) are not merged in here.
     extents = {
         "spatial": {
             "bbox": (
-                db_collection.spatial_extent.bounds
-                if db_collection.spatial_extent
+                collection.spatial_extent.bounds
+                if collection.spatial_extent
                 else shapely.box(-180, -90, 180, 90).bounds
             ),
             "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
         },
         "temporal": {
             "begin": (
-                db_collection.temporal_extent_begin.isoformat()
-                if db_collection.temporal_extent_begin
+                collection.temporal_extent_begin.isoformat()
+                if collection.temporal_extent_begin
                 else None
             ),
             "end": (
-                db_collection.temporal_extent_end.isoformat()
-                if db_collection.temporal_extent_end
+                collection.temporal_extent_end.isoformat()
+                if collection.temporal_extent_end
                 else None
             ),
         },
     }
     pygeoapi_collection = {
         "type": "collection",
-        "title": db_collection.title,
-        "description": db_collection.description or "",
-        "keywords": db_collection.keywords or [],
+        "title": collection.title,
+        "description": collection.description or "",
+        "keywords": collection.keywords or [],
         "linked-data": None,
         "links": links,
         "extents": extents,
@@ -179,13 +190,13 @@ def _convert_collection_to_pygeoapi_resource(
         # owner is not a property recognized by pygeoapi but we require it in
         # potto.Adding it here takes advantage of the fact that pygeoapi
         # allows additional configuration properties on collections
-        "owner": db_collection.owner.to_potto(),
+        "owner": collection.owner,
     }
     limits = {
         k: v
         for k, v in {
-            "default_items": db_collection.custom_page_size,
-            "max_items": db_collection.custom_page_size_max,
+            "default_items": collection.custom_page_size,
+            "max_items": collection.custom_page_size_max,
         }.items()
         if v is not None
     }

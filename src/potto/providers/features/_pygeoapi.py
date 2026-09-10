@@ -344,7 +344,7 @@ def _convert_collection_to_pygeoapi_resource(
             f"collection {collection.identifier!r} does not have a feature provider"
         )
     try:
-        naive_provider_config = collection.providers[ProvidedDataType.FEATURE.value]
+        naive_provider_config = collection.providers[ProvidedDataType.FEATURE]
     except KeyError as err:
         raise potto_exceptions.PottoException(
             f"collection {collection.identifier!r} does not have a feature provider"

@@ -8,6 +8,7 @@ from starlette.responses import RedirectResponse, Response
 
 from ...authn.oidc import OIDCProvider
 from ...config import PottoSettings
+from ...schemas.auth import PottoScope, PottoUser, UserUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -82,20 +83,28 @@ async def oidc_callback(request: Request) -> Response:
                 f"Access token validation failed, using ID token claims only: {exc}"
             )
 
-    async with settings.get_db_session_maker()() as session:
-        db_user = await oidc_provider.provision_user(session, claims)
+    user = await oidc_provider.provision_user(settings, claims)
 
-    if not db_user.is_active:
+    if not user.is_active:
         return Response("Account is disabled", status_code=403)
 
-    # Sync scopes from token claims to DB if roles_claim is configured
+    # Sync scopes from token claims to DB if roles_claim is configured. This
+    # reflects the identity provider's own authority over roles, so it is done
+    # as a trusted system update rather than a self-service scope change.
     scopes = oidc_provider.extract_scopes(claims)
-    if scopes and scopes != db_user.scopes:
-        async with settings.get_db_session_maker()() as session:
-            db_user.scopes = scopes
-            session.add(db_user)
-            await session.commit()
+    if scopes and scopes != user.scopes:
+        trusted_system_user = PottoUser(
+            id="oidc-system",
+            username="oidc-system",
+            is_active=True,
+            scopes=[PottoScope.ADMIN.value],
+        )
+        user = await settings.get_user_account_manager().update_user(
+            user.id,
+            UserUpdate(scopes=scopes),
+            requesting_user=trusted_system_user,
+        )
 
-    request.session["user_id"] = str(db_user.id)
+    request.session["user_id"] = str(user.id)
     request.session["id_token"] = id_token
     return RedirectResponse(next_url, status_code=303)

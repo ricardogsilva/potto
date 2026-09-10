@@ -3,10 +3,8 @@ import datetime as dt
 import pydantic
 
 from ...constants import CollectionType
-from ...db.models import (
-    Collection,
-    User,
-)
+from ..auth import PottoUser
+from ..collections import Collection
 from .. import base
 
 
@@ -27,10 +25,12 @@ class CollectionListItem(pydantic.BaseModel):
     is_public: bool
 
     @classmethod
-    def from_db_item(cls, item: Collection) -> "CollectionListItem":
+    def from_potto(cls, item: Collection) -> "CollectionListItem":
         return cls(
-            **item.model_dump(),
+            resource_identifier=item.identifier,
+            collection_type=item.type_,
             owner=item.owner.username,
+            is_public=item.is_public,
         )
 
 
@@ -43,16 +43,21 @@ class CollectionDetail(CollectionListItem):
     spatial_extent: str | None
 
     @classmethod
-    def from_db_item(
+    def from_potto(
         cls,
         item: Collection,
-        editors: list[User] | None = None,
-        viewers: list[User] | None = None,
+        editors: list[PottoUser] | None = None,
+        viewers: list[PottoUser] | None = None,
     ) -> "CollectionDetail":
         return cls(
-            **item.model_dump(exclude={"spatial_extent"}),
+            resource_identifier=item.identifier,
+            collection_type=item.type_,
             owner=item.owner.username,
+            is_public=item.is_public,
+            title=item.title,
             editors=[u.username for u in (editors or [])],
             viewers=[v.username for v in (viewers or [])],
+            created_at=item.created_at,
+            updated_at=item.updated_at,
             spatial_extent=str(item.spatial_extent) if item.spatial_extent else None,
         )

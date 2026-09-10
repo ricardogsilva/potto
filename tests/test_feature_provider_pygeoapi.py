@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pytest
 
 from potto.config import PottoSettings
@@ -34,8 +36,11 @@ def collection():
     return Collection(
         type_=CollectionType.FEATURE_COLLECTION,
         identifier="test-collection",
+        created_at=dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc),
+        updated_at=dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc),
         title="Test Collection",
         owner=auth.PottoUser(id="user-1", username="testuser", is_active=True),
+        is_public=False,
         crs=[CRS_84],
         providers={
             ProvidedDataType.FEATURE.value: base.PottoProvider(
