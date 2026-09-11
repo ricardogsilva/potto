@@ -68,3 +68,15 @@ class AuthorizationBackendProtocol(Protocol):
     async def can_create_user(self, user: PottoUser | None) -> bool:
         """Return True if user is allowed to create new local users."""
         ...
+
+    async def can_view_user(self, requesting_user: PottoUser | None) -> bool:
+        """Return True if requesting_user is allowed to view another user's account."""
+        ...
+
+    async def can_edit_user(self, requesting_user: PottoUser | None) -> bool:
+        """Return True if requesting_user is allowed to modify another user's account."""
+        ...
+
+    async def can_delete_user(self, requesting_user: PottoUser | None) -> bool:
+        """Return True if requesting_user is allowed to delete another user's account."""
+        ...

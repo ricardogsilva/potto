@@ -99,10 +99,10 @@ class CollectionView(_PottoAdminModelView):
             return None
         user_account_manager = settings.get_user_account_manager()
         editors = await user_account_manager.list_resource_editors(
-            "collection", collection.identifier
+            "collection", collection.identifier, user
         )
         viewers = await user_account_manager.list_resource_viewers(
-            "collection", collection.identifier
+            "collection", collection.identifier, user
         )
         object.__setattr__(collection, "editors", editors)
         object.__setattr__(collection, "viewers", viewers)

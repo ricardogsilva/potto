@@ -17,7 +17,12 @@ from pydantic import SecretStr
 
 from potto.collectionmanager import CollectionFilter
 from potto.constants import CollectionType
-from potto.exceptions import CapabilityNotSupported
+from potto.exceptions import (
+    CapabilityNotSupported,
+    PottoCannotDeleteUserException,
+    PottoCannotEditUserException,
+    PottoCannotViewUserException,
+)
 from potto.schemas.auth import UserCreate, UserUpdate
 from potto.schemas.collections import CollectionCreate, CollectionUpdate
 from potto.schemas.metadata import ServerMetadataUpdate
@@ -237,7 +242,9 @@ class TestCollectionMutationCapabilities:
             )
             # Authorization checks read `user.scopes` off the object it's given, not
             # a fresh DB row - re-fetch to see the effect of the grant just made.
-            granted_other_user = await manager.get_user(contract_harness.other_user.id)
+            granted_other_user = await manager.get_user(
+                contract_harness.other_user.id, contract_harness.admin_user
+            )
             assert (
                 await manager.get_collection(
                     contract_harness.private_collection.identifier,
@@ -262,7 +269,7 @@ class TestCollectionMutationCapabilities:
                     collection=contract_harness.private_collection,
                 )
                 revoked_other_user = await manager.get_user(
-                    contract_harness.other_user.id
+                    contract_harness.other_user.id, contract_harness.admin_user
                 )
                 assert (
                     await manager.get_collection(
@@ -307,26 +314,59 @@ class TestUserAccounts:
     @pytest.mark.asyncio
     async def test_get_user(self, contract_harness):
         manager = contract_harness.manager
-        result = await manager.get_user(contract_harness.owner_user.id)
+        result = await manager.get_user(
+            contract_harness.owner_user.id, contract_harness.admin_user
+        )
         assert result is not None
         assert result.id == contract_harness.owner_user.id
-        assert await manager.get_user("does-not-exist-xyz") is None
+        assert (
+            await manager.get_user("does-not-exist-xyz", contract_harness.admin_user)
+            is None
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_user_denied_for_anonymous(self, contract_harness):
+        with pytest.raises(PottoCannotViewUserException):
+            await contract_harness.manager.get_user(
+                contract_harness.owner_user.id, None
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_user_allowed_for_any_authenticated_user(self, contract_harness):
+        result = await contract_harness.manager.get_user(
+            contract_harness.owner_user.id, contract_harness.other_user
+        )
+        assert result is not None
+        assert result.id == contract_harness.owner_user.id
 
     @pytest.mark.asyncio
     async def test_get_user_by_username(self, contract_harness):
         manager = contract_harness.manager
         result = await manager.get_user_by_username(
-            contract_harness.owner_user.username
+            contract_harness.owner_user.username, contract_harness.admin_user
         )
         assert result is not None
         assert result.id == contract_harness.owner_user.id
-        assert await manager.get_user_by_username("does-not-exist-xyz") is None
+        assert (
+            await manager.get_user_by_username(
+                "does-not-exist-xyz", contract_harness.admin_user
+            )
+            is None
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_user_by_username_denied_for_anonymous(self, contract_harness):
+        with pytest.raises(PottoCannotViewUserException):
+            await contract_harness.manager.get_user_by_username(
+                contract_harness.owner_user.username, None
+            )
 
     @pytest.mark.asyncio
     async def test_paginated_list_users_username_filter(self, contract_harness):
         results, total = await contract_harness.manager.paginated_list_users(
             include_total=True,
             filter_=UserFilter(username=contract_harness.owner_user.username),
+            requesting_user=contract_harness.admin_user,
         )
         assert total == 1
         assert results[0].id == contract_harness.owner_user.id
@@ -334,21 +374,44 @@ class TestUserAccounts:
     @pytest.mark.asyncio
     async def test_paginated_list_users_admin_filter(self, contract_harness):
         results, total = await contract_harness.manager.paginated_list_users(
-            include_total=True, filter_=UserFilter(is_admin=True)
+            include_total=True,
+            filter_=UserFilter(is_admin=True),
+            requesting_user=contract_harness.admin_user,
         )
         assert total == 1
         assert results[0].id == contract_harness.admin_user.id
 
     @pytest.mark.asyncio
+    async def test_paginated_list_users_denied_for_anonymous(self, contract_harness):
+        with pytest.raises(PottoCannotViewUserException):
+            await contract_harness.manager.paginated_list_users(
+                include_total=True, requesting_user=None
+            )
+
+    @pytest.mark.asyncio
+    async def test_paginated_list_users_allowed_for_any_authenticated_user(
+        self, contract_harness
+    ):
+        results, total = await contract_harness.manager.paginated_list_users(
+            include_total=True, requesting_user=contract_harness.other_user
+        )
+        assert total is not None
+
+    @pytest.mark.asyncio
     async def test_pagination_consistent_with_total(self, contract_harness):
         manager = contract_harness.manager
+        admin_user = contract_harness.admin_user
         all_results, total = await manager.paginated_list_users(
-            page=1, page_size=1000, include_total=True
+            page=1, page_size=1000, include_total=True, requesting_user=admin_user
         )
         assert total == len(all_results)
         assert total >= 6
-        page_1, _ = await manager.paginated_list_users(page=1, page_size=2)
-        page_2, _ = await manager.paginated_list_users(page=2, page_size=2)
+        page_1, _ = await manager.paginated_list_users(
+            page=1, page_size=2, requesting_user=admin_user
+        )
+        page_2, _ = await manager.paginated_list_users(
+            page=2, page_size=2, requesting_user=admin_user
+        )
         combined_ids = [u.id for u in page_1 + page_2]
         expected_ids = [u.id for u in all_results[: len(page_1) + len(page_2)]]
         assert combined_ids == expected_ids
@@ -384,6 +447,18 @@ class TestUserAccounts:
                 contract_harness.admin_user,
             )
             assert updated.email == "new-email@example.com"
+            with pytest.raises(PottoCannotEditUserException):
+                await manager.update_user(
+                    target_user_id,
+                    UserUpdate(email="denied@example.com"),
+                    contract_harness.other_user,
+                )
+            with pytest.raises(PottoCannotEditUserException):
+                await manager.update_user(
+                    target_user_id,
+                    UserUpdate(password="takeover12345"),
+                    contract_harness.other_user,
+                )
         else:
             with pytest.raises(CapabilityNotSupported):
                 await manager.update_user(
@@ -393,8 +468,13 @@ class TestUserAccounts:
                 )
 
         if capabilities.supports_deletion:
+            with pytest.raises(PottoCannotDeleteUserException):
+                await manager.delete_user(target_user_id, contract_harness.other_user)
             await manager.delete_user(target_user_id, contract_harness.admin_user)
-            assert await manager.get_user(target_user_id) is None
+            assert (
+                await manager.get_user(target_user_id, contract_harness.admin_user)
+                is None
+            )
         else:
             with pytest.raises(CapabilityNotSupported):
                 await manager.delete_user(target_user_id, contract_harness.admin_user)
@@ -436,16 +516,45 @@ class TestResourceEditorsAndViewers:
     @pytest.mark.asyncio
     async def test_list_resource_editors(self, contract_harness):
         editors = await contract_harness.manager.list_resource_editors(
-            "collection", contract_harness.private_collection.identifier
+            "collection",
+            contract_harness.private_collection.identifier,
+            contract_harness.admin_user,
         )
         assert contract_harness.editor_user.id in {u.id for u in editors}
 
     @pytest.mark.asyncio
     async def test_list_resource_viewers(self, contract_harness):
         viewers = await contract_harness.manager.list_resource_viewers(
-            "collection", contract_harness.private_collection.identifier
+            "collection",
+            contract_harness.private_collection.identifier,
+            contract_harness.admin_user,
         )
         assert contract_harness.viewer_user.id in {u.id for u in viewers}
+
+    @pytest.mark.asyncio
+    async def test_list_resource_editors_allowed_for_any_authenticated_user(
+        self, contract_harness
+    ):
+        editors = await contract_harness.manager.list_resource_editors(
+            "collection",
+            contract_harness.private_collection.identifier,
+            contract_harness.other_user,
+        )
+        assert contract_harness.editor_user.id in {u.id for u in editors}
+
+    @pytest.mark.asyncio
+    async def test_list_resource_editors_denied_for_anonymous(self, contract_harness):
+        with pytest.raises(PottoCannotViewUserException):
+            await contract_harness.manager.list_resource_editors(
+                "collection", contract_harness.private_collection.identifier, None
+            )
+
+    @pytest.mark.asyncio
+    async def test_list_resource_viewers_denied_for_anonymous(self, contract_harness):
+        with pytest.raises(PottoCannotViewUserException):
+            await contract_harness.manager.list_resource_viewers(
+                "collection", contract_harness.private_collection.identifier, None
+            )
 
     @pytest.mark.asyncio
     async def test_list_resource_editors_unsupported_resource_type(
@@ -453,7 +562,7 @@ class TestResourceEditorsAndViewers:
     ):
         with pytest.raises(NotImplementedError):
             await contract_harness.manager.list_resource_editors(
-                "process", "some-process"
+                "process", "some-process", contract_harness.admin_user
             )
 
 

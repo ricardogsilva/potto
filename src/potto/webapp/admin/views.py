@@ -9,6 +9,7 @@ from ...exceptions import (
     PottoCannotCreateUserException,
     PottoCannotEditCollectionException,
     PottoCannotEditServerMetadataException,
+    PottoCannotEditUserException,
     PottoCannotSetAdminScopeException,
     PottoCannotSetScopesException,
 )
@@ -31,6 +32,8 @@ class _PottoAdminModelView(BaseModelView):
         if isinstance(exc, PottoCannotEditServerMetadataException):
             raise FormValidationError({"title": str(exc)})
         if isinstance(exc, PottoCannotCreateUserException):
+            raise FormValidationError({"username": str(exc)})
+        if isinstance(exc, PottoCannotEditUserException):
             raise FormValidationError({"username": str(exc)})
         logger.exception(f"An error occurred: {exc}")
         raise exc

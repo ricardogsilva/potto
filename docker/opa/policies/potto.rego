@@ -10,6 +10,9 @@
 #   potto/authz/can_assign_admin_scope          input: {user}              -> boolean
 #   potto/authz/can_change_collection_owner     input: {user, collection}  -> boolean
 #   potto/authz/can_create_collection           input: {user}              -> boolean
+#   potto/authz/can_view_user                   input: {user}              -> boolean
+#   potto/authz/can_edit_user                   input: {user}              -> boolean
+#   potto/authz/can_delete_user                 input: {user}              -> boolean
 #
 # The user object has: id, username, scopes (list of strings).
 # For anonymous (unauthenticated) visitors, user is null.
@@ -141,4 +144,33 @@ default can_create_collection := false
 
 can_create_collection if {
     input.user != null
+}
+
+# --- can_view_user ---
+#
+# Any authenticated user may view another user's account details, since access
+# to the admin UI already requires being logged in.
+
+default can_view_user := false
+
+can_view_user if {
+    input.user != null
+}
+
+# --- can_edit_user ---
+
+default can_edit_user := false
+
+can_edit_user if {
+    input.user != null
+    "admin" in input.user.scopes
+}
+
+# --- can_delete_user ---
+
+default can_delete_user := false
+
+can_delete_user if {
+    input.user != null
+    "admin" in input.user.scopes
 }

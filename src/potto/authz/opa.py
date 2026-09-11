@@ -127,3 +127,24 @@ class OPAAuthorizationBackend:
 
     async def can_create_user(self, user: PottoUser | None) -> bool:
         return False
+
+    async def can_view_user(self, requesting_user: PottoUser | None) -> bool:
+        result = await self._query(
+            "can_view_user",
+            {"user": self._user_input(requesting_user)},
+        )
+        return bool(result)
+
+    async def can_edit_user(self, requesting_user: PottoUser | None) -> bool:
+        result = await self._query(
+            "can_edit_user",
+            {"user": self._user_input(requesting_user)},
+        )
+        return bool(result)
+
+    async def can_delete_user(self, requesting_user: PottoUser | None) -> bool:
+        result = await self._query(
+            "can_delete_user",
+            {"user": self._user_input(requesting_user)},
+        )
+        return bool(result)

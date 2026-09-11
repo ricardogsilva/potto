@@ -48,10 +48,18 @@ class UserAccountProtocol(Protocol):
     async def get_user_account_capabilities(self) -> UserAccountManagerCapabilities:
         """Return the manager's capabilities."""
 
-    async def get_user(self, user_id: str) -> "PottoUser | None":
+    async def get_user(
+        self,
+        user_id: str,
+        requesting_user: "PottoUser | None",
+    ) -> "PottoUser | None":
         """Retrieve a user by id."""
 
-    async def get_user_by_username(self, username: str) -> "PottoUser | None":
+    async def get_user_by_username(
+        self,
+        username: str,
+        requesting_user: "PottoUser | None",
+    ) -> "PottoUser | None":
         """Retrieve a user by username."""
 
     async def paginated_list_users(
@@ -61,6 +69,7 @@ class UserAccountProtocol(Protocol):
         page_size: int = 20,
         include_total: bool = False,
         filter_: UserFilter | None = None,
+        requesting_user: "PottoUser | None",
     ) -> tuple[list["PottoUser"], int | None]:
         """Retrieve a list of users."""
 
@@ -113,6 +122,7 @@ class UserAccountProtocol(Protocol):
         self,
         resource_type: str,
         resource_identifier: str,
+        requesting_user: "PottoUser | None",
     ) -> list["PottoUser"]:
         """Return the users who hold the editor role on the given resource.
 
@@ -124,6 +134,7 @@ class UserAccountProtocol(Protocol):
         self,
         resource_type: str,
         resource_identifier: str,
+        requesting_user: "PottoUser | None",
     ) -> list["PottoUser"]:
         """Return the users who hold the viewer role on the given resource."""
 

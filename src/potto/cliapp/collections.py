@@ -119,10 +119,10 @@ async def get_collection(
         raise SystemExit(f"Error: Collection {collection_identifier!r} not found.")
     user_account_manager = settings.get_user_account_manager()
     editors = await user_account_manager.list_resource_editors(
-        "collection", collection.identifier
+        "collection", collection.identifier, user
     )
     viewers = await user_account_manager.list_resource_viewers(
-        "collection", collection.identifier
+        "collection", collection.identifier, user
     )
     result = cli_schemas.CollectionDetail.from_potto(
         collection, editors=editors, viewers=viewers
@@ -145,9 +145,12 @@ async def create_feature_collection(
     settings: Annotated[PottoSettings, cyclopts.Parameter(parse=False)],
 ) -> None:
     """Create a new feature collection."""
+    system_user = get_cli_system_user()
     user_account_manager = settings.get_user_account_manager()
     existing_admins, total_admins = await user_account_manager.paginated_list_users(
-        include_total=True, filter_=UserFilter(is_admin=True)
+        include_total=True,
+        filter_=UserFilter(is_admin=True),
+        requesting_user=system_user,
     )
     if not total_admins:
         collections_app.error_console.print(
@@ -184,10 +187,10 @@ async def create_feature_collection(
         collections_app.console.print(f"[red]Error:[/red] {err}")
         exit(1)
     editors = await user_account_manager.list_resource_editors(
-        "collection", created.identifier
+        "collection", created.identifier, system_user
     )
     viewers = await user_account_manager.list_resource_viewers(
-        "collection", created.identifier
+        "collection", created.identifier, system_user
     )
     result = cli_schemas.CollectionDetail.from_potto(
         created, editors=editors, viewers=viewers

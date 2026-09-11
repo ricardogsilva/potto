@@ -79,7 +79,9 @@ async def bootstrap_for_cite_ogcapi_features(
         )
         raise SystemExit(1)
     admin_users, _ = await user_account_manager.paginated_list_users(
-        filter_=UserFilter(is_admin=True), include_total=False
+        filter_=UserFilter(is_admin=True),
+        include_total=False,
+        requesting_user=get_cli_system_user(),
     )
     if len(admin_users) == 0:
         cite_app.error_console.print(

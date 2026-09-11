@@ -66,8 +66,9 @@ class UserView(_PottoAdminModelView):
     exclude_fields_from_edit = ("id",)
 
     async def find_by_pk(self, request: Request, pk: Any) -> Any:
+        user = cast(PottoUser, request.user)
         settings = cast("PottoSettings", request.app.state.SETTINGS)
-        return await settings.get_user_account_manager().get_user(pk)
+        return await settings.get_user_account_manager().get_user(pk, user)
 
     async def find_by_pks(self, request: Request, pks: list[Any]) -> list[Any]:
         users = [await self.find_by_pk(request, pk) for pk in pks]
@@ -81,21 +82,25 @@ class UserView(_PottoAdminModelView):
         where: Any = None,
         order_by: list[str] | None = None,
     ) -> list[Any]:
+        user = cast(PottoUser, request.user)
         settings = cast("PottoSettings", request.app.state.SETTINGS)
         page = (skip // limit) + 1
         users, _ = await settings.get_user_account_manager().paginated_list_users(
             page=page,
             page_size=limit,
             filter_=UserFilter(username=where if isinstance(where, str) else None),
+            requesting_user=user,
         )
         return users
 
     async def count(self, request: Request, where: Any = None) -> int:
+        user = cast(PottoUser, request.user)
         settings = cast("PottoSettings", request.app.state.SETTINGS)
         _, total = await settings.get_user_account_manager().paginated_list_users(
             page_size=1,
             include_total=True,
             filter_=UserFilter(username=where if isinstance(where, str) else None),
+            requesting_user=user,
         )
         return cast(int, total)
 

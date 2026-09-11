@@ -11,7 +11,10 @@ import pydantic
 import shapely
 
 from ...authz.protocols import AuthorizationBackendProtocol
-from ...exceptions import CapabilityNotSupported
+from ...exceptions import (
+    CapabilityNotSupported,
+    PottoCannotViewUserException,
+)
 from ...collectionmanager import (
     CollectionManagerCapabilities,
     CollectionFilter,
@@ -278,12 +281,28 @@ class ConfigurationFileManager:
         """Return the manager's capabilities."""
         return UserAccountManagerCapabilities()
 
-    async def get_user(self, user_id: str) -> PottoUser | None:
+    async def get_user(
+        self,
+        user_id: str,
+        requesting_user: PottoUser | None,
+    ) -> PottoUser | None:
         """Retrieve a user by id."""
+        if not await self.authorization_backend.can_view_user(requesting_user):
+            raise PottoCannotViewUserException(
+                "User does not have permission to view user accounts."
+            )
         return self.user_accounts.get(user_id)
 
-    async def get_user_by_username(self, username: str) -> PottoUser | None:
+    async def get_user_by_username(
+        self,
+        username: str,
+        requesting_user: PottoUser | None,
+    ) -> PottoUser | None:
         """Retrieve a user by username."""
+        if not await self.authorization_backend.can_view_user(requesting_user):
+            raise PottoCannotViewUserException(
+                "User does not have permission to view user accounts."
+            )
         for user in self.user_accounts.values():
             if user.username == username:
                 return user
@@ -296,8 +315,13 @@ class ConfigurationFileManager:
         page_size: int = 20,
         include_total: bool = False,
         filter_: UserFilter | None = None,
+        requesting_user: PottoUser | None,
     ) -> tuple[list[PottoUser], int | None]:
         """Retrieve a list of users."""
+        if not await self.authorization_backend.can_view_user(requesting_user):
+            raise PottoCannotViewUserException(
+                "User does not have permission to view user accounts."
+            )
         candidates = sorted(self.user_accounts.values(), key=lambda u: u.username)
         if filter_ is not None:
             if filter_.username:
@@ -366,7 +390,9 @@ class ConfigurationFileManager:
         Returns None on any failure (unknown user, inactive, no local password set,
         wrong password).
         """
-        user = await self.get_user_by_username(username)
+        user = next(
+            (u for u in self.user_accounts.values() if u.username == username), None
+        )
         if user is None:
             return None
         if not user.is_active:
@@ -382,8 +408,13 @@ class ConfigurationFileManager:
         self,
         resource_type: str,
         resource_identifier: str,
+        requesting_user: "PottoUser | None",
     ) -> list["PottoUser"]:
         """Return the users who hold the editor role on the given resource."""
+        if not await self.authorization_backend.can_view_user(requesting_user):
+            raise PottoCannotViewUserException(
+                "User does not have permission to view resource editors."
+            )
         if resource_type != "collection":
             raise NotImplementedError(
                 f"Resource type {resource_type!r} is not supported yet."
@@ -395,8 +426,13 @@ class ConfigurationFileManager:
         self,
         resource_type: str,
         resource_identifier: str,
+        requesting_user: "PottoUser | None",
     ) -> list["PottoUser"]:
         """Return the users who hold the viewer role on the given resource."""
+        if not await self.authorization_backend.can_view_user(requesting_user):
+            raise PottoCannotViewUserException(
+                "User does not have permission to view resource viewers."
+            )
         if resource_type != "collection":
             raise NotImplementedError(
                 f"Resource type {resource_type!r} is not supported yet."
