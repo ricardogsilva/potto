@@ -24,6 +24,7 @@ from ..schemas.collections import CollectionCreate
 from ..schemas.base import PottoProvider
 from ..schemas.cli import CollectionDetail
 from ..useraccountmanager import UserFilter
+from ._shared import get_cli_system_user
 
 dev_app = cyclopts.App(help_format="rich")
 logger = logging.getLogger(__name__)
@@ -67,7 +68,9 @@ async def generate_feature_collection_from_file(
         sys.exit(1)
     user_account_manager = settings.get_user_account_manager()
     existing_admins, total_admins = await user_account_manager.paginated_list_users(
-        include_total=True, filter_=UserFilter(is_admin=True)
+        include_total=True,
+        filter_=UserFilter(is_admin=True),
+        requesting_user=get_cli_system_user(),
     )
     if not total_admins:
         dev_app.error_console.print(

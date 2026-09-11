@@ -11,6 +11,7 @@ import httpx
 import jwt
 
 from ..schemas.auth import PottoUser, UserCreateFromOidc
+from ._shared import get_authn_system_user
 
 if TYPE_CHECKING:
     from ..config import PottoSettings
@@ -176,7 +177,9 @@ class OIDCProvider:
         """Find or JIT-provision a local user from OIDC token claims."""
         sub = claims["sub"]
         user_account_manager = settings.get_user_account_manager()
-        if (user := await user_account_manager.get_user(sub)) is not None:
+        if (
+            user := await user_account_manager.get_user(sub, get_authn_system_user())
+        ) is not None:
             return user
 
         user = await user_account_manager.provision_oidc_user(

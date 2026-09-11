@@ -10,6 +10,7 @@ import alembic.util.exc
 import cyclopts
 import yaml
 
+from ...cliapp._shared import get_cli_system_user
 from ...exceptions import PottoException
 from . import operations as postgis_operations
 from .db.alembic_utils import build_alembic_config
@@ -90,7 +91,11 @@ def build_cli_group(manager: "PostgisManager") -> cyclopts.App:
                 existing_admins,
                 total_admins,
             ) = await postgis_operations.paginated_list_users(
-                session, include_total=True, admin_filter=True
+                session,
+                get_cli_system_user(),
+                manager.authorization_backend,
+                include_total=True,
+                admin_filter=True,
             )
             if not total_admins:
                 app.error_console.print(

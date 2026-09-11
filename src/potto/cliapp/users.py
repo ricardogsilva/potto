@@ -60,7 +60,10 @@ async def list_users(
 ) -> None:
     """List existing users."""
     users, total = await settings.get_user_account_manager().paginated_list_users(
-        page=page, page_size=page_size, include_total=True
+        page=page,
+        page_size=page_size,
+        include_total=True,
+        requesting_user=get_cli_system_user(),
     )
     assert total is not None
     result = cli_schemas.ItemList[cli_schemas.UserListItem](

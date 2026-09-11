@@ -246,13 +246,25 @@ class PostgisManager:
             supports_deletion=True,
         )
 
-    async def get_user(self, user_id: str) -> PottoUser | None:
+    async def get_user(
+        self,
+        user_id: str,
+        requesting_user: PottoUser | None,
+    ) -> PottoUser | None:
         async with self.config.get_db_session_maker()() as db_session:
-            return await operations.get_user(db_session, user_id)
+            return await operations.get_user(
+                db_session, requesting_user, self.authorization_backend, user_id
+            )
 
-    async def get_user_by_username(self, username: str) -> PottoUser | None:
+    async def get_user_by_username(
+        self,
+        username: str,
+        requesting_user: PottoUser | None,
+    ) -> PottoUser | None:
         async with self.config.get_db_session_maker()() as db_session:
-            return await operations.get_user_by_username(db_session, username)
+            return await operations.get_user_by_username(
+                db_session, requesting_user, self.authorization_backend, username
+            )
 
     async def paginated_list_users(
         self,
@@ -261,10 +273,13 @@ class PostgisManager:
         page_size: int = 20,
         include_total: bool = False,
         filter_: UserFilter | None = None,
+        requesting_user: PottoUser | None,
     ) -> tuple[list[PottoUser], int | None]:
         async with self.config.get_db_session_maker()() as db_session:
             return await operations.paginated_list_users(
                 db_session,
+                requesting_user,
+                self.authorization_backend,
                 username_filter=filter_.username if filter_ else None,
                 admin_filter=bool(filter_ and filter_.is_admin),
                 page=page,
@@ -306,7 +321,9 @@ class PostgisManager:
         requesting_user: PottoUser | None,
     ) -> None:
         async with self.config.get_db_session_maker()() as db_session:
-            return await operations.delete_user(db_session, requesting_user, user_id)
+            return await operations.delete_user(
+                db_session, requesting_user, self.authorization_backend, user_id
+            )
 
     async def provision_oidc_user(self, to_create: UserCreateFromOidc) -> PottoUser:
         async with self.config.get_db_session_maker()() as db_session:
@@ -320,10 +337,13 @@ class PostgisManager:
         self,
         resource_type: str,
         resource_identifier: str,
+        requesting_user: PottoUser | None,
     ) -> list[PottoUser]:
         async with self.config.get_db_session_maker()() as db_session:
             return await operations.list_resource_editors(
                 db_session,
+                requesting_user,
+                self.authorization_backend,
                 resource_type,
                 resource_identifier,
             )
@@ -332,10 +352,13 @@ class PostgisManager:
         self,
         resource_type: str,
         resource_identifier: str,
+        requesting_user: PottoUser | None,
     ) -> list[PottoUser]:
         async with self.config.get_db_session_maker()() as db_session:
             return await operations.list_resource_viewers(
                 db_session,
+                requesting_user,
+                self.authorization_backend,
                 resource_type,
                 resource_identifier,
             )

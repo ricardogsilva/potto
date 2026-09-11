@@ -186,8 +186,8 @@ async def postgis_contract_harness(db, settings) -> ManagerContractHarness:
     # Re-fetch: authorization checks read `user.scopes` off the object it's given,
     # not a fresh DB row, and the objects above are now stale (their in-memory
     # `scopes` predate the grants just made).
-    viewer_user = await user_manager.get_user(viewer_user.id)
-    editor_user = await user_manager.get_user(editor_user.id)
+    viewer_user = await user_manager.get_user(viewer_user.id, admin_user)
+    editor_user = await user_manager.get_user(editor_user.id, admin_user)
 
     server_metadata_title = "Contract potto server"
     await metadata_manager.update_server_metadata(

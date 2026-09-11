@@ -101,3 +101,16 @@ class LocalAuthorizationBackend:
         if user is None:
             return False
         return PottoScope.ADMIN.value in user.scopes
+
+    async def can_view_user(self, requesting_user: PottoUser | None) -> bool:
+        return requesting_user is not None
+
+    async def can_edit_user(self, requesting_user: PottoUser | None) -> bool:
+        if requesting_user is None:
+            return False
+        return PottoScope.ADMIN.value in requesting_user.scopes
+
+    async def can_delete_user(self, requesting_user: PottoUser | None) -> bool:
+        if requesting_user is None:
+            return False
+        return PottoScope.ADMIN.value in requesting_user.scopes

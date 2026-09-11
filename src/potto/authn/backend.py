@@ -9,6 +9,7 @@ from starlette.requests import HTTPConnection
 
 from ..config import PottoSettings
 from ..schemas.auth import PottoUser
+from ._shared import get_authn_system_user
 from .jwt import decode_access_token
 from .oidc import OIDCProvider
 
@@ -53,7 +54,9 @@ class LocalAuthBackend(AuthenticationBackend):
         return None
 
     async def _get_user_from_db(self, user_id: str) -> PottoUser | None:
-        user = await self._settings.get_user_account_manager().get_user(user_id)
+        user = await self._settings.get_user_account_manager().get_user(
+            user_id, get_authn_system_user()
+        )
         if user is None:
             logger.debug(f"User {user_id!r} not found in database")
             return None
@@ -93,7 +96,9 @@ class OIDCAuthBackend(AuthenticationBackend):
             except jwt.InvalidTokenError:
                 return None
             user_account_manager = self._settings.get_user_account_manager()
-            user = await user_account_manager.get_user(claims["sub"])
+            user = await user_account_manager.get_user(
+                claims["sub"], get_authn_system_user()
+            )
             if user is None:
                 user = await self._oidc_provider.provision_user(self._settings, claims)
             if not user.is_active:
@@ -113,7 +118,9 @@ class OIDCAuthBackend(AuthenticationBackend):
         return None
 
     async def _get_user_from_db(self, user_id: str) -> PottoUser | None:
-        user = await self._settings.get_user_account_manager().get_user(user_id)
+        user = await self._settings.get_user_account_manager().get_user(
+            user_id, get_authn_system_user()
+        )
         if user is None:
             logger.debug(f"User {user_id!r} not found in database")
             return None

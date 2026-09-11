@@ -28,11 +28,14 @@ from ...exceptions import (
     PottoCannotCreateCollectionException,
     PottoCannotCreateUserException,
     PottoCannotDeleteCollectionException,
+    PottoCannotDeleteUserException,
     PottoCannotEditCollectionException,
     PottoCannotEditServerMetadataException,
+    PottoCannotEditUserException,
     PottoCannotModifyCollectionAccessException,
     PottoCannotSetAdminScopeException,
     PottoCannotSetScopesException,
+    PottoCannotViewUserException,
     PottoCollectionNotFoundException,
     PottoException,
     PottoNotFoundException,
@@ -548,6 +551,10 @@ async def update_user(
     user_id: str,
     to_update: UserUpdate,
 ) -> PottoUser:
+    if not await authorization_backend.can_edit_user(requesting_user):
+        raise PottoCannotEditUserException(
+            "User does not have permission to edit user accounts."
+        )
     db_user = await auth_queries.get_user(session, user_id)
     if db_user is None:
         raise PottoNotFoundException(f"User {user_id!r} does not exist.")
@@ -597,14 +604,20 @@ async def _get_editable_collection_identifiers(
 async def delete_user(
     session: AsyncSession,
     requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
     user_id: str,
 ) -> None:
-    # TODO: check user permissions
+    if not await authorization_backend.can_delete_user(requesting_user):
+        raise PottoCannotDeleteUserException(
+            "User does not have permission to delete user accounts."
+        )
     return await auth_commands.delete_user(session, user_id)
 
 
 async def paginated_list_users(
     session: AsyncSession,
+    requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
     *,
     username_filter: str | None = None,
     admin_filter: bool = False,
@@ -612,7 +625,10 @@ async def paginated_list_users(
     page_size: int = 20,
     include_total: bool = False,
 ) -> tuple[list[PottoUser], int | None]:
-    # TODO: check user permissions
+    if not await authorization_backend.can_view_user(requesting_user):
+        raise PottoCannotViewUserException(
+            "User does not have permission to view user accounts."
+        )
     users, count = await auth_queries.paginated_list_users(
         session,
         page=page,
@@ -626,17 +642,28 @@ async def paginated_list_users(
 
 async def get_user(
     session: AsyncSession,
+    requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
     user_id: str,
 ) -> PottoUser | None:
-    # TODO: check user permissions
+    if not await authorization_backend.can_view_user(requesting_user):
+        raise PottoCannotViewUserException(
+            "User does not have permission to view user accounts."
+        )
     db_user = await auth_queries.get_user(session, user_id)
     return db_user.to_potto() if db_user is not None else None
 
 
 async def get_user_by_username(
     session: AsyncSession,
+    requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
     username: str,
 ) -> PottoUser | None:
+    if not await authorization_backend.can_view_user(requesting_user):
+        raise PottoCannotViewUserException(
+            "User does not have permission to view user accounts."
+        )
     db_user = await auth_queries.get_user_by_username(session, username)
     return db_user.to_potto() if db_user is not None else None
 
@@ -673,9 +700,15 @@ async def authenticate(
 
 async def list_resource_editors(
     session: AsyncSession,
+    requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
     resource_type: str,
     resource_identifier: str,
 ) -> list[PottoUser]:
+    if not await authorization_backend.can_view_user(requesting_user):
+        raise PottoCannotViewUserException(
+            "User does not have permission to view resource editors."
+        )
     if resource_type != "collection":
         raise NotImplementedError(
             f"Resource type {resource_type!r} is not supported yet."
@@ -688,9 +721,15 @@ async def list_resource_editors(
 
 async def list_resource_viewers(
     session: AsyncSession,
+    requesting_user: PottoUser | None,
+    authorization_backend: AuthorizationBackendProtocol,
     resource_type: str,
     resource_identifier: str,
 ) -> list[PottoUser]:
+    if not await authorization_backend.can_view_user(requesting_user):
+        raise PottoCannotViewUserException(
+            "User does not have permission to view resource viewers."
+        )
     if resource_type != "collection":
         raise NotImplementedError(
             f"Resource type {resource_type!r} is not supported yet."

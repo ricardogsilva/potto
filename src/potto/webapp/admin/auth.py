@@ -8,6 +8,7 @@ from starlette.responses import (
 from starlette_admin.auth import AdminUser, AuthProvider
 from starlette_admin.exceptions import LoginFailed
 
+from ...authn._shared import get_authn_system_user
 from ...config import PottoSettings
 
 
@@ -102,7 +103,9 @@ async def _check_session(request: Request, settings: PottoSettings) -> bool:
     user_id = request.session.get("user_id")
     if not user_id:
         return False
-    user = await settings.get_user_account_manager().get_user(user_id)
+    user = await settings.get_user_account_manager().get_user(
+        user_id, get_authn_system_user()
+    )
     if user is None or not user.is_active:
         return False
     request.state.admin_user = user

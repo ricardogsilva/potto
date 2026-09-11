@@ -172,10 +172,10 @@ class CollectionView(_PottoAdminModelView):
             return None
         user_account_manager = settings.get_user_account_manager()
         editors = await user_account_manager.list_resource_editors(
-            "collection", collection.identifier
+            "collection", collection.identifier, user
         )
         viewers = await user_account_manager.list_resource_viewers(
-            "collection", collection.identifier
+            "collection", collection.identifier, user
         )
         object.__setattr__(collection, "editors", editors)
         object.__setattr__(collection, "viewers", viewers)
@@ -313,10 +313,10 @@ class CollectionView(_PottoAdminModelView):
             return self.handle_exception(err)
 
         current_editors = await user_account_manager.list_resource_editors(
-            "collection", updated.identifier
+            "collection", updated.identifier, user
         )
         current_viewers = await user_account_manager.list_resource_viewers(
-            "collection", updated.identifier
+            "collection", updated.identifier, user
         )
         current_editor_ids = {e.id for e in current_editors}
         current_viewer_ids = {v.id for v in current_viewers}
